@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Browser Racer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #a0c0f0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+        #controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.7);
+            font-size: 16px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            pointer-events: none;
+            text-align: center;
+        }
+    </style>
+    <!-- Include Three.js from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="hud">Speed: <span id="speed-val">0</span> km/h</div>
+    <div id="controls-hint">Use WASD or Arrow Keys to Drive</div>
+    <div id="canvas-container"></div>
+
+    <script>
+        // --- Game Setup ---
+        const container = document.getElementById('canvas-container');
+        const speedVal = document.getElementById('speed-val');
+        
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xa0c0f0);
+        scene.fog = new THREE.FogExp2(0xa0c0f0, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfffaed, 0.8);
+        dirLight.position.set((100), 100, 50);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        scene.add(dirLight);
+
+        // --- Environment (Ground) ---
+        const floorGeo = new THREE.PlaneGeometry(2000, 2000);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 0.8 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // --- Track Generation ---
+        // Creates a looping circuit using a CatmullRomCurve
+        const trackPoints = [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(100, 0, -50),
+            new THREE.Vector3(200, 0, -30),
+            new THREE.Vector3(250, 0, 100),
+            new THREE.Vector3(150, 0, 250),
+            new THREE.Vector3(0, 0, 200),
+            new THREE.Vector3(-150, 0, 300),
+            new THREE.Vector3(-250, 0, 150),
+            new THREE.Vector3(-150, 0, -50)
+        ];
+        const trackCurve = new THREE.CatmullRomCurve3(trackPoints);
+        trackCurve.closed = true;
+
+        const trackGeometry = new THREE.TubeGeometry(trackCurve, 200, 12, 12, true);
+        const trackMaterial = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.6 });
+        const track = new THREE.Mesh(trackGeometry, trackMaterial);
+        // Flatten the tube slightly to make it look like a road flattening into the terrain
+        track.scale.set(1, 0.05, 1); 
+        track.position.y = 0.05;
+        track.receiveShadow = true;
+        scene.add(track);
+
+        // Add some simple scenery (trees/scenery blocks)
+        const treeGeo = new THREE.ConeGeometry(2, 6, 5);
+        const treeMat = new THREE.MeshStandardMaterial({color: 0x145214});
+        for(let i=0; i<100; i++) {
+            const tree = new THREE.Mesh(treeGeo, treeMat);
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 50 + Math.random() * 200;
+            tree.position.set(Math.cos(angle)*radius, 3, Math.sin(angle)*radius);
+            // Don't spawn exactly on the starting line
+            if(tree.position.length() > 30) {
+                tree.castShadow = true;
+                scene.add(tree);
+            }
+        }
+
+        // --- Car Creation ---
+        const carGroup = new THREE.Group();
+
+        // Chassis
+        const bodyGeo = new THREE.BoxGeometry(2.5, 1, 5);
+        const bodyMat = new THREE.MeshStandardMaterial({ color: 0xde1738, roughness: 0.2, metalness: 0.5 });
+        const carBody = new THREE.Mesh(bodyGeo, bodyMat);
+        carBody.position.y = 0.7;
+        carBody.castShadow = true;
+        carGroup.add(carBody);
+
+        // Cabin
+        const cabinGeo = new THREE.BoxGeometry(2, 0.8, 2.5);
+        const cabinMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.1 });
+        const cabin = new THREE.Mesh(cabinGeo, cabinMat);
+        cabin.position.set(0, 1.4, -0.5);
+        cabin.castShadow = true;
+        carGroup.add(cabin);
+
+        // Wheels
+        const wheelGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.6, 12);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+        const wheelPositions = [
+            [-1.3, 0.5, 1.6],  // Front Left
+            [1.3, 0.5, 1.6],   // Front Right
+            [-1.3, 0.5, -1.6], // Rear Left
+            [1.3, 0.5, -1.6]   // Rear Right
+        ];
+        
+        const wheels = [];
+        wheelPositions.forEach(pos => {
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(...pos);
+            wheel.castShadow = true;
+            carGroup.add(wheel);
+            wheels.push(wheel); // Keep track of wheels to animate rotation later
+        });
+
+        // Set starting position
+        carGroup.position.set(0, 0, 20);
+        scene.add(carGroup);
+
+        // --- Keyboard Controls Input ---
+        const keys = { Forward: false, Backward: false, Left: false, Right: false };
+        
+        const handleKey = (e, isDown) => {
+            if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') keys.Forward = isDown;
+            if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') keys.Backward = isDown;
+            if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') keys.Left = isDown;
+            if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') keys.Right = isDown;
+        };
+
+        window.addEventListener('keydown', (e) => handleKey(e, true));
+        window.addEventListener('keyup', (e) => handleKey(e, false));
+
+        // --- Physics Variables ---
+        let speed = 0;
+        const maxSpeed = 60;
+        const acceleration = 0.5;
+        const braking = 0.8;
+        const friction = 0.15;
+        const turnSpeed = 0.04;
+        let carAngle = 0;
+
+        // --- Game Loop ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = clock.getDelta();
+
+            // 1. Handle Acceleration & Braking
+            if (keys.Forward) {
+                speed = Math.min(speed + acceleration, maxSpeed);
+            } else if (keys.Backward) {
+                speed = Math.max(speed - braking, -maxSpeed / 2);
+            } else {
+                // Apply passive friction environment friction when coasting
+                if (speed > 0) speed = Math.max(0, speed - friction);
+                if (speed < 0) speed = Math.min(0, speed + friction);
+            }
+
+            // 2. Handle Steering (Only steer if moving)
+            if (Math.abs(speed) > 0.1) {
+                const steeringDirection = speed > 0 ? 1 : -1;
+                if (keys.Left) carAngle += turnSpeed * steeringDirection;
+                if (keys.Right) carAngle -= turnSpeed * steeringDirection;
+            }
+
+            // Update Car Rotation
+            carGroup.rotation.y = carAngle;
+
+            // 3. Move Car Based on Angle & Speed
+            // Three.js forward z is technically negative, so moving towards car's local forward vector
+            carGroup.position.x += Math.sin(carAngle) * speed * delta;
+            carGroup.position.z += Math.cos(carAngle) * speed * delta;
+
+            // 4. Animate Wheel Rotation based on movement
+            wheels.forEach((wheel, index) => {
+                wheel.rotation.x += (speed * delta) / 0.5; // linear speed / radius
+                // Visual wheel turning for front wheels
+                if (index < 2) {
+                    if (keys.Left) wheel.rotation.y = 0.4;
+                    else if (keys.Right) wheel.rotation.y = -0.4;
+                    else wheel.rotation.y = 0;
+                }
+            });
+
+            // 5. Camera Follow Dynamics
+            // Smoothly interpolate camera position behind the car
+            const targetCamX = carGroup.position.x - Math.sin(carAngle) * 12;
+            const targetCamZ = carGroup.position.z - Math.cos(carAngle) * 12;
+            const targetCamY = carGroup.position.y + 5;
+
+            camera.position.x += (targetCamX - camera.position.x) * 0.1;
+            camera.position.z += (targetCamZ - camera.position.z) * 0.1;
+            camera.position.y += (targetCamY - camera.position.y) * 0.1;
+            
+            // Camera looks slightly ahead of the car
+            const lookTarget = carGroup.position.clone().add(new THREE.Vector3(Math.sin(carAngle)*4, 1, Math.cos(carAngle)*4));
+            camera.lookAt(lookTarget);
+
+            // 6. Update UI
+            speedVal.innerText = Math.round(Math.abs(speed));
+
+            renderer.render(scene, camera);
+        }
+
+        // --- Window Resize Handling ---
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // Start the game loop
+        animate();
+    </script>
+</body>
+</html>

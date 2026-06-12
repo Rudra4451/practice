@@ -1,0 +1,1164 @@
+/* ==========================================================================
+   Apex Horizon - 3D Racing Game Styling System
+   ========================================================================== */
+
+:root {
+  --font-hud: 'Share Tech Mono', monospace;
+  --font-ui: 'Outfit', sans-serif;
+
+  /* Color Palette */
+  --color-bg-dark: rgba(10, 10, 12, 0.95);
+  --color-accent: #ff3c00; /* Neon Orange-Red */
+  --color-accent-blue: #00f0ff; /* Electric Cyan */
+  --color-accent-green: #39ff14; /* Radioactive Green */
+  --color-hud-bg: rgba(15, 18, 25, 0.65);
+  --color-glass-border: rgba(255, 255, 255, 0.08);
+  --color-text: #ffffff;
+  --color-text-dim: #a0a5b5;
+
+  /* Shadows */
+  --shadow-neon-orange: 0 0 15px rgba(255, 60, 0, 0.5);
+  --shadow-neon-cyan: 0 0 15px rgba(0, 240, 255, 0.5);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+  touch-action: none; /* Disable double tap to zoom, scrolling etc. for interactive game controls */
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: #030305;
+  font-family: var(--font-ui);
+  color: var(--color-text);
+}
+
+#game-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+#ui-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10;
+  pointer-events: none; /* Pass clicks to canvas unless intercepted by screens */
+}
+
+/* Intercept clicks on active screens */
+.screen, .modal-overlay, .hud-overlay {
+  pointer-events: auto;
+}
+
+/* ==========================================================================
+   Screen General States
+   ========================================================================== */
+
+.screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  z-index: 20;
+}
+
+.screen.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Glassmorphism utility */
+.glass-panel {
+  background: var(--color-hud-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--color-glass-border);
+  box-shadow: var(--shadow-glass);
+}
+
+/* Glow animation */
+@keyframes pulse-orange {
+  0% { box-shadow: 0 0 5px rgba(255, 60, 0, 0.3); }
+  50% { box-shadow: 0 0 20px rgba(255, 60, 0, 0.8); }
+  100% { box-shadow: 0 0 5px rgba(255, 60, 0, 0.3); }
+}
+
+.pulse-glow {
+  animation: pulse-orange 2s infinite;
+}
+
+/* ==========================================================================
+   Loading Screen
+   ========================================================================== */
+
+#loading-screen {
+  background: radial-gradient(circle, #151821 0%, #050608 100%);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
+}
+
+.loader-content {
+  text-align: center;
+}
+
+.game-logo {
+  font-size: 4rem;
+  font-weight: 900;
+  letter-spacing: 0.5rem;
+  margin-bottom: 10px;
+}
+
+.glow {
+  text-shadow: 0 0 20px rgba(255, 60, 0, 0.6);
+  color: var(--color-accent);
+}
+
+.subtitle {
+  font-family: var(--font-hud);
+  color: var(--color-accent-blue);
+  letter-spacing: 0.2rem;
+  font-size: 1rem;
+  margin-bottom: 30px;
+}
+
+.loader-bar-outer {
+  width: 300px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0 auto;
+}
+
+#loader-bar-inner {
+  width: 0%;
+  height: 100%;
+  background: var(--color-accent-blue);
+  box-shadow: var(--shadow-neon-cyan);
+  transition: width 0.1s linear;
+}
+
+/* ==========================================================================
+   Garage Screen Menu
+   ========================================================================== */
+
+#garage-screen {
+  background: linear-gradient(135deg, rgba(5, 7, 12, 0.8) 0%, rgba(12, 15, 22, 0.2) 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 30px;
+  box-sizing: border-box;
+}
+
+.garage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--color-glass-border);
+}
+
+.logo-group h1 {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #fff;
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+}
+
+.logo-group .tagline {
+  font-family: var(--font-hud);
+  font-size: 0.8rem;
+  color: var(--color-accent-blue);
+  letter-spacing: 3px;
+}
+
+.currency-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.currency-display .label {
+  font-family: var(--font-hud);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+}
+
+.currency-display .amount {
+  font-family: var(--font-hud);
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--color-accent-green);
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.4);
+}
+
+.garage-layout {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex: 1;
+  margin-top: 30px;
+  gap: 30px;
+}
+
+/* Selection Carousel Panel */
+.car-selection-panel {
+  flex: 1.2;
+  background: var(--color-hud-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow-glass);
+}
+
+.car-selection-panel h2, .upgrades-panel h2 {
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+  color: var(--color-text-dim);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 10px;
+}
+
+.car-carousel-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.carousel-nav-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: white;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.carousel-nav-btn:hover {
+  background: var(--color-accent-blue);
+  color: black;
+  box-shadow: var(--shadow-neon-cyan);
+}
+
+.car-carousel-view {
+  text-align: center;
+  flex: 1;
+}
+
+.car-carousel-view .car-name {
+  font-size: 2rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.car-carousel-view .car-class {
+  font-family: var(--font-hud);
+  font-size: 0.8rem;
+  color: var(--color-accent-blue);
+  margin-top: 4px;
+}
+
+/* Stat row bars */
+.car-visual-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  width: 110px;
+  color: var(--color-text-dim);
+  font-weight: 600;
+}
+
+.stat-bar-outer {
+  flex: 1;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0 15px;
+}
+
+.stat-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent-blue), var(--color-accent));
+  width: 0%;
+  border-radius: 4px;
+  transition: width 0.4s cubic-bezier(0.1, 0.76, 0.55, 0.94);
+}
+
+.stat-number {
+  font-family: var(--font-hud);
+  font-size: 0.85rem;
+  width: 80px;
+  text-align: right;
+}
+
+.garage-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+/* Button variants */
+.action-btn {
+  flex: 1;
+  padding: 16px 20px;
+  font-weight: 800;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  font-family: var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.2s ease;
+}
+
+.primary-btn {
+  background: var(--color-accent);
+  color: white;
+  box-shadow: var(--shadow-neon-orange);
+}
+
+.primary-btn:hover {
+  filter: brightness(1.2);
+  transform: translateY(-2px);
+}
+
+.secondary-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.secondary-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Upgrades Panel */
+.upgrades-panel {
+  flex: 0.8;
+  background: var(--color-hud-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow-glass);
+}
+
+.upgrade-items {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.upgrade-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upgrade-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--color-accent-blue);
+}
+
+.upgrade-info {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.upgrade-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.upgrade-cost {
+  font-family: var(--font-hud);
+  color: var(--color-accent-green);
+  font-weight: 800;
+}
+
+.upgrade-progress {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upgrade-progress span {
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+}
+
+.upgrade-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.upgrade-dots .dot {
+  width: 14px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 1px;
+}
+
+.upgrade-dots .dot.filled {
+  background: var(--color-accent-blue);
+  box-shadow: 0 0 8px rgba(0, 240, 255, 0.5);
+}
+
+.menu-footer-btns {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: auto;
+}
+
+.menu-btn {
+  width: 100%;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+  font-family: var(--font-ui);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.menu-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.instruction-box {
+  background: rgba(0, 240, 255, 0.05);
+  border: 1px dashed rgba(0, 240, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+  line-height: 1.4;
+}
+
+.instruction-box strong {
+  color: var(--color-accent-blue);
+}
+
+/* ==========================================================================
+   Settings Modal Window
+   ========================================================================== */
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(5, 5, 8, 0.85);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  z-index: 50;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.modal-content {
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 16px;
+  width: 450px;
+  max-width: 90%;
+  padding: 30px;
+  box-shadow: var(--shadow-glass);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.modal-content h2 {
+  font-size: 1.3rem;
+  letter-spacing: 2px;
+  font-weight: 800;
+}
+
+.modal-content hr {
+  border: none;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.setting-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.setting-label {
+  font-size: 0.8rem;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.setting-options {
+  display: flex;
+  gap: 10px;
+}
+
+.option-btn {
+  flex: 1;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: var(--font-ui);
+  transition: all 0.2s ease;
+}
+
+.option-btn.active {
+  background: var(--color-accent-blue);
+  color: black;
+  border-color: var(--color-accent-blue);
+  box-shadow: var(--shadow-neon-cyan);
+}
+
+/* sliders */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  background: var(--color-accent);
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: var(--shadow-neon-orange);
+  transition: transform 0.1s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+/* ==========================================================================
+   In-Game HUD Overlays
+   ========================================================================== */
+
+.hud-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20px;
+  box-sizing: border-box;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  z-index: 30;
+}
+
+.hud-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.hud-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.hud-header > * {
+  pointer-events: auto;
+}
+
+.active-car-display {
+  display: flex;
+  flex-direction: column;
+}
+
+#hud-car-name {
+  font-size: 1.5rem;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  text-transform: uppercase;
+}
+
+.zone-badge {
+  font-family: var(--font-hud);
+  font-size: 0.75rem;
+  background: var(--color-accent-blue);
+  color: black;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  margin-top: 5px;
+  align-self: flex-start;
+  box-shadow: var(--shadow-neon-cyan);
+}
+
+.hud-center-stats {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+
+.credits-badge {
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-glass-border);
+  padding: 8px 15px;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.credits-badge .label {
+  font-size: 0.6rem;
+  color: var(--color-text-dim);
+  font-family: var(--font-hud);
+}
+
+.credits-badge #hud-credits-val {
+  font-family: var(--font-hud);
+  color: var(--color-accent-green);
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.telemetry-timer {
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-glass-border);
+  padding: 8px 15px;
+  border-radius: 8px;
+}
+
+#telemetry-timer-val {
+  font-family: var(--font-hud);
+  font-size: 1.3rem;
+  color: white;
+}
+
+.hud-circle-btn {
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-glass-border);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 30px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  box-shadow: var(--shadow-glass);
+  transition: all 0.2s ease;
+}
+
+.hud-circle-btn:hover {
+  background: white;
+  color: black;
+}
+
+/* Notification system */
+#notification-center {
+  position: absolute;
+  top: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 40;
+}
+
+.game-notification {
+  background: rgba(255, 60, 0, 0.15);
+  border: 1px solid var(--color-accent);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 6px;
+  box-shadow: 0 4px 15px rgba(255, 60, 0, 0.2);
+  backdrop-filter: blur(8px);
+  animation: notification-slide 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards,
+             notification-fade 0.5s ease 2.5s forwards;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.game-notification.green {
+  background: rgba(57, 255, 20, 0.15);
+  border-color: var(--color-accent-green);
+  box-shadow: 0 4px 15px rgba(57, 255, 20, 0.2);
+}
+
+.game-notification .header {
+  font-family: var(--font-hud);
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  opacity: 0.7;
+}
+
+.game-notification .body {
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+
+@keyframes notification-slide {
+  from { transform: translateY(-30px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes notification-fade {
+  to { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Dashboard Row */
+.hud-dashboard {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+}
+
+.hud-dashboard > * {
+  pointer-events: auto;
+}
+
+/* Minimap design */
+.minimap-container {
+  position: relative;
+  background: var(--color-hud-bg);
+  border: 1.5px solid var(--color-glass-border);
+  border-radius: 50%;
+  width: 130px;
+  height: 130px;
+  padding: 4px;
+  box-shadow: var(--shadow-glass);
+  overflow: hidden;
+}
+
+#minimapCanvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.minimap-north {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--color-accent-blue);
+  font-family: var(--font-hud);
+  font-size: 0.65rem;
+  font-weight: bold;
+}
+
+/* Speedometer details */
+.speedometer-container {
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 20px 20px 0 0;
+  width: 260px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: var(--shadow-glass);
+}
+
+.speed-readout {
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 5px;
+}
+
+#speed-number {
+  font-family: var(--font-hud);
+  font-size: 3.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: white;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
+}
+
+.speed-unit {
+  font-family: var(--font-hud);
+  font-size: 0.8rem;
+  color: var(--color-accent-blue);
+  margin-left: 5px;
+  margin-bottom: 8px;
+}
+
+.rpm-gauge-outer {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+#rpm-gauge-inner {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-accent-blue) 0%, var(--color-accent-blue) 75%, var(--color-accent) 100%);
+  width: 10%;
+  transition: width 0.05s ease-out;
+}
+
+.gear-and-revs {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rev-counter {
+  font-family: var(--font-hud);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
+}
+
+.gear-display {
+  font-family: var(--font-hud);
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: var(--color-accent);
+  text-shadow: var(--shadow-neon-orange);
+}
+
+/* Telemetry display */
+.telemetry-hud-box {
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-glass-border);
+  border-radius: 12px;
+  width: 170px;
+  padding: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: var(--shadow-glass);
+}
+
+.tel-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-hud);
+  font-size: 0.7rem;
+}
+
+.tel-row span:last-child {
+  color: var(--color-accent-blue);
+}
+
+.hud-system-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 6px;
+}
+
+.indicator-icon {
+  font-family: var(--font-hud);
+  font-size: 0.65rem;
+  color: var(--color-text-dim);
+}
+
+.indicator-icon.active {
+  color: var(--color-accent-green);
+  text-shadow: 0 0 4px var(--color-accent-green);
+}
+
+/* ==========================================================================
+   Mobile Controls (Onscreen Joystick / Pedals)
+   ========================================================================== */
+
+#mobile-controls {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 45;
+}
+
+#mobile-controls button, #virtual-steering-zone {
+  pointer-events: auto;
+}
+
+.mobile-joystick-side {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  width: 160px;
+  height: 160px;
+}
+
+/* virtual wheel/steering slider box */
+#virtual-steering-zone {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  box-shadow: var(--shadow-glass);
+}
+
+#steering-handle {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #2c303f 0%, #151821 100%);
+  border: 3px solid var(--color-accent-blue);
+  box-shadow: var(--shadow-neon-cyan);
+  cursor: pointer;
+  position: absolute;
+}
+
+.mobile-pedal-side {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 220px;
+}
+
+.pedal-btn {
+  background: var(--color-hud-bg);
+  border: 1px solid var(--color-glass-border);
+  color: white;
+  font-weight: 800;
+  font-family: var(--font-ui);
+  letter-spacing: 1px;
+  border-radius: 8px;
+  box-shadow: var(--shadow-glass);
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+#pedal-handbrake {
+  padding: 10px;
+  font-size: 0.7rem;
+  border-color: rgba(255, 60, 0, 0.3);
+}
+
+#pedal-handbrake:active {
+  background: var(--color-accent);
+  box-shadow: var(--shadow-neon-orange);
+}
+
+#pedal-nitro {
+  padding: 10px;
+  font-size: 0.7rem;
+  border-color: rgba(0, 240, 255, 0.3);
+  background: rgba(0, 240, 255, 0.05);
+}
+
+#pedal-nitro:active {
+  background: var(--color-accent-blue);
+  color: black;
+  box-shadow: var(--shadow-neon-cyan);
+}
+
+.pedals-row {
+  display: flex;
+  gap: 20px;
+  height: 100px;
+}
+
+.gas-pedal, .brake-pedal {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+}
+
+.gas-pedal {
+  border-color: rgba(57, 255, 20, 0.3);
+  font-size: 1.1rem;
+}
+
+.gas-pedal:active {
+  background: rgba(57, 255, 20, 0.2);
+  border-color: var(--color-accent-green);
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.3);
+}
+
+.brake-pedal {
+  border-color: rgba(255, 60, 0, 0.3);
+  font-size: 0.95rem;
+}
+
+.brake-pedal:active {
+  background: rgba(255, 60, 0, 0.2);
+  border-color: var(--color-accent);
+  box-shadow: 0 0 15px rgba(255, 60, 0, 0.3);
+}
+
+.mobile-utils {
+  position: absolute;
+  top: 90px;
+  right: 20px;
+  display: flex;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   Responsive Viewport Adaptations
+   ========================================================================== */
+
+@media (max-width: 900px) {
+  /* Scale garage headers and layout */
+  #garage-screen {
+    padding: 15px;
+  }
+  
+  .logo-group h1 {
+    font-size: 1.5rem;
+  }
+  
+  .currency-display .amount {
+    font-size: 1.4rem;
+  }
+
+  .garage-layout {
+    flex-direction: column;
+    overflow-y: auto;
+    margin-top: 15px;
+    gap: 15px;
+  }
+
+  .car-selection-panel, .upgrades-panel {
+    width: 100%;
+    flex: none;
+    padding: 15px;
+  }
+
+  .car-carousel-view .car-name {
+    font-size: 1.5rem;
+  }
+
+  /* HUD adapt for smaller viewports */
+  .telemetry-hud-box {
+    display: none; /* Hide detailed telemetry on mobile */
+  }
+
+  .speedometer-container {
+    width: 200px;
+    padding: 10px;
+  }
+
+  #speed-number {
+    font-size: 2.5rem;
+  }
+  
+  .minimap-container {
+    width: 100px;
+    height: 100px;
+  }
+}

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Apex Horizon | Open-World 3D Racing</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=Share+Tech+Mono&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+
+<body>
+  <!-- Main 3D Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- UI Overlay Main Wrapper -->
+  <div id="ui-container">
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen" class="screen active">
+      <div class="loader-content">
+        <h1 class="game-logo glow">APEX HORIZON</h1>
+        <p class="subtitle">PREPARING ENGINE & PHYSICS WORLD...</p>
+        <div class="loader-bar-outer">
+          <div id="loader-bar-inner"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN GARAGE MENU -->
+    <div id="garage-screen" class="screen">
+      <!-- Top Bar -->
+      <header class="garage-header">
+        <div class="logo-group">
+          <h1 class="logo glow-text">APEX HORIZON</h1>
+          <span class="tagline">3D OPEN WORLD ENGINE</span>
+        </div>
+        <div class="currency-display">
+          <span class="label">CREDITS</span>
+          <span id="credits-amount" class="amount">$5,00000</span>
+        </div>
+      </header>
+
+      <!-- Main Workspace -->
+      <div class="garage-layout">
+        <!-- Left Panel: Car Selection Carousel -->
+        <div class="car-selection-panel">
+          <h2>SELECT VEHICLE</h2>
+          <div class="car-carousel-container">
+            <button id="prev-car-btn" class="carousel-nav-btn">&larr;</button>
+            <div class="car-carousel-view">
+              <div id="car-card-name" class="car-name">BMW M5</div>
+              <div id="car-card-class" class="car-class">SPORTS / LUXURY</div>
+            </div>
+            <button id="next-car-btn" class="carousel-nav-btn">&rarr;</button>
+          </div>
+
+          <div class="car-visual-stats">
+            <div class="stat-row">
+              <span class="stat-label">TOP SPEED</span>
+              <div class="stat-bar-outer">
+                <div id="stat-bar-speed" class="stat-bar-inner" style="width: 60%"></div>
+              </div>
+              <span id="stat-val-speed" class="stat-number">250 km/h</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">ACCELERATION</span>
+              <div class="stat-bar-outer">
+                <div id="stat-bar-accel" class="stat-bar-inner" style="width: 70%"></div>
+              </div>
+              <span id="stat-val-accel" class="stat-number">3.3s</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">HANDLING</span>
+              <div class="stat-bar-outer">
+                <div id="stat-bar-handling" class="stat-bar-inner" style="width: 65%"></div>
+              </div>
+              <span id="stat-val-handling" class="stat-number">8.0 G</span>
+            </div>
+            <div class="stat-row">
+              <span class="stat-label">BRAKING</span>
+              <div class="stat-bar-outer">
+                <div id="stat-bar-braking" class="stat-bar-inner" style="width: 60%"></div>
+              </div>
+              <span id="stat-val-braking" class="stat-number">33 m</span>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="garage-actions">
+            <button id="unlock-btn" class="action-btn secondary-btn hidden">UNLOCK FOR $15,000</button>
+            <button id="drive-btn" class="action-btn primary-btn pulse-glow">DRIVE CAR</button>
+            <button id="upgrade-btn" class="action-btn secondary-btn">UPGRADE CAR</button>
+          </div>
+        </div>
+
+        <!-- Right Panel: Upgrades and Stats Tuning -->
+        <div class="upgrades-panel">
+          <h2>PERFORMANCE UPGRADES</h2>
+          <div class="upgrade-items">
+            <div class="upgrade-card" data-upgrade="engine">
+              <div class="upgrade-info">
+                <span class="upgrade-name">V8 Engine Tuning</span>
+                <span id="upgrade-cost-engine" class="upgrade-cost">$2,000</span>
+              </div>
+              <div class="upgrade-progress">
+                <span id="upgrade-level-engine">Lvl 0 / 3</span>
+                <div class="upgrade-dots" id="upgrade-dots-engine">
+                  <div class="dot"></div>
+                  <div class="dot"></div>
+                  <div class="dot"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="upgrade-card" data-upgrade="handling">
+              <div class="upgrade-info">
+                <span class="upgrade-name">Race suspension & Tires</span>
+                <span id="upgrade-cost-handling" class="upgrade-cost">$1,500</span>
+              </div>
+              <div class="upgrade-progress">
+                <span id="upgrade-level-handling">Lvl 0 / 3</span>
+                <div class="upgrade-dots" id="upgrade-dots-handling">
+                  <div class="dot"></div>
+                  <div class="dot"></div>
+                  <div class="dot"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System controls -->
+          <div class="menu-footer-btns">
+            <button id="open-settings-btn" class="menu-btn">SETTINGS</button>
+            <div class="instruction-box">
+              <strong>Keyboard:</strong> WASD/Arrows to Drive, Space to Brake, C to Camera, L to Headlights, R to
+              Respawn, ESC for Menu.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div id="settings-modal" class="modal-overlay">
+      <div class="modal-content">
+        <h2>GAME CONFIGURATION</h2>
+        <hr />
+
+        <div class="setting-item">
+          <span class="setting-label">Graphics Quality</span>
+          <div class="setting-options" id="graphics-select">
+            <button class="option-btn active" data-value="high">HIGH</button>
+            <button class="option-btn" data-value="medium">MEDIUM</button>
+            <button class="option-btn" data-value="low">LOW</button>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <span class="setting-label">Weather Setting</span>
+          <div class="setting-options" id="weather-select">
+            <button class="option-btn active" data-value="clear">SUNNY</button>
+            <button class="option-btn" data-value="rain">RAINY</button>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <span class="setting-label">Sound FX</span>
+          <input type="range" id="sfx-slider" min="0" max="1" step="0.1" value="0.8" />
+        </div>
+
+        <div class="setting-item">
+          <span class="setting-label">Music Volume</span>
+          <input type="range" id="music-slider" min="0" max="1" step="0.1" value="0.5" />
+        </div>
+
+        <button id="close-settings-btn" class="action-btn primary-btn">APPLY SETTINGS</button>
+      </div>
+    </div>
+
+    <!-- IN-GAME HUD -->
+    <div id="game-hud" class="hud-overlay">
+      <!-- Top HUD metrics -->
+      <div class="hud-header">
+        <div class="active-car-display">
+          <span id="hud-car-name">BMW M5</span>
+          <span id="hud-zone-name" class="zone-badge">CITY STREETS</span>
+        </div>
+        <div class="hud-center-stats">
+          <div class="credits-badge">
+            <span class="label">CREDITS</span>
+            <span id="hud-credits-val">$5,000</span>
+          </div>
+          <div class="telemetry-timer">
+            <span id="telemetry-timer-val">00:00.00</span>
+          </div>
+        </div>
+        <button id="hud-menu-btn" class="hud-circle-btn">Menu [ESC]</button>
+      </div>
+
+      <!-- Dynamic Notifications -->
+      <div id="notification-center"></div>
+
+      <!-- Bottom Dashboard HUD -->
+      <div class="hud-dashboard">
+        <!-- Left: Minimap -->
+        <div class="minimap-container" id="minimap">
+          <canvas id="minimapCanvas" width="200" height="200"></canvas>
+          <div class="minimap-north">N</div>
+        </div>
+
+        <!-- Center: Analog Speedometer Dial & RPM -->
+        <div class="speedometer-container" id="speedometer">
+          <canvas id="speedometer-canvas" width="150" height="150"></canvas>
+          <div class="speed-readout">
+            <span id="speed-number">0</span>
+            <span class="speed-unit">KM/H</span>
+          </div>
+          <div class="rpm-gauge-outer">
+            <div id="rpm-gauge-inner" style="width: 10%"></div>
+          </div>
+          <div class="gear-and-revs">
+            <span class="rev-counter" id="rpm-text">900 RPM</span>
+            <div class="gear-display-container">GEAR: <span id="gear">N</span></div>
+          </div>
+        </div>
+
+        <!-- Right: Telemetry / Key Controls Info -->
+        <div class="telemetry-hud-box">
+          <div class="tel-row">
+            <span>LATERAL G:</span>
+            <span id="telemetry-g-force">0.00 G</span>
+          </div>
+          <div class="tel-row">
+            <span id="topSpeed">TOP: 0 km/h</span>
+          </div>
+          <div class="tel-row">
+            <span id="credits">💰 $5,000</span>
+          </div>
+          <div class="hud-system-indicators">
+            <span id="indicator-headlights" class="indicator-icon">Lights: Off [L]</span>
+            <span id="indicator-weather" class="indicator-icon">Road: Dry</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Touch Controls (shown on touch devices) -->
+      <div id="mobile-controls" class="hidden">
+        <!-- Left: Virtual Joystick / Steering Sliders -->
+        <div class="mobile-joystick-side">
+          <div id="virtual-steering-zone">
+            <div id="steering-handle"></div>
+          </div>
+        </div>
+        <!-- Right: Gas, Brake & Handbrake Pedals -->
+        <div class="mobile-pedal-side">
+          <button id="pedal-handbrake" class="pedal-btn">HANDBRAKE</button>
+          <button id="pedal-nitro" class="pedal-btn nitro-pedal">NITRO</button>
+          <div class="pedals-row">
+            <button id="pedal-brake" class="pedal-btn brake-pedal">BRAKE</button>
+            <button id="pedal-gas" class="pedal-btn gas-pedal">GAS</button>
+          </div>
+        </div>
+        <!-- Top Utility Buttons -->
+        <div class="mobile-utils">
+          <button id="mobile-cam-btn" class="hud-circle-btn">CAM [C]</button>
+          <button id="mobile-respawn-btn" class="hud-circle-btn">RESPAWN [R]</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
