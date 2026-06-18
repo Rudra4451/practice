@@ -1,78 +1,36 @@
-# 3D Driving Simulation & Car Game
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-A high-performance, immersive 3D car simulator and driving game built with **Three.js** (for WebGL graphics) and **cannon-es** (for 3D rigid-body physics). The project is bundled and run using **Vite**.
+## Getting Started
 
-## 🚀 Features
+First, run the development server:
 
-- **Realistic Vehicle Physics**: Detailed vehicle simulation (acceleration, steering, suspension, and braking) powered by `cannon-es`.
-- **Diverse Game Zones**: Explore a rich, expansive map featuring multiple zones:
-  - **City Zone**: Urban streets with traffic and pedestrians.
-  - **Beach Zone**: Relaxed, sandy coastal driving.
-  - **Off-Road Zone**: Rugged terrain testing suspension and control.
-  - **Race Circuit**: High-speed lap racing track.
-  - **Speed Zone**: Straightaways for top-speed testing.
-- **Dynamic Environments**: 
-  - **Day/Night Cycle**: Smooth transitional skyboxes, ambient lighting, and headlights.
-  - **Weather System**: Real-time atmospheric weather changes.
-- **Interactive Garage**: Customize and select from multiple car models (Ferrari, Lamborghini, Porsche, BMW, and Off-Road).
-- **Rich Neon HUD**: Fully functional head-up display featuring a needle speedometer, current gear, speed zones, and dashboard diagnostics.
-- **NPC Traffic & Pedestrians**: Living world containing AI-driven traffic systems and pedestrian pathfinding.
-- **Advanced Core Systems**:
-  - **Audio Manager**: Engine noises, ambient sounds, and interface audio.
-  - **Post-Processing**: Immersive visual shader effects.
-  - **Save Manager**: Local persistence for game state and unlocked progress.
-
-## 🛠️ Technology Stack
-
-- **Graphics**: [Three.js](https://threejs.org/)
-- **Physics**: [cannon-es](https://github.com/pmndrs/cannon-es)
-- **Bundler**: [Vite](https://vite.dev/)
-- **Logic**: ES6+ JavaScript
-- **Styling**: Custom CSS (Vanilla)
-
-## 💻 Getting Started
-
-### Prerequisites
-
-Make sure you have [Node.js](https://nodejs.org/) installed on your machine.
-
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/Rudra4451/practice.git
-   cd practice
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-### Running Locally
-
-To start the Vite local development server:
 ```bash
 npm run dev
-```
-Open the URL shown in your terminal (usually `http://localhost:5173`) in your browser.
-
-### Building for Production
-
-To build the optimized static assets for deployment:
-```bash
-npm run build
-```
-You can preview the built production app locally using:
-```bash
-npm run preview
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## 📂 Project Structure
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-- `src/cars/`: Core vehicle logic and physical model definitions.
-- `src/world/`: Zone creators, obstacles, and terrain builders.
-- `src/systems/`: Managers for input, weather, audio, daylight, post-processing, and storage.
-- `src/hud/`: SVG and Canvas rendering for the game HUD and Garage UI.
-- `src/npc/`: Simple AI scripts managing pedestrians and active traffic routes.
-- `public/assets/`: 3D Models (`.glb`) and sound files.
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

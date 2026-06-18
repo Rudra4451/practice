@@ -1,0 +1,129 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-accent: var(--surface-accent);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-accent: var(--accent);
+  --color-error: var(--error);
+  --color-border: var(--border);
+  --color-char-correct: var(--char-correct);
+  --color-char-wrong: var(--char-wrong);
+
+  --color-bauhaus-red: #E53935;
+  --color-bauhaus-yellow: #FDD835;
+  --color-bauhaus-blue: #1E88E5;
+  --color-bauhaus-black: #212121;
+  --color-bauhaus-white: #FAFAFA;
+  --color-bauhaus-gray: #9E9E9E;
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+  --radius-3xl: 0px;
+}
+
+:root {
+  --background: #FAFAFA;
+  --surface: #FAFAFA;
+  --surface-accent: #FFFFFF;
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --accent: #1E88E5;
+  --error: #E53935;
+  --border: #212121;
+  --char-correct: #1E88E5;
+  --char-wrong: #E53935;
+
+  --font-sans: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), monospace;
+}
+
+/* Enable manual dark class selection */
+.dark {
+  --background: #212121;
+  --surface: #212121;
+  --surface-accent: #2C2C2C;
+  --text-primary: #FAFAFA;
+  --text-secondary: #9E9E9E;
+  --accent: #FDD835;
+  --error: #E53935;
+  --border: #FAFAFA;
+  --char-correct: #FDD835;
+  --char-wrong: #E53935;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  overflow-x: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
+}
+
+/* Monospace font settings for typing container */
+.typing-font {
+  font-family: var(--font-mono);
+}
+
+/* Caret blinking keyframe animations */
+@keyframes caretBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.animate-caret {
+  animation: caretBlink 1s infinite;
+}
+
+/* Fade-in animation used across result screens and mobile menus */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+/* Disable focus outline but maintain custom focus visibility */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Bauhaus flat scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+  border-left: 2px solid var(--border);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Scrollbar Utility for smooth horizontal scrolling menus without visual tracks */
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+}
+.scrollbar-none {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
+}
