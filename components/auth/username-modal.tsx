@@ -46,8 +46,8 @@ export const UsernameModal = () => {
       return;
     }
 
-    if (cleanUsername.length > 30) {
-      setErrorMsg('Username cannot exceed 30 characters.');
+    if (cleanUsername.length > 20) {
+      setErrorMsg('Username cannot exceed 20 characters.');
       return;
     }
 
@@ -152,6 +152,7 @@ export const UsernameModal = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/\s+/g, ''))}
                 required
+                maxLength={20}
                 disabled={loading}
                 className="w-full pl-8 pr-4 py-3 bg-background border-2 border-border focus:border-accent text-sm font-bold font-mono transition-all outline-none text-text-primary"
               />

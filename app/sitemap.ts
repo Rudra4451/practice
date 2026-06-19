@@ -1,17 +1,16 @@
 import { MetadataRoute } from 'next';
-import { createClient } from '@/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Replace with production URL when ready
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://typrox.com';
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://typrox.vercel.app';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   const routes = [
     '',
     '/typing',
     '/leaderboard',
-    '/dashboard',
     '/login',
-    '/profile',
   ].map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
@@ -19,12 +18,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: route === '' ? 1.0 : 0.8,
   }));
 
+  if (!supabaseUrl || !supabaseKey) {
+    console.warn('Supabase URL or Key missing in sitemap generation. Returning basic routes.');
+    return routes;
+  }
+
   try {
-    const supabase = createClient();
+    const supabase = createClient(supabaseUrl, supabaseKey);
     const { data: profiles } = await supabase
       .from('profiles')
       .select('username, updated_at')
-      .limit(2000); // Cap at 2000 to keep sitemap builds lightweight
+      .limit(2000);
 
     if (profiles) {
       const profileRoutes = profiles.map((p) => ({
