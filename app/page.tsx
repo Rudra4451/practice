@@ -104,7 +104,7 @@ function LiveProductPreview() {
   }, []);
 
   return (
-    <div className="border-3 border-border bg-surface p-6 font-mono shadow-[6px_6px_0px_0px_rgba(253,216,53,1)] relative w-full text-left">
+    <div className="border-3 border-border bg-surface p-6 font-mono shadow-[6px_6px_0px_0px_var(--accent)] relative w-full text-left">
       {/* Configuration row */}
       <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-4 text-xs uppercase font-bold text-text-secondary">
         <div className="flex items-center gap-2">
@@ -456,8 +456,8 @@ export default function Home() {
               {[10, 16, 24, 20, 28, 36].map((h, i) => (
                 <div
                   key={i}
-                  className="w-full border-t border-x border-border z-10"
-                  style={{ height: `${h * 4}px`, background: `rgba(253, 216, 53, ${0.2 + i * 0.12})` }}
+                  className="w-full border-t border-x border-border z-10 bg-accent"
+                  style={{ height: `${h * 4}px`, opacity: 0.2 + i * 0.12 }}
                 />
               ))}
               <div className="w-full bg-accent h-36 border-2 border-border z-10 flex items-center justify-center text-xs text-white font-bold">96</div>
