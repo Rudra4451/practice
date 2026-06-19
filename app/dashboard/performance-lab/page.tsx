@@ -65,7 +65,7 @@ export default function PerformanceLabPage() {
           return;
         }
 
-        const testIds = results.map((r) => r.id);
+        const testIds = results.map((r: { id: string }) => r.id);
         const { data: replays } = await supabase
           .from('replays')
           .select('telemetry')
@@ -82,7 +82,7 @@ export default function PerformanceLabPage() {
         const bigramSpeeds: Record<string, number[]> = {};
         const errorsList: Record<string, number> = {};
 
-        replays.forEach((rep) => {
+        replays.forEach((rep: any) => {
           const telemetry = rep.telemetry as any[];
           
           for (let i = 1; i < telemetry.length; i++) {

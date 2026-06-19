@@ -39,7 +39,8 @@ export const Navbar: React.FC = () => {
     const supabase = createClient();
     
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session: activeSession } }) => {
+    supabase.auth.getSession().then((res: any) => {
+      const activeSession = res?.data?.session || null;
       setSession(activeSession);
       if (activeSession?.user) {
         // Fetch profile
@@ -48,7 +49,7 @@ export const Navbar: React.FC = () => {
           .select('*')
           .eq('id', activeSession.user.id)
           .single()
-          .then(({ data: profileData }) => {
+          .then(({ data: profileData }: any) => {
             if (profileData) setProfile(profileData);
           });
       }
@@ -56,7 +57,7 @@ export const Navbar: React.FC = () => {
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      async (event: any, currentSession: any) => {
         setSession(currentSession);
         if (currentSession?.user) {
           const { data: profileData } = await supabase

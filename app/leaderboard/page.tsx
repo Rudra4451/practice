@@ -41,12 +41,14 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const supabase = createClient();
+    let channel: any = null;
+    let supabaseInstance: any = null;
 
     async function fetchLeaderboard() {
       setLoading(true);
       try {
-        let query = supabase
+        supabaseInstance = createClient();
+        let query = supabaseInstance
           .from('test_results')
           .select('id, wpm, accuracy, consistency, mode, duration, created_at, profiles(username, display_name, avatar_url)')
           .eq('is_invalidated', false)
@@ -68,9 +70,11 @@ export default function LeaderboardPage() {
 
         if (!error && data) {
           setEntries(data as unknown as LeaderboardEntry[]);
+        } else if (error) {
+          console.error("Leaderboard query error:", error);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Leaderboard fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -79,23 +83,36 @@ export default function LeaderboardPage() {
     fetchLeaderboard();
 
     // Subscribe to Postgres changes on test_results to refresh ranking automatically
-    const channel = supabase
-      .channel(`leaderboard-${mode}-${duration}-${timeframe}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'test_results',
-        },
-        () => {
-          fetchLeaderboard();
-        }
-      )
-      .subscribe();
+    try {
+      if (!supabaseInstance) {
+        supabaseInstance = createClient();
+      }
+      channel = supabaseInstance
+        .channel(`leaderboard-${mode}-${duration}-${timeframe}`)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'test_results',
+          },
+          () => {
+            fetchLeaderboard();
+          }
+        )
+        .subscribe();
+    } catch (err) {
+      console.error("Failed to subscribe to realtime changes:", err);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (supabaseInstance && channel) {
+        try {
+          supabaseInstance.removeChannel(channel);
+        } catch (err) {
+          console.error("Error removing realtime channel:", err);
+        }
+      }
     };
   }, [timeframe, mode, duration]);
 

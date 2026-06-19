@@ -60,13 +60,13 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
           .eq('is_invalidated', false);
 
         if (!resultsErr && results) {
-          const wpmList = results.map((r) => r.wpm);
+          const wpmList = results.map((r: any) => r.wpm);
           const bestWpm = wpmList.length > 0 ? Math.max(...wpmList) : 0;
-          const avgWpm = wpmList.length > 0 ? Math.round(wpmList.reduce((a, b) => a + b, 0) / wpmList.length) : 0;
+          const avgWpm = wpmList.length > 0 ? Math.round(wpmList.reduce((a: number, b: number) => a + b, 0) / wpmList.length) : 0;
           const avgAccuracy = results.length > 0 
-            ? Math.round(results.map((r) => r.accuracy).reduce((a, b) => a + b, 0) / results.length) 
+            ? Math.round(results.map((r: any) => r.accuracy).reduce((a: number, b: number) => a + b, 0) / results.length) 
             : 0;
-          const totalTimeSecs = results.reduce((a, b) => a + b.duration, 0);
+          const totalTimeSecs = results.reduce((a: number, b: any) => a + b.duration, 0);
 
           setStats({
             bestWpm,
