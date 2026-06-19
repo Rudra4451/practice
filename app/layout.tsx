@@ -3,6 +3,7 @@ import { Space_Grotesk, Space_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { ToastContainer } from "@/components/ui/toast-container";
+import { UsernameModal } from "@/components/auth/username-modal";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -85,6 +86,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-background text-text-primary antialiased selection:bg-accent selection:text-white">
         {children}
         <ToastContainer />
+        <UsernameModal />
       </body>
     </html>
   );
