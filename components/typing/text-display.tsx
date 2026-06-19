@@ -38,19 +38,12 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
     if (!active || !container) return;
 
     try {
-      const containerRect = container.getBoundingClientRect();
-      const activeRect = active.getBoundingClientRect();
+      const activeTop = active.offsetTop;
+      const activeHeight = active.offsetHeight;
 
-      if (!containerRect || !activeRect) return;
-
-      // If the active character is below the visible area, scroll down
-      if (activeRect.bottom > containerRect.bottom - 8) {
-        container.scrollTop += activeRect.bottom - containerRect.bottom + 8;
-      }
-      // If above, scroll up
-      if (activeRect.top < containerRect.top + 8) {
-        container.scrollTop -= containerRect.top - activeRect.top + 8;
-      }
+      // Keep the active line centered as the second line, hiding completed lines above it
+      const targetScroll = activeTop - activeHeight;
+      container.scrollTop = Math.max(0, targetScroll);
     } catch (err) {
       logger.warn('Failed to calculate scroll coordinates', { category: 'dom', error: err });
     }
@@ -59,7 +52,7 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
   return (
     <div
       ref={containerRef}
-      className="typing-font text-2xl md:text-3xl leading-relaxed select-none outline-none tracking-wide text-text-secondary/60 flex flex-wrap gap-x-[0.35em] gap-y-3 max-h-[160px] overflow-y-hidden w-full relative"
+      className="typing-font text-2xl md:text-3xl leading-relaxed select-none outline-none tracking-wide text-text-secondary/90 flex flex-wrap gap-x-[0.35em] gap-y-3 max-h-[160px] overflow-y-hidden w-full relative"
       style={{ scrollBehavior: 'smooth' }}
     >
       {words.map((word, wordIdx) => {
@@ -74,7 +67,7 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
               const typedChar = userInput[absIdx];
               const isCorrect = typedChar === char;
 
-              let charClass = 'text-text-secondary/50 transition-colors duration-100';
+              let charClass = 'text-text-secondary/90 transition-colors duration-100';
               if (isTyped) {
                 charClass = isCorrect
                   ? 'text-char-correct font-bold'
@@ -105,7 +98,7 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
               const isSpaceActive = spaceIdx === currentIndex;
               const typedSpace = userInput[spaceIdx];
 
-              let spaceClass = 'text-text-secondary/50';
+              let spaceClass = 'text-text-secondary/90';
               if (isSpaceTyped) {
                 spaceClass = typedSpace === ' '
                   ? 'text-char-correct font-bold opacity-60'
