@@ -40,7 +40,20 @@ export async function updateSession(request: NextRequest) {
   );
 
   // This refreshes the session token
-  await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const path = request.nextUrl.pathname;
+  const isProtectedPath = path.startsWith('/dashboard') || path.startsWith('/profile');
+
+  if (isProtectedPath && !user) {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', path);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  if (path === '/login' && user) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
+  }
 
   return supabaseResponse;
 }

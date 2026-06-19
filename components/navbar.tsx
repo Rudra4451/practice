@@ -8,9 +8,11 @@ import { Sun, Moon, Zap, User, Menu, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
 import { Button } from '@/components/ui/button';
+import { useToastStore } from '@/stores/toast-store';
 
 export const Navbar: React.FC = () => {
   const { preferences, updatePreferences, session, setSession, profile, setProfile } = useUserStore();
+  const { showToast } = useToastStore();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -65,12 +67,18 @@ export const Navbar: React.FC = () => {
           if (profileData) setProfile(profileData);
         } else {
           setProfile(null);
+          // If on a protected route, redirect to home page immediately
+          const currentPath = window.location.pathname;
+          if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/profile')) {
+            router.push('/');
+            router.refresh();
+          }
         }
       }
     );
 
     return () => subscription.unsubscribe();
-  }, [setSession, setProfile]);
+  }, [setSession, setProfile, router]);
 
   const toggleTheme = () => {
     const current = preferences.theme;
@@ -80,8 +88,10 @@ export const Navbar: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOut();
+      showToast('Successfully signed out.');
     } catch (error) {
       console.error('Error signing out:', error);
+      showToast('Unable to sign out. Please try again.', 'error');
     } finally {
       // Clear local states & redirect
       setSession(null);

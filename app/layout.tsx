@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Space_Mono } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { ToastContainer } from "@/components/ui/toast-container";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -68,7 +69,7 @@ export default function RootLayout({
                   const parsed = JSON.parse(pref);
                   const theme = parsed.state?.preferences?.theme;
                   if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                    document.documentElement.classList.add('dark');
+                     document.documentElement.classList.add('dark');
                   } else {
                     document.documentElement.classList.remove('dark');
                   }
@@ -83,6 +84,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-full flex flex-col bg-background text-text-primary antialiased selection:bg-accent selection:text-white">
         {children}
+        <ToastContainer />
       </body>
     </html>
   );
