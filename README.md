@@ -34,3 +34,9 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Supabase Authentication Setup
+
+Google and GitHub OAuth logins require configuration in the Supabase Dashboard. 
+
+To enable and configure social logins for this project, please follow the step-by-step instructions in the [OAuth Setup Guide](file:///c:/Users/rudra/practice/OAUTH_SETUP.md).

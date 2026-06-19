@@ -6,6 +6,7 @@ import { useUserStore } from '@/stores/user-store';
 import { Navbar } from '@/components/navbar';
 import { createClient } from '@/lib/supabase/client';
 import { Lock, Zap, Keyboard, Sparkles, BarChart2, CheckCircle, ShieldAlert, Award } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Keyboard Layout Mapping for Heatmap render
 const KEYBOARD_ROWS = [
@@ -167,7 +168,7 @@ export default function PerformanceLabPage() {
       <div className="flex flex-col min-h-screen bg-background">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-3 border-accent border-t-transparent animate-spin" />
         </div>
       </div>
     );
@@ -189,17 +190,17 @@ export default function PerformanceLabPage() {
 
         {/* LOCKED GATING VIEW FOR FREE TIER */}
         {!session?.user ? (
-          <div className="relative p-8 border border-border bg-surface rounded-2xl shadow-xl overflow-hidden min-h-[400px] flex items-center justify-center">
+          <div className="relative p-8 border-3 border-border bg-surface overflow-hidden min-h-[400px] flex items-center justify-center">
             {/* Blurred Mockup Graphics in background */}
             <div className="absolute inset-0 opacity-20 filter blur-sm select-none pointer-events-none flex flex-col justify-around p-8">
-              <div className="h-10 bg-border w-1/3 rounded-lg" />
-              <div className="h-44 bg-border w-full rounded-xl" />
-              <div className="h-20 bg-border w-1/2 rounded-xl" />
+              <div className="h-10 bg-border w-1/3" />
+              <div className="h-44 bg-border w-full" />
+              <div className="h-20 bg-border w-1/2" />
             </div>
 
             {/* Lock Modal Card overlay */}
-            <div className="relative z-10 p-8 bg-surface/90 border border-border shadow-2xl rounded-2xl max-w-md text-center flex flex-col items-center gap-6">
-              <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center text-accent">
+            <div className="relative z-10 p-8 bg-surface/90 border-3 border-border shadow-2xl max-w-md text-center flex flex-col items-center gap-6">
+              <div className="w-12 h-12 bg-accent/10 flex items-center justify-center text-accent">
                 <Lock className="w-6 h-6" />
               </div>
               <div className="flex flex-col gap-2">
@@ -209,19 +210,19 @@ export default function PerformanceLabPage() {
                 </p>
               </div>
 
-              <Link
+              <Button
                 href="/login"
-                className="px-6 py-3 bg-accent hover:bg-accent/90 text-white font-bold text-sm rounded-xl transition-all hover:scale-102"
+                variant="primary"
               >
                 Sign In to Unlock
-              </Link>
+              </Button>
             </div>
           </div>
         ) : (
           /* FULLY FUNCTIONAL LAB VISUALS */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left: Keyboard Heatmap Grid */}
-            <div className="lg:col-span-2 p-6 bg-surface border border-border rounded-2xl flex flex-col shadow-xs gap-6">
+            <div className="lg:col-span-2 p-6 bg-surface border-3 border-border flex flex-col shadow-xs gap-6">
               <div className="flex items-center gap-2 border-b border-border/10 pb-4">
                 <Keyboard className="w-4 h-4 text-accent" />
                 <span className="text-sm font-semibold text-text-primary font-mono">Keystroke usage Map</span>
@@ -234,18 +235,18 @@ export default function PerformanceLabPage() {
                       const count = heatmap[key] || 0;
                       // Color scale matching counts
                       let heatClass = 'bg-background text-text-secondary border-border/30';
-                      if (count > 80) heatClass = 'bg-accent text-white border-accent';
-                      else if (count > 40) heatClass = 'bg-accent/60 text-white border-accent/70';
+                      if (count > 80) heatClass = 'bg-accent text-black border-accent';
+                      else if (count > 40) heatClass = 'bg-accent/60 text-black border-accent/70';
                       else if (count > 15) heatClass = 'bg-accent/30 text-text-primary border-accent/40';
                       else if (count > 0) heatClass = 'bg-accent/10 text-text-primary border-accent/20';
 
                       return (
                         <div
                           key={key}
-                          className={`w-10 h-10 md:w-12 md:h-12 border border-border/40 rounded-md flex flex-col items-center justify-center font-mono font-bold select-none text-xs ${heatClass}`}
+                          className={`w-10 h-10 md:w-12 md:h-12 border border-border/40 flex flex-col items-center justify-center font-mono font-bold select-none text-xs ${heatClass}`}
                         >
                           <span>{key.toUpperCase()}</span>
-                          {count > 0 && <span className="text-[7px] font-normal opacity-80">{count}</span>}
+                          {count > 0 && <span className="text-xs font-normal opacity-85">{count}</span>}
                         </div>
                       );
                     })}
@@ -257,7 +258,7 @@ export default function PerformanceLabPage() {
             {/* Right: Hand split & Bigrams lists */}
             <div className="flex flex-col gap-6">
               {/* Hand usage card */}
-              <div className="p-6 bg-surface border border-border rounded-2xl flex flex-col shadow-xs gap-4">
+              <div className="p-6 bg-surface border-3 border-border flex flex-col shadow-xs gap-4">
                 <div className="flex items-center gap-2 border-b border-border/10 pb-4">
                   <BarChart2 className="w-4 h-4 text-accent" />
                   <span className="text-sm font-semibold text-text-primary">Hands Load Balance</span>
@@ -266,24 +267,24 @@ export default function PerformanceLabPage() {
                 <div className="flex items-center justify-around text-center py-2">
                   <div className="flex flex-col">
                     <span className="text-xl font-bold font-mono text-text-primary">{handDistribution.left}%</span>
-                    <span className="text-[10px] text-text-secondary mt-0.5">Left Hand</span>
+                    <span className="text-xs text-text-secondary mt-0.5">Left Hand</span>
                   </div>
                   <div className="w-[1px] h-8 bg-border" />
                   <div className="flex flex-col">
                     <span className="text-xl font-bold font-mono text-text-primary">{handDistribution.right}%</span>
-                    <span className="text-[10px] text-text-secondary mt-0.5">Right Hand</span>
+                    <span className="text-xs text-text-secondary mt-0.5">Right Hand</span>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="w-full h-2 bg-background border border-border rounded-full overflow-hidden flex">
+                <div className="w-full h-2 bg-background border-2 border-border overflow-hidden flex">
                   <div className="bg-accent h-full" style={{ width: `${handDistribution.left}%` }} />
-                  <div className="bg-accent/45 h-full" style={{ width: `${handDistribution.right}%` }} />
+                  <div className="bg-accent/80 h-full" style={{ width: `${handDistribution.right}%` }} />
                 </div>
               </div>
 
               {/* Slow transitions list */}
-              <div className="p-6 bg-surface border border-border rounded-2xl flex flex-col shadow-xs gap-4">
+              <div className="p-6 bg-surface border-3 border-border flex flex-col shadow-xs gap-4">
                 <div className="flex items-center gap-2 border-b border-border/10 pb-4">
                   <Zap className="w-4 h-4 text-accent" />
                   <span className="text-sm font-semibold text-text-primary">Slowest Key Transitions</span>
@@ -296,7 +297,7 @@ export default function PerformanceLabPage() {
                 ) : (
                   <div className="flex flex-col gap-3">
                     {slowBigrams.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-2 bg-background/50 border border-border/50 rounded-xl font-mono text-xs">
+                      <div key={idx} className="flex justify-between items-center p-2 bg-background/50 border-3 border-border/50 font-mono text-xs">
                         <span className="font-bold text-text-primary">"{item.bigram.toUpperCase()}"</span>
                         <span className="text-error">{item.speed} ms delay</span>
                       </div>

@@ -14,7 +14,6 @@
 
   --color-bauhaus-red: #E53935;
   --color-bauhaus-yellow: #FDD835;
-  --color-bauhaus-blue: #1E88E5;
   --color-bauhaus-black: #212121;
   --color-bauhaus-white: #FAFAFA;
   --color-bauhaus-gray: #9E9E9E;
@@ -36,10 +35,10 @@
   --surface-accent: #FFFFFF;
   --text-primary: #212121;
   --text-secondary: #757575;
-  --accent: #1E88E5;
+  --accent: #FDD835;
   --error: #E53935;
   --border: #212121;
-  --char-correct: #1E88E5;
+  --char-correct: #212121;
   --char-wrong: #E53935;
 
   --font-sans: var(--font-space-grotesk), system-ui, sans-serif;

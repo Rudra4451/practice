@@ -4,17 +4,16 @@ import React, { useEffect, useState } from 'react';
 import { useUserStore } from '@/stores/user-store';
 import { Navbar } from '@/components/navbar';
 import { createClient } from '@/lib/supabase/client';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
 import { Calendar, Zap, Award, LineChart as ChartIcon, CheckCircle, Database, LogIn, Clock, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import { logger } from '@/lib/logger';
+import { Button } from '@/components/ui/button';
+
+const DashboardChart = dynamic(() => import('@/components/dashboard/dashboard-chart'), {
+  ssr: false,
+  loading: () => <div className="h-[220px] flex items-center justify-center text-text-secondary uppercase tracking-widest text-xs font-bold font-mono">Loading Chart...</div>
+});
 
 export default function Dashboard() {
   const { session, profile, guestHistory, clearGuestHistory } = useUserStore();
@@ -64,7 +63,7 @@ export default function Dashboard() {
             });
           }
         } catch (err) {
-          console.error(err);
+          logger.error('Failed to load user streak', { category: 'supabase', error: err });
         }
       } else {
         // Fallback to local guest history
@@ -156,7 +155,7 @@ export default function Dashboard() {
       if (dbResults) setHistory(dbResults);
 
     } catch (err) {
-      console.error('Failed to sync guest data:', err);
+      logger.error('Failed to sync guest data', { category: 'api', error: err });
     } finally {
       setSyncing(false);
     }
@@ -184,16 +183,17 @@ export default function Dashboard() {
               <Database className="w-5 h-5 text-background" />
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-wider">Local runs detected</span>
-                <span className="text-[10px] uppercase font-bold opacity-80">You have {guestHistory.length} local practice tests to sync.</span>
+                <span className="text-xs uppercase font-bold opacity-80">You have {guestHistory.length} local practice tests to sync.</span>
               </div>
             </div>
-            <button
+            <Button
               onClick={handleSyncHistory}
               disabled={syncing}
-              className="px-4 py-2 bg-background text-text-primary border-2 border-border font-bold uppercase tracking-wider text-xs hover:bg-bauhaus-red hover:text-white transition-all cursor-pointer"
+              variant="secondary"
+              className="px-4 py-2"
             >
               {syncing ? 'Syncing...' : 'Sync History'}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -206,18 +206,19 @@ export default function Dashboard() {
               <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary">Guest Session Active</h2>
               <p className="text-xs font-bold uppercase tracking-wider text-text-secondary">Your runs are saved locally. Sign in to persist results, unlock leaderboards, and track long-term progress.</p>
             </div>
-            <Link
+            <Button
               href="/login"
-              className="flex items-center gap-2 px-4 py-2 bg-accent text-background border-2 border-border font-bold uppercase tracking-wider text-xs hover:bg-bauhaus-red hover:text-white transition-all"
+              variant="primary"
+              className="px-4 py-2"
             >
               <LogIn className="w-3.5 h-3.5" />
               <span>Connect Profile</span>
-            </Link>
+            </Button>
           </div>
         )}
 
         {/* Main Title Header */}
-        <div className="flex flex-col gap-2 border-b-3 border-border pb-4 mb-2 select-none">
+        <div className="flex flex-col gap-2 border-b-3 border-border pb-4 mb-2">
           <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-text-primary">
             {session ? (profile?.username ? profile.username : 'Dashboard') : 'Dashboard'}
           </h1>
@@ -227,25 +228,25 @@ export default function Dashboard() {
         </div>
 
         {/* Stats Metrics Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 select-none">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
           <div className="p-6 bg-accent border-3 border-border flex flex-col text-background justify-between min-h-[100px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-85">Top Speed</span>
+            <span className="text-xs font-bold uppercase tracking-widest opacity-85">Top Speed</span>
             <span className="text-2xl md:text-3xl font-black font-mono mt-2">{stats.bestWpm} WPM</span>
           </div>
           <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary justify-between min-h-[100px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Average Speed</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Average Speed</span>
             <span className="text-2xl md:text-3xl font-black font-mono mt-2">{stats.avgWpm} WPM</span>
           </div>
           <div className="p-6 bg-bauhaus-red border-3 border-border flex flex-col text-white justify-between min-h-[100px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-85">Accuracy</span>
+            <span className="text-xs font-bold uppercase tracking-widest opacity-85">Accuracy</span>
             <span className="text-2xl md:text-3xl font-black font-mono mt-2">{stats.avgAccuracy}%</span>
           </div>
           <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary justify-between min-h-[100px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Tests Run</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Tests Run</span>
             <span className="text-2xl md:text-3xl font-black font-mono mt-2">{stats.testsCompleted}</span>
           </div>
           <div className="col-span-2 md:col-span-4 lg:col-span-1 p-6 bg-bauhaus-yellow border-3 border-border text-bauhaus-black flex flex-col justify-between min-h-[100px]">
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-85">Active Streak</span>
+            <span className="text-xs font-bold uppercase tracking-widest opacity-85">Active Streak</span>
             <div className="flex items-center gap-1.5 mt-2 text-bauhaus-black font-mono font-black text-2xl leading-none">
               <Zap className="w-5 h-5 fill-current" />
               <span>{streak.current} Days</span>
@@ -268,32 +269,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="flex-1 w-full h-[220px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="0" stroke="var(--border)" opacity={0.15} vertical={false} />
-                    <XAxis dataKey="index" stroke="var(--text-secondary)" fontSize={11} tickLine={true} axisLine={true} />
-                    <YAxis stroke="var(--text-secondary)" fontSize={11} tickLine={true} axisLine={true} />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--surface-accent)',
-                        border: '2px solid var(--border)',
-                        borderRadius: '0px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                      }}
-                      itemStyle={{ color: 'var(--text-primary)' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="wpm"
-                      name="Speed (WPM)"
-                      stroke="var(--accent)"
-                      strokeWidth={3}
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <DashboardChart chartData={chartData} />
               </div>
             )}
           </div>
@@ -316,11 +292,11 @@ export default function Dashboard() {
                   <div key={idx} className="flex justify-between items-center p-3 bg-surface-accent border-2 border-border text-xs font-bold uppercase tracking-wider">
                     <div className="flex flex-col">
                       <span className="text-text-primary font-mono text-sm font-black">{run.wpm} WPM</span>
-                      <span className="text-[9px] text-text-secondary uppercase mt-0.5">{run.mode} ({run.duration}s)</span>
+                      <span className="text-xs text-text-secondary uppercase mt-0.5">{run.mode} ({run.duration}s)</span>
                     </div>
                     <div className="flex flex-col text-right">
                       <span className="text-text-primary font-mono">{run.accuracy}% Acc</span>
-                      <span className="text-[9px] text-text-secondary/50 mt-0.5">
+                      <span className="text-xs text-text-secondary/80 mt-0.5">
                         {new Date(run.created_at).toLocaleDateString()}
                       </span>
                     </div>

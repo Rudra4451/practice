@@ -6,6 +6,7 @@ import { TextDisplay } from './text-display';
 import { RefreshCw, Keyboard } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { useUserStore } from '@/stores/user-store';
+import { Button } from '@/components/ui/button';
 
 export const TypingContainer: React.FC = () => {
   const {
@@ -71,19 +72,19 @@ export const TypingContainer: React.FC = () => {
     }
   }, []);
 
-  const handleContainerClick = () => {
+  const handleContainerClick = useCallback(() => {
     forceFocus();
-  };
+  }, [forceFocus]);
 
-  const handleBlur = () => {
+  const handleBlur = useCallback(() => {
     setIsFocused(false);
-  };
+  }, []);
 
-  const handleFocus = () => {
+  const handleFocus = useCallback(() => {
     setIsFocused(true);
-  };
+  }, []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
     if (value.length > 0) {
       const char = value.slice(-1);
@@ -91,9 +92,9 @@ export const TypingContainer: React.FC = () => {
       // Keep textarea empty so every keystroke is a fresh character event
       e.target.value = '';
     }
-  };
+  }, [handleInput]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Backspace') {
       e.preventDefault();
       handleBackspace();
@@ -107,7 +108,7 @@ export const TypingContainer: React.FC = () => {
     if (e.key === 'Tab') {
       e.preventDefault();
     }
-  };
+  }, [handleBackspace, resetTest, forceFocus]);
 
   // Global Escape + any printable key auto-focuses the textarea
   useEffect(() => {
@@ -149,7 +150,7 @@ export const TypingContainer: React.FC = () => {
       {/* Top Configuration Bar — always rendered but faded during test to prevent layout shift */}
       <div
         className={`flex flex-wrap items-center justify-between gap-4 p-3 bg-surface border-3 border-border transition-all duration-300 ${
-          status !== 'idle' ? 'opacity-20 pointer-events-none select-none cursor-default' : ''
+          status !== 'idle' ? 'opacity-20 pointer-events-none cursor-default' : ''
         }`}
       >
         {/* Modes */}
@@ -162,7 +163,7 @@ export const TypingContainer: React.FC = () => {
               }}
               className={`px-4 py-2 border-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 mode === opt
-                  ? 'bg-accent text-background border-border'
+                  ? 'bg-accent text-black border-border'
                   : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
               }`}
             >
@@ -181,7 +182,7 @@ export const TypingContainer: React.FC = () => {
               }}
               className={`px-4 py-2 border-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 duration === time
-                  ? 'bg-accent text-background border-border'
+                  ? 'bg-accent text-black border-border'
                   : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
               }`}
             >
@@ -192,30 +193,30 @@ export const TypingContainer: React.FC = () => {
       </div>
 
       {/* Real-time stats (always visible - Bauhaus segmented layout) */}
-      <div className="flex items-center gap-0 border-3 border-border bg-surface-accent font-sans select-none">
+      <div className="flex items-center gap-0 border-3 border-border bg-surface-accent font-sans">
         <div className="flex-1 flex flex-col items-center justify-center p-4 border-r-3 border-border text-center">
           <span className="text-accent text-3xl font-black font-mono leading-none">
             {status === 'running' ? `${timeLeft}s` : `${duration}s`}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mt-1">Remaining</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-1">Remaining</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-4 border-r-3 border-border text-center">
           <span className="text-text-primary text-3xl font-black font-mono leading-none">
             {status === 'running' ? wpm : '--'}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mt-1">WPM</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-1">WPM</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-4 border-r-3 border-border text-center">
           <span className="text-text-primary text-3xl font-black font-mono leading-none">
             {status === 'running' ? `${accuracy}%` : '--%'}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mt-1">Accuracy</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-1">Accuracy</span>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
           <span className="text-text-primary text-3xl font-black font-mono leading-none">
             {streakDays} {streakDays === 1 ? 'Day' : 'Days'}
           </span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary mt-1">Active Streak</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-1">Active Streak</span>
         </div>
       </div>
 
@@ -223,7 +224,7 @@ export const TypingContainer: React.FC = () => {
       <div
         ref={containerRef}
         onClick={handleContainerClick}
-        className={`relative p-8 bg-surface border-3 transition-all duration-150 cursor-pointer min-h-[220px] flex items-center select-none ${
+        className={`relative p-8 bg-surface border-3 transition-all duration-150 cursor-pointer min-h-[220px] flex items-center ${
           isFocused
             ? 'border-accent bg-surface-accent'
             : 'border-border hover:border-border/80'
@@ -249,7 +250,7 @@ export const TypingContainer: React.FC = () => {
         {/* Elegant Minimalist Floating Focus Overlay */}
         {!isFocused && status !== 'completed' && (
           <div className="absolute inset-x-0 bottom-4 z-10 flex items-center justify-center pointer-events-none">
-            <div className="flex items-center gap-2 px-4 py-2 bg-surface border-2 border-border text-[10px] font-bold text-text-primary uppercase tracking-wider shadow-sm animate-pulse">
+            <div className="flex items-center gap-2 px-4 py-2 bg-surface border-2 border-border text-xs font-bold text-text-primary uppercase tracking-wider shadow-sm animate-pulse">
               <Keyboard className="w-3.5 h-3.5 text-accent" />
               <span>Click or start typing to focus</span>
             </div>
@@ -273,16 +274,17 @@ export const TypingContainer: React.FC = () => {
           <span>to restart</span>
         </div>
 
-        <button
+        <Button
           onClick={() => {
             resetTest();
             requestAnimationFrame(() => forceFocus());
           }}
-          className="flex items-center gap-2 px-5 py-2.5 bg-accent text-white font-bold border-2 border-border hover:bg-error transition-all cursor-pointer"
+          variant="primary"
+          className="flex items-center gap-2"
         >
           <RefreshCw className="w-4 h-4" />
           <span>Restart Test</span>
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -2,15 +2,17 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useUserStore } from '@/stores/user-store';
 import { Sun, Moon, Zap, User, Menu, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
+import { Button } from '@/components/ui/button';
 
 export const Navbar: React.FC = () => {
   const { preferences, updatePreferences, session, setSession, profile, setProfile } = useUserStore();
   const pathname = usePathname();
+  const router = useRouter();
 
   const isActive = (path: string) => {
     if (path === '/typing') return pathname === '/typing';
@@ -76,11 +78,21 @@ export const Navbar: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await signOut();
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      // Clear local states & redirect
+      setSession(null);
+      setProfile(null);
+      router.push('/');
+      router.refresh();
+    }
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-background border-b-3 border-border select-none">
+    <header className="sticky top-0 z-50 w-full bg-background border-b-3 border-border">
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
         
         {/* Left Side: Brand Logo (TyProX Chevron X Monogram) */}
@@ -133,7 +145,7 @@ export const Navbar: React.FC = () => {
           {/* Theme switcher */}
           <button
             onClick={toggleTheme}
-            className="p-2 text-text-primary hover:bg-accent hover:text-white border-2 border-border transition-all cursor-pointer"
+            className="p-2 text-text-primary hover:bg-accent hover:text-black border-3 border-border transition-all cursor-pointer"
             aria-label="Toggle theme"
           >
             {preferences.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
@@ -142,13 +154,14 @@ export const Navbar: React.FC = () => {
           {/* User auth layout */}
           {session ? (
             <div className="flex items-center gap-3">
-              <Link
+              <Button
                 href="/dashboard"
-                className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-text-primary bg-surface-accent border-2 border-border px-4 py-2 transition-all hover:bg-accent hover:text-white"
+                variant="secondary"
+                className="px-4 py-2"
               >
                 <User className="w-3.5 h-3.5" />
                 <span>{profile?.username || 'Profile'}</span>
-              </Link>
+              </Button>
               <button
                 onClick={handleLogout}
                 className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-error transition-colors cursor-pointer"
@@ -157,12 +170,13 @@ export const Navbar: React.FC = () => {
               </button>
             </div>
           ) : (
-            <Link
+            <Button
               href="/login"
-              className="px-5 py-2 bg-accent text-white border-2 border-border font-bold uppercase tracking-wider text-xs hover:bg-error transition-all"
+              variant="primary"
+              className="px-5 py-2"
             >
               Sign In
-            </Link>
+            </Button>
           )}
         </div>
 
@@ -170,13 +184,13 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center gap-2 md:hidden">
           <button
             onClick={toggleTheme}
-            className="p-2 text-text-primary border-2 border-border"
+            className="p-2 text-text-primary border-3 border-border"
           >
             {preferences.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-text-primary border-2 border-border"
+            className="p-2 text-text-primary border-3 border-border"
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
@@ -215,32 +229,35 @@ export const Navbar: React.FC = () => {
           </Link>
           {session ? (
             <div className="flex flex-col gap-4 pt-2">
-              <Link
+              <Button
                 href="/dashboard"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-2 text-text-primary bg-surface-accent border-2 border-border px-4 py-2 text-center"
+                variant="secondary"
+                className="w-full flex justify-center gap-2 px-4 py-2"
               >
                 <User className="w-4 h-4" />
                 <span>{profile?.username || 'My Dashboard'}</span>
-              </Link>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   handleLogout();
                   setMobileMenuOpen(false);
                 }}
-                className="text-left text-error border-2 border-border px-4 py-2 hover:bg-error hover:text-white transition-all"
+                variant="danger"
+                className="w-full"
               >
                 Sign Out
-              </button>
+              </Button>
             </div>
           ) : (
-            <Link
+            <Button
               href="/login"
               onClick={() => setMobileMenuOpen(false)}
-              className="px-4 py-2.5 bg-accent text-white border-2 border-border text-center"
+              variant="primary"
+              className="px-4 py-2.5 w-full"
             >
               Sign In
-            </Link>
+            </Button>
           )}
         </div>
       )}

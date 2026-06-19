@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/navbar';
 import { Calendar, Zap, Award, CheckCircle, BarChart, ArrowRight, User } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 interface PublicProfile {
   id: string;
@@ -114,7 +115,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
       <div className="flex flex-col min-h-screen bg-background">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-3 border-accent border-t-transparent animate-spin" />
         </div>
       </div>
     );
@@ -127,9 +128,9 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
         <main className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-4">
           <h1 className="text-2xl font-bold text-text-primary">Profile Not Found</h1>
           <p className="text-text-secondary text-sm">The user u/{username} does not exist.</p>
-          <Link href="/" className="px-6 py-2.5 bg-accent text-white font-semibold rounded-xl text-sm mt-2">
+          <Button href="/" variant="primary" className="mt-2">
             Return Home
-          </Link>
+          </Button>
         </main>
       </div>
     );
@@ -141,7 +142,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
 
       <main className="flex-1 max-w-4xl w-full mx-auto px-4 py-12 flex flex-col gap-8">
         {/* User Card */}
-        <div className="p-8 bg-surface border border-border rounded-2xl flex flex-col sm:flex-row items-center gap-6 shadow-sm">
+        <div className="p-8 bg-surface border-3 border-border flex flex-col sm:flex-row items-center gap-6 shadow-sm">
           <div className="w-20 h-20 rounded-full bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
             {profile.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -163,11 +164,11 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
           </div>
 
           {streak && streak.current > 0 && (
-            <div className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-bauhaus-yellow/15 border-2 border-bauhaus-yellow text-text-primary dark:text-bauhaus-yellow rounded-xl">
+            <div className="sm:ml-auto flex items-center gap-2 px-4 py-2 bg-bauhaus-yellow/15 border-3 border-bauhaus-yellow text-text-primary dark:text-bauhaus-yellow">
               <Zap className="w-5 h-5 fill-current" />
               <div className="flex flex-col text-left">
                 <span className="text-sm font-bold font-mono leading-none">{streak.current} Days</span>
-                <span className="text-[9px] uppercase font-semibold">Active Streak</span>
+                <span className="text-xs uppercase font-semibold">Active Streak</span>
               </div>
             </div>
           )}
@@ -175,26 +176,26 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
 
         {/* Dashboard Numbers Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="p-6 bg-surface border border-border rounded-xl flex flex-col">
-            <span className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider">Best Speed</span>
+          <div className="p-6 bg-surface border-3 border-border flex flex-col">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Best Speed</span>
             <span className="text-3xl font-bold font-mono mt-2 text-accent">{stats?.bestWpm || 0} WPM</span>
           </div>
-          <div className="p-6 bg-surface border border-border rounded-xl flex flex-col">
-            <span className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider">Average Speed</span>
+          <div className="p-6 bg-surface border-3 border-border flex flex-col">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Average Speed</span>
             <span className="text-3xl font-bold font-mono mt-2 text-text-primary">{stats?.avgWpm || 0} WPM</span>
           </div>
-          <div className="p-6 bg-surface border border-border rounded-xl flex flex-col">
-            <span className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider">Accuracy</span>
+          <div className="p-6 bg-surface border-3 border-border flex flex-col">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Accuracy</span>
             <span className="text-3xl font-bold font-mono mt-2 text-text-primary">{stats?.avgAccuracy || 0}%</span>
           </div>
-          <div className="p-6 bg-surface border border-border rounded-xl flex flex-col">
-            <span className="text-[10px] font-semibold text-text-secondary uppercase tracking-wider">Tests Run</span>
+          <div className="p-6 bg-surface border-3 border-border flex flex-col">
+            <span className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Tests Run</span>
             <span className="text-3xl font-bold font-mono mt-2 text-text-primary">{stats?.testsCompleted || 0}</span>
           </div>
         </div>
 
         {/* Achievements list */}
-        <div className="p-6 bg-surface border border-border rounded-2xl flex flex-col gap-4">
+        <div className="p-6 bg-surface border-3 border-border flex flex-col gap-4">
           <div className="flex items-center gap-2 border-b border-border/10 pb-4">
             <Award className="w-4 h-4 text-accent" />
             <span className="text-sm font-bold text-text-primary">Achievements Unlocked</span>
@@ -207,7 +208,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {achievements.map((ach, idx) => (
-                <div key={idx} className="flex items-start gap-3 p-3 bg-background/50 border border-border/50 rounded-xl">
+                <div key={idx} className="flex items-start gap-3 p-3 bg-background/50 border-3 border-border/50">
                   <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
                     <CheckCircle className="w-5 h-5" />
                   </div>
@@ -215,10 +216,10 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
                     <span className="text-xs font-bold text-text-primary">
                       {ach.achievements?.name || 'Badge'}
                     </span>
-                    <span className="text-[10px] text-text-secondary mt-0.5">
+                    <span className="text-xs text-text-secondary mt-0.5">
                       {ach.achievements?.description || 'Unlocked achievement badge'}
                     </span>
-                    <span className="text-[9px] text-text-secondary/50 mt-1">
+                    <span className="text-xs text-text-secondary/80 mt-1">
                       Unlocked {new Date(ach.unlocked_at).toLocaleDateString()}
                     </span>
                   </div>

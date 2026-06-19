@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Navbar } from '@/components/navbar';
+import { Button } from '@/components/ui/button';
 import { Zap, ShieldCheck, Play, ArrowRight, BarChart2, Trophy, Keyboard } from 'lucide-react';
 
 const TargetSentence = "the fastest way to improve speed is through consistent daily practice.";
@@ -105,38 +106,38 @@ function LiveProductPreview() {
   return (
     <div className="border-3 border-border bg-surface p-6 font-mono shadow-[6px_6px_0px_0px_rgba(253,216,53,1)] relative w-full text-left">
       {/* Configuration row */}
-      <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-4 text-[10px] uppercase font-bold text-text-secondary select-none">
+      <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-4 text-xs uppercase font-bold text-text-secondary">
         <div className="flex items-center gap-2">
           <span className="px-2 py-0.5 border border-border bg-surface-accent text-accent font-black">words</span>
-          <span className="opacity-40">/</span>
+          <span className="opacity-80">/</span>
           <span>30s</span>
         </div>
         <div className="flex items-center gap-1">
           <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
-          <span className="text-[9px]">LIVE PREVIEW</span>
+          <span className="text-xs">LIVE PREVIEW</span>
         </div>
       </div>
 
       {/* Live Stats display */}
-      <div className="grid grid-cols-3 border-2 border-border bg-surface-accent py-2.5 text-center mb-4 select-none">
+      <div className="grid grid-cols-3 border-3 border-border bg-surface-accent py-2.5 text-center mb-4">
         <div className="border-r border-border">
-          <span className="block text-[8px] font-bold text-text-secondary uppercase">Time</span>
+          <span className="block text-xs font-bold text-text-secondary uppercase">Time</span>
           <span className="text-sm font-black text-accent">{timeLeft}s</span>
         </div>
         <div className="border-r border-border">
-          <span className="block text-[8px] font-bold text-text-secondary uppercase">WPM</span>
+          <span className="block text-xs font-bold text-text-secondary uppercase">WPM</span>
           <span className="text-sm font-black text-text-primary">{wpm || "--"}</span>
         </div>
         <div>
-          <span className="block text-[8px] font-bold text-text-secondary uppercase">Accuracy</span>
+          <span className="block text-xs font-bold text-text-secondary uppercase">Accuracy</span>
           <span className="text-sm font-black text-text-primary">{typedText ? `${accuracy}%` : "--"}</span>
         </div>
       </div>
 
       {/* Typing viewport */}
-      <div className="relative text-sm font-medium leading-relaxed select-none min-h-[90px]">
+      <div className="relative text-sm font-medium leading-relaxed min-h-[90px]">
         {TargetSentence.split("").map((char, i) => {
-          let charClass = "text-text-secondary opacity-45";
+          let charClass = "text-text-secondary opacity-80";
           
           if (i < typedText.length) {
             const typedChar = typedText[i];
@@ -198,7 +199,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-background select-none">
+    <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
 
       {/* ── Hero ── */}
@@ -250,18 +251,18 @@ export default function Home() {
             {/* Live Counters */}
             <motion.div 
               variants={itemVariants}
-              className="grid grid-cols-3 gap-4 border-2 border-border p-4 bg-surface max-w-md w-full font-mono select-none"
+              className="grid grid-cols-3 gap-4 border-3 border-border p-4 bg-surface max-w-md w-full font-mono"
             >
               <div className="flex flex-col text-left">
-                <span className="text-[10px] font-bold text-text-secondary uppercase">Live WPM</span>
+                <span className="text-xs font-bold text-text-secondary uppercase">Live WPM</span>
                 <span className="text-xl font-black text-accent mt-1 font-mono" suppressHydrationWarning>{liveStats.wpm}</span>
               </div>
               <div className="flex flex-col text-left border-l-2 border-border pl-4">
-                <span className="text-[10px] font-bold text-text-secondary uppercase">Accuracy</span>
+                <span className="text-xs font-bold text-text-secondary uppercase">Accuracy</span>
                 <span className="text-xl font-black text-text-primary mt-1 font-mono" suppressHydrationWarning>{liveStats.acc}%</span>
               </div>
               <div className="flex flex-col text-left border-l-2 border-border pl-4">
-                <span className="text-[10px] font-bold text-text-secondary uppercase">Tests Run</span>
+                <span className="text-xs font-bold text-text-secondary uppercase">Tests Run</span>
                 <span className="text-xl font-black text-text-primary mt-1 font-mono" suppressHydrationWarning>
                   {liveStats.tests.toLocaleString('en-US')}
                 </span>
@@ -270,19 +271,13 @@ export default function Home() {
 
             {/* CTAs */}
             <motion.div variants={itemVariants} className="flex flex-wrap gap-4 justify-start">
-              <Link
-                href="/typing"
-                className="flex items-center gap-3 px-8 py-4 bg-accent text-white font-bold uppercase tracking-wider border-3 border-border hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:bg-error transition-all cursor-pointer"
-              >
+              <Button href="/typing" variant="primary" className="px-8 py-4">
                 <span>Start Typing</span>
                 <ArrowRight className="w-5 h-5" />
-              </Link>
-              <Link
-                href="/leaderboard"
-                className="flex items-center gap-3 px-8 py-4 bg-surface-accent text-text-primary font-bold uppercase tracking-wider border-3 border-border hover:-translate-y-0.5 hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] hover:bg-accent hover:text-white transition-all cursor-pointer"
-              >
+              </Button>
+              <Button href="/leaderboard" variant="secondary" className="px-8 py-4">
                 <span>View Leaderboard</span>
-              </Link>
+              </Button>
             </motion.div>
           </motion.div>
 
@@ -293,7 +288,7 @@ export default function Home() {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="lg:col-span-5 flex flex-col gap-2 w-full max-w-lg mx-auto"
           >
-            <div className="flex items-center justify-between px-1 text-[10px] font-bold uppercase tracking-widest text-text-secondary select-none">
+            <div className="flex items-center justify-between px-1 text-xs font-bold uppercase tracking-widest text-text-secondary">
               <span>LIVE PREVIEW</span>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
@@ -303,7 +298,7 @@ export default function Home() {
             
             <LiveProductPreview />
 
-            <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mt-1 text-center select-none leading-relaxed">
+            <span className="text-xs font-bold text-text-secondary uppercase tracking-wider mt-1 text-center leading-relaxed">
               See how TyProX tracks speed, accuracy, and consistency in real time.
             </span>
           </motion.div>
@@ -346,8 +341,8 @@ export default function Home() {
             </div>
 
             {/* Card 3 */}
-            <div className="p-6 bg-background border-3 border-border flex flex-col gap-4 hover:bg-bauhaus-blue/5 hover:shadow-[4px_4px_0px_0px_rgba(30,136,229,0.3)] transition-all">
-              <div className="w-10 h-10 bg-bauhaus-blue border-2 border-border flex items-center justify-center text-white flex-shrink-0">
+            <div className="p-6 bg-background border-3 border-border flex flex-col gap-4 hover:bg-text-primary/5 hover:shadow-[4px_4px_0px_0px_rgba(33,33,33,0.3)] transition-all">
+              <div className="w-10 h-10 bg-text-primary border-2 border-border flex items-center justify-center text-white flex-shrink-0">
                 <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="flex flex-col gap-1.5 text-left">
@@ -434,19 +429,16 @@ export default function Home() {
                 'Build daily streaks and visual typing habits',
               ].map((item) => (
                 <li key={item} className="flex items-center gap-3">
-                  <div className="w-5 h-5 bg-accent border-2 border-border flex items-center justify-center text-[9px] text-white flex-shrink-0">✔</div>
+                  <div className="w-5 h-5 bg-accent border-2 border-border flex items-center justify-center text-xs text-white flex-shrink-0">✔</div>
                   <span className="text-text-primary">{item}</span>
                 </li>
               ))}
             </ul>
 
-            <Link
-              href="/dashboard"
-              className="self-start flex items-center gap-2 px-6 py-3 bg-surface text-text-primary font-bold uppercase tracking-wider border-3 border-border hover:bg-accent hover:text-white transition-all text-xs mt-2"
-            >
+            <Button href="/dashboard" variant="secondary" className="self-start mt-2">
               <BarChart2 className="w-4 h-4" />
               <span>Open Dashboard</span>
-            </Link>
+            </Button>
           </div>
 
           {/* Bauhaus chart mockup */}
@@ -465,13 +457,13 @@ export default function Home() {
                 <div
                   key={i}
                   className="w-full border-t border-x border-border z-10"
-                  style={{ height: `${h * 4}px`, background: `rgba(30, 136, 229, ${0.2 + i * 0.12})` }}
+                  style={{ height: `${h * 4}px`, background: `rgba(253, 216, 53, ${0.2 + i * 0.12})` }}
                 />
               ))}
-              <div className="w-full bg-accent h-36 border-2 border-border z-10 flex items-center justify-center text-[10px] text-white font-bold">96</div>
+              <div className="w-full bg-accent h-36 border-2 border-border z-10 flex items-center justify-center text-xs text-white font-bold">96</div>
             </div>
 
-            <div className="flex justify-between text-[10px] text-text-secondary font-bold uppercase tracking-wider">
+            <div className="flex justify-between text-xs text-text-secondary font-bold uppercase tracking-wider">
               {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'].map((d) => (
                 <span key={d}>{d}</span>
               ))}
@@ -491,7 +483,7 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
               { name: 'Speed Demon', desc: 'Maintain 100+ WPM with over 95% accuracy.', points: '100 XP', color: 'border-bauhaus-red bg-bauhaus-red/5 text-bauhaus-red' },
-              { name: 'Consistent Pace', desc: 'Achieve a consistency score above 90%.', points: '150 XP', color: 'border-bauhaus-blue bg-bauhaus-blue/5 text-bauhaus-blue' },
+              { name: 'Consistent Pace', desc: 'Achieve a consistency score above 90%.', points: '150 XP', color: 'border-text-primary bg-text-primary/5 text-text-primary' },
               { name: 'Daily Warrior', desc: 'Keep a daily typing streak for 7 consecutive days.', points: '200 XP', color: 'border-bauhaus-yellow bg-bauhaus-yellow/5 text-bauhaus-yellow dark:text-bauhaus-yellow/90' }
             ].map((ach) => (
               <div key={ach.name} className={`p-6 border-3 border-border flex flex-col gap-3 transition-colors ${ach.color}`}>
@@ -517,13 +509,13 @@ export default function Home() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-3 border-border max-w-4xl mx-auto">
             <div className="p-8 bg-background border-r-3 border-border flex flex-col justify-between gap-6 relative">
-              <div className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-bauhaus-blue border-2 border-border" />
+              <div className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-text-primary border-2 border-border" />
               <p className="text-base text-text-primary italic font-semibold leading-relaxed">
                 "The zero-lag input is immediately noticeable coming from other platforms. There's no stutter when I'm at full speed — it just keeps up."
               </p>
               <div className="flex flex-col border-t-2 border-border pt-4">
                 <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Alex M.</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Software Engineer · 142 WPM avg.</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Software Engineer · 142 WPM avg.</span>
               </div>
             </div>
 
@@ -534,7 +526,7 @@ export default function Home() {
               </p>
               <div className="flex flex-col border-t-2 border-border pt-4">
                 <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Sarah C.</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Data Analyst · 118 WPM avg.</span>
+                <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Data Analyst · 118 WPM avg.</span>
               </div>
             </div>
           </div>

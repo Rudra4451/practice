@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useEffect } from 'react';
+import { logger } from '@/lib/logger';
 
 interface TextDisplayProps {
   targetText: string;
@@ -32,21 +33,26 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
 
   // Scroll so the active character is always visible inside the container
   useEffect(() => {
-    if (!activeCharRef.current || !containerRef.current) return;
-
-    const container = containerRef.current;
     const active = activeCharRef.current;
+    const container = containerRef.current;
+    if (!active || !container) return;
 
-    const containerRect = container.getBoundingClientRect();
-    const activeRect = active.getBoundingClientRect();
+    try {
+      const containerRect = container.getBoundingClientRect();
+      const activeRect = active.getBoundingClientRect();
 
-    // If the active character is below the visible area, scroll down
-    if (activeRect.bottom > containerRect.bottom - 8) {
-      container.scrollTop += activeRect.bottom - containerRect.bottom + 8;
-    }
-    // If above, scroll up
-    if (activeRect.top < containerRect.top + 8) {
-      container.scrollTop -= containerRect.top - activeRect.top + 8;
+      if (!containerRect || !activeRect) return;
+
+      // If the active character is below the visible area, scroll down
+      if (activeRect.bottom > containerRect.bottom - 8) {
+        container.scrollTop += activeRect.bottom - containerRect.bottom + 8;
+      }
+      // If above, scroll up
+      if (activeRect.top < containerRect.top + 8) {
+        container.scrollTop -= containerRect.top - activeRect.top + 8;
+      }
+    } catch (err) {
+      logger.warn('Failed to calculate scroll coordinates', { category: 'dom', error: err });
     }
   }, [currentIndex]);
 

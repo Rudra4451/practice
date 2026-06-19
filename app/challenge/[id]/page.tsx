@@ -7,6 +7,7 @@ import { Navbar } from '@/components/navbar';
 import { TypingContainer } from '@/components/typing/typing-container';
 import { Trophy, ArrowRight, Zap, Target, Award, Play, ShieldAlert, Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 interface ChallengeLinkDetails {
   id: string;
@@ -84,7 +85,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
       <div className="flex flex-col min-h-screen bg-background">
         <Navbar />
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+          <div className="w-8 h-8 rounded-full border-3 border-accent border-t-transparent animate-spin" />
         </div>
       </div>
     );
@@ -98,9 +99,9 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
           <ShieldAlert className="w-12 h-12 text-error" />
           <h1 className="text-2xl font-bold text-text-primary">Challenge Expired or Not Found</h1>
           <p className="text-text-secondary text-sm">This 1v1 link is invalid or has expired.</p>
-          <Link href="/" className="px-6 py-2.5 bg-accent text-white font-semibold rounded-xl text-sm mt-2">
+          <Button href="/" variant="primary" className="mt-2">
             Return Home
-          </Link>
+          </Button>
         </main>
       </div>
     );
@@ -114,8 +115,8 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
 
       <main className="flex-1 flex flex-col items-center justify-center py-10 px-4">
         {gameState === 'lobby' && (
-          <div className="w-full max-w-md p-8 bg-surface border-3 border-border rounded-2xl flex flex-col gap-6 shadow-xl text-center">
-            <div className="w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mx-auto animate-bounce">
+          <div className="w-full max-w-md p-8 bg-surface border-3 border-border flex flex-col gap-6 shadow-xl text-center">
+            <div className="w-12 h-12 bg-accent/10 border border-accent/20 flex items-center justify-center text-accent mx-auto animate-bounce">
               <Trophy className="w-6 h-6 fill-current" />
             </div>
 
@@ -127,7 +128,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
             </div>
 
             {/* Challenger Card */}
-            <div className="p-4 bg-background/50 border-2 border-border rounded-xl flex items-center justify-around gap-4 text-xs font-mono">
+            <div className="p-4 bg-background/50 border-3 border-border flex items-center justify-around gap-4 text-xs font-mono">
               <div className="flex flex-col">
                 <span className="text-text-secondary font-sans">Creator Speed</span>
                 <span className="text-xl font-bold text-accent mt-1">{challenge.creator_wpm || 0} WPM</span>
@@ -144,13 +145,14 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
-            <button
+            <Button
               onClick={handleStartChallenge}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-accent text-white font-bold rounded-xl border-2 border-border hover:bg-error transition-all shadow-md cursor-pointer"
+              variant="primary"
+              className="w-full"
             >
               <span>Accept Challenge</span>
               <ArrowRight className="w-4 h-4" />
-            </button>
+            </Button>
           </div>
         )}
 
@@ -164,14 +166,14 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
         )}
 
         {gameState === 'comparison' && result && (
-          <div className="w-full max-w-xl p-8 bg-surface border border-border rounded-2xl flex flex-col gap-8 shadow-xl">
+          <div className="w-full max-w-xl p-8 bg-surface border-3 border-border flex flex-col gap-8 shadow-xl">
             {/* Winner Badge Card */}
             {(() => {
               const won = result.wpm > (challenge.creator_wpm || 0);
               const tie = result.wpm === (challenge.creator_wpm || 0);
               
               return (
-                <div className={`p-6 border rounded-2xl flex flex-col items-center gap-2 text-center shadow-xs ${
+                <div className={`p-6 border-3 border-border flex flex-col items-center gap-2 text-center shadow-xs ${
                   won 
                     ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
                     : tie 
@@ -196,8 +198,8 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
             {/* Double Column comparisons */}
             <div className="grid grid-cols-2 gap-6">
               {/* Creator Card */}
-              <div className="p-4 bg-background/40 border border-border rounded-xl flex flex-col gap-2">
-                <span className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">u/{creatorName}</span>
+              <div className="p-4 bg-background/40 border-3 border-border flex flex-col gap-2">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">u/{creatorName}</span>
                 <div className="flex flex-col">
                   <span className="text-2xl font-bold font-mono text-text-primary">{challenge.creator_wpm} WPM</span>
                   <span className="text-xs text-text-secondary mt-0.5">{challenge.creator_accuracy}% Accuracy</span>
@@ -205,8 +207,8 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
               </div>
 
               {/* Player Card */}
-              <div className="p-4 bg-background/40 border border-border rounded-xl flex flex-col gap-2">
-                <span className="text-[10px] font-bold text-accent uppercase tracking-wider">You (Player)</span>
+              <div className="p-4 bg-background/40 border-3 border-border flex flex-col gap-2">
+                <span className="text-xs font-bold text-accent uppercase tracking-wider">You (Player)</span>
                 <div className="flex flex-col">
                   <span className="text-2xl font-bold font-mono text-accent">{result.wpm} WPM</span>
                   <span className="text-xs text-text-secondary mt-0.5">{result.accuracy}% Accuracy</span>
@@ -238,19 +240,21 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
 
             {/* CTAs */}
             <div className="flex gap-4 border-t border-border/10 pt-6">
-              <button
+              <Button
                 onClick={handleStartChallenge}
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-accent text-white font-bold rounded-xl border-2 border-border hover:bg-error transition-all cursor-pointer"
+                variant="primary"
+                className="flex-1"
               >
                 <Play className="w-4 h-4 fill-current" />
                 <span>Retry Challenge</span>
-              </button>
-              <Link
+              </Button>
+              <Button
                 href="/typing"
-                className="flex-1 flex items-center justify-center gap-2 py-3 bg-surface text-text-primary font-bold rounded-xl border-2 border-border hover:bg-accent hover:text-white transition-all"
+                variant="secondary"
+                className="flex-1"
               >
                 <span>Practice Sandbox</span>
-              </Link>
+              </Button>
             </div>
           </div>
         )}

@@ -5,16 +5,15 @@ import { useTypingStore } from '@/stores/typing-store';
 import { useUserStore } from '@/stores/user-store';
 import { ReplayPlayer } from './replay-player';
 import { createClient } from '@/lib/supabase/client';
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
 import { RefreshCw, Play, Share2, Award, AlertCircle, TrendingUp } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { logger } from '@/lib/logger';
+import { Button } from '@/components/ui/button';
+
+const ResultChart = dynamic(() => import('./result-chart'), {
+  ssr: false,
+  loading: () => <div className="h-[200px] flex items-center justify-center text-text-secondary uppercase tracking-widest text-xs font-bold font-mono">Loading Chart...</div>
+});
 
 export const ResultScreen: React.FC = () => {
   const { targetText, userInput, result, resetTest, seed, mode, duration } = useTypingStore();
@@ -54,7 +53,7 @@ export const ResultScreen: React.FC = () => {
             setUnlocked(data.unlocked);
           }
         })
-        .catch((err) => console.error('Error submitting test score:', err))
+        .catch((err) => logger.error('Error submitting test score', { category: 'api', error: err }))
         .finally(() => setSaving(false));
     } else {
       // Save locally to Guest log buffers
@@ -104,7 +103,7 @@ export const ResultScreen: React.FC = () => {
           return;
         }
       } catch (err) {
-        console.error('Failed to create challenge link:', err);
+        logger.error('Failed to create challenge link', { category: 'supabase', error: err });
       }
     }
 
@@ -144,7 +143,7 @@ export const ResultScreen: React.FC = () => {
               <Award className="w-5 h-5 flex-shrink-0" />
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-wider">Achievement Unlocked</span>
-                <span className="text-[10px] font-semibold mt-0.5 opacity-80">{unlocked.join(', ')}</span>
+                <span className="text-xs font-semibold mt-0.5 opacity-80">{unlocked.join(', ')}</span>
               </div>
             </div>
           )}
@@ -154,25 +153,25 @@ export const ResultScreen: React.FC = () => {
             <div className="p-6 bg-accent border-3 border-border flex flex-col text-background">
               <span className="text-xs font-bold uppercase tracking-wider opacity-85">Speed</span>
               <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">{result.wpm}</span>
-              <span className="text-[10px] uppercase font-bold mt-1 opacity-70">WPM (net speed)</span>
+              <span className="text-xs uppercase font-bold mt-1 opacity-80">WPM (net speed)</span>
             </div>
 
             <div className="p-6 bg-bauhaus-red border-3 border-border flex flex-col text-white">
               <span className="text-xs font-bold uppercase tracking-wider opacity-85">Accuracy</span>
               <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">{result.accuracy}%</span>
-              <span className="text-[10px] uppercase font-bold mt-1 opacity-70">based on correct keys</span>
+              <span className="text-xs uppercase font-bold mt-1 opacity-80">based on correct keys</span>
             </div>
 
             <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary">
               <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Consistency</span>
               <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">{result.consistency}%</span>
-              <span className="text-[10px] uppercase font-bold mt-1 text-text-secondary">keystroke deviation</span>
+              <span className="text-xs uppercase font-bold mt-1 text-text-secondary">keystroke deviation</span>
             </div>
 
             <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary">
               <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Time</span>
               <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">{result.duration}s</span>
-              <span className="text-[10px] uppercase font-bold mt-1 text-text-secondary">total test duration</span>
+              <span className="text-xs uppercase font-bold mt-1 text-text-secondary">total test duration</span>
             </div>
           </div>
 
@@ -185,55 +184,7 @@ export const ResultScreen: React.FC = () => {
                 <span className="text-sm font-bold uppercase tracking-wider text-text-primary">WPM Speed Evolution</span>
               </div>
               <div className="flex-1 w-full h-[200px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={result.timeline}>
-                    <CartesianGrid strokeDasharray="0" stroke="var(--border)" opacity={0.15} vertical={false} />
-                    <XAxis
-                      dataKey="second"
-                      stroke="var(--text-secondary)"
-                      fontSize={11}
-                      tickLine={true}
-                      axisLine={true}
-                      label={{ value: 'Seconds', position: 'insideBottom', offset: -5, fontSize: 10, fill: 'var(--text-secondary)', fontWeight: 'bold' }}
-                    />
-                    <YAxis
-                      stroke="var(--text-secondary)"
-                      fontSize={11}
-                      tickLine={true}
-                      axisLine={true}
-                      label={{ value: 'Words per Minute', angle: -90, position: 'insideLeft', offset: 5, fontSize: 10, fill: 'var(--text-secondary)', fontWeight: 'bold' }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: 'var(--surface-accent)',
-                        border: '2px solid var(--border)',
-                        borderRadius: '0px',
-                        fontSize: '12px',
-                        fontWeight: 'bold',
-                        textTransform: 'uppercase',
-                      }}
-                      itemStyle={{ color: 'var(--text-primary)' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="wpm"
-                      name="Net WPM"
-                      stroke="var(--accent)"
-                      strokeWidth={3}
-                      dot={false}
-                      activeDot={{ r: 6, strokeWidth: 2, stroke: 'var(--border)' }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="rawWpm"
-                      name="Raw WPM"
-                      stroke="var(--text-secondary)"
-                      strokeWidth={1.5}
-                      strokeDasharray="4 4"
-                      dot={false}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                <ResultChart timeline={result.timeline} />
               </div>
             </div>
 
@@ -274,13 +225,13 @@ export const ResultScreen: React.FC = () => {
 
               {/* Missed Keys Heatmap Info */}
               {missedKeys.length > 0 && (
-                <div className="flex flex-col gap-2 p-3 bg-surface-accent border-2 border-border">
-                  <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Top Weak Keys</span>
+                <div className="flex flex-col gap-2 p-3 bg-surface-accent border-3 border-border">
+                  <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">Top Weak Keys</span>
                   <div className="flex gap-2 mt-1">
                     {missedKeys.map(([key, count]) => (
-                      <div key={key} className="flex-1 flex flex-col items-center p-2 bg-background border-2 border-border">
+                      <div key={key} className="flex-1 flex flex-col items-center p-2 bg-background border-3 border-border">
                         <kbd className="font-mono text-xs font-bold text-text-primary">{key === ' ' ? 'Space' : key}</kbd>
-                        <span className="text-[9px] font-bold text-error mt-0.5">{count}x</span>
+                        <span className="text-xs font-bold text-error mt-0.5">{count}x</span>
                       </div>
                     ))}
                   </div>
@@ -291,29 +242,32 @@ export const ResultScreen: React.FC = () => {
 
           {/* Action Row */}
           <div className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-border/10 pt-6 font-sans">
-            <button
+            <Button
               onClick={resetTest}
-              className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-6 py-4 bg-accent text-background border-3 border-border font-bold uppercase tracking-wider hover:bg-bauhaus-red hover:text-white transition-all cursor-pointer"
+              variant="primary"
+              className="flex-1 min-w-[140px] py-4"
             >
               <RefreshCw className="w-4 h-4" />
               <span>Next Test</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={() => setShowReplay(true)}
-              className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-6 py-4 bg-surface border-3 border-border text-text-primary font-bold uppercase tracking-wider hover:bg-accent hover:text-background transition-all cursor-pointer"
+              variant="secondary"
+              className="flex-1 min-w-[140px] py-4"
             >
               <Play className="w-4 h-4" />
               <span>Watch Replay</span>
-            </button>
+            </Button>
 
-            <button
+            <Button
               onClick={handleShare}
-              className="flex-1 min-w-[140px] flex items-center justify-center gap-2 px-6 py-4 bg-surface border-3 border-border text-text-primary font-bold uppercase tracking-wider hover:bg-accent hover:text-background transition-all cursor-pointer"
+              variant="secondary"
+              className="flex-1 min-w-[140px] py-4"
             >
               <Share2 className="w-4 h-4" />
               <span>{copied ? 'Copied Link!' : 'Share Challenge'}</span>
-            </button>
+            </Button>
           </div>
         </>
       )}
