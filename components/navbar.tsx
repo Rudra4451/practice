@@ -103,24 +103,32 @@ export const Navbar: React.FC = () => {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-background border-b-3 border-border">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between relative">
         
-        {/* Left Side: Brand Logo (TyProX Chevron X Monogram) */}
-        <Link href="/" className="flex items-center gap-3 group">
-          <svg className="w-7 h-7 flex-shrink-0 text-text-primary transition-transform duration-150 group-hover:scale-105" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
-            <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
-          </svg>
-          <span className="font-sans font-bold text-lg md:text-xl tracking-tighter uppercase text-text-primary">
-            TyProX
-          </span>
-        </Link>
+        {/* Left Side: Brand Logo & Online Counter */}
+        <div className="flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-3 group">
+            <svg className="w-7 h-7 flex-shrink-0 text-text-primary transition-transform duration-150 group-hover:scale-105" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
+              <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
+            </svg>
+            <span className="font-sans font-bold text-lg md:text-xl tracking-tighter uppercase text-text-primary">
+              TyProX
+            </span>
+          </Link>
 
-        {/* Center: Desktop Menu (Grid layout items) */}
-        <nav className="hidden md:flex items-center h-full text-xs font-bold uppercase tracking-wider border-l-2 border-border">
+          {/* Live Online Badge */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 border border-border bg-surface-accent text-[10px] font-black uppercase tracking-wider text-text-secondary select-none">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+            <span>429 Online</span>
+          </div>
+        </div>
+
+        {/* Center: Desktop Menu (Floating Neobrutalist Pill) */}
+        <nav className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center h-10 border-2 border-border bg-surface shadow-[3px_3px_0px_0px_var(--border)] overflow-hidden text-xs font-bold uppercase tracking-wider">
           <Link
             href="/typing"
-            className={`h-full px-6 flex items-center border-r-2 border-border transition-colors duration-150 ${
+            className={`h-full px-5 flex items-center border-r-2 border-border transition-colors duration-150 ${
               isActive('/typing')
                 ? 'text-accent bg-surface-accent'
                 : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
@@ -130,7 +138,7 @@ export const Navbar: React.FC = () => {
           </Link>
           <Link
             href="/leaderboard"
-            className={`h-full px-6 flex items-center border-r-2 border-border transition-colors duration-150 ${
+            className={`h-full px-5 flex items-center border-r-2 border-border transition-colors duration-150 ${
               isActive('/leaderboard')
                 ? 'text-accent bg-surface-accent'
                 : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
@@ -140,13 +148,23 @@ export const Navbar: React.FC = () => {
           </Link>
           <Link
             href="/dashboard"
-            className={`h-full px-6 flex items-center border-r-2 border-border transition-colors duration-150 ${
-              isActive('/dashboard')
+            className={`h-full px-5 flex items-center border-r-2 border-border transition-colors duration-150 ${
+              isActive('/dashboard') && !pathname.endsWith('/performance-lab')
                 ? 'text-accent bg-surface-accent'
                 : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
             }`}
           >
             Dashboard
+          </Link>
+          <Link
+            href="/dashboard/performance-lab"
+            className={`h-full px-5 flex items-center transition-colors duration-150 ${
+              isActive('/dashboard/performance-lab')
+                ? 'text-accent bg-surface-accent'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
+            }`}
+          >
+            Lab
           </Link>
         </nav>
 
@@ -232,10 +250,19 @@ export const Navbar: React.FC = () => {
             href="/dashboard"
             onClick={() => setMobileMenuOpen(false)}
             className={`pb-2 border-b-2 border-border/10 transition-colors duration-150 ${
-              isActive('/dashboard') ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+              isActive('/dashboard') && !pathname.endsWith('/performance-lab') ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             Dashboard
+          </Link>
+          <Link
+            href="/dashboard/performance-lab"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`pb-2 border-b-2 border-border/10 transition-colors duration-150 ${
+              isActive('/dashboard/performance-lab') ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+            }`}
+          >
+            Performance Lab
           </Link>
           {session ? (
             <div className="flex flex-col gap-4 pt-2">
