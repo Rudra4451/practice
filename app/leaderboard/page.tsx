@@ -41,11 +41,11 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const supabase = createClient();
+
     async function fetchLeaderboard() {
       setLoading(true);
       try {
-        const supabase = createClient();
-        
         let query = supabase
           .from('test_results')
           .select('id, wpm, accuracy, consistency, mode, duration, created_at, profiles(username, display_name, avatar_url)')
@@ -77,6 +77,26 @@ export default function LeaderboardPage() {
     }
 
     fetchLeaderboard();
+
+    // Subscribe to Postgres changes on test_results to refresh ranking automatically
+    const channel = supabase
+      .channel(`leaderboard-${mode}-${duration}-${timeframe}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'test_results',
+        },
+        () => {
+          fetchLeaderboard();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [timeframe, mode, duration]);
 
   const timeframeOptions: Array<'daily' | 'weekly' | 'all_time'> = ['daily', 'weekly', 'all_time'];

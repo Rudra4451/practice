@@ -292,6 +292,24 @@ GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, service_role
 
 
 -- ================================================================
+-- 9. ENABLE SUPABASE REALTIME FOR TEST_RESULTS
+-- ================================================================
+
+do $$
+begin
+  if not exists (
+    select 1 
+    from pg_publication_tables 
+    where pubname = 'supabase_realtime' 
+      and schemaname = 'public' 
+      and tablename = 'test_results'
+  ) then
+    alter publication supabase_realtime add table public.test_results;
+  end if;
+end $$;
+
+
+-- ================================================================
 -- DONE. Verify by checking Table Editor in Supabase Dashboard.
 -- All tables should now appear: profiles, test_results, replays,
 -- streaks, daily_challenges, challenge_links, user_challenge_progress,
