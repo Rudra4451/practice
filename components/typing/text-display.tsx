@@ -12,8 +12,8 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
   userInput,
   currentIndex,
 }) => {
-  const activeCharRef = useRef<HTMLSpanElement | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const activeWordRef = useRef<HTMLDivElement | null>(null);
 
   // Group text into words for natural line-wrapping
   const words = useMemo(() => {
@@ -31,23 +31,36 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
     return offsets;
   }, [words]);
 
-  // Scroll so the active character is always visible inside the container
+  // Determine which word is currently active based on character index
+  const activeWordIdx = useMemo(() => {
+    let activeIdx = 0;
+    for (let i = 0; i < wordOffsets.length; i++) {
+      if (currentIndex >= wordOffsets[i]) {
+        activeIdx = i;
+      } else {
+        break;
+      }
+    }
+    return activeIdx;
+  }, [wordOffsets, currentIndex]);
+
+  // Scroll so the active word's line is kept centered
   useEffect(() => {
-    const active = activeCharRef.current;
+    const activeWord = activeWordRef.current;
     const container = containerRef.current;
-    if (!active || !container) return;
+    if (!activeWord || !container) return;
 
     try {
-      const activeTop = active.offsetTop;
-      const activeHeight = active.offsetHeight;
+      const activeTop = activeWord.offsetTop;
+      const activeHeight = activeWord.offsetHeight;
 
-      // Keep the active line centered as the second line, hiding completed lines above it
+      // Center the active line as the second line in view, hiding completed lines
       const targetScroll = activeTop - activeHeight;
       container.scrollTop = Math.max(0, targetScroll);
     } catch (err) {
       logger.warn('Failed to calculate scroll coordinates', { category: 'dom', error: err });
     }
-  }, [currentIndex]);
+  }, [activeWordIdx]);
 
   return (
     <div
@@ -57,9 +70,14 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
     >
       {words.map((word, wordIdx) => {
         const offset = wordOffsets[wordIdx];
+        const isActiveWord = wordIdx === activeWordIdx;
 
         return (
-          <div key={wordIdx} className="flex relative">
+          <div
+            key={wordIdx}
+            ref={isActiveWord ? activeWordRef : undefined}
+            className="flex relative"
+          >
             {word.split('').map((char, charIdx) => {
               const absIdx = offset + charIdx;
               const isTyped = absIdx < currentIndex;
@@ -77,7 +95,6 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
               return (
                 <span
                   key={charIdx}
-                  ref={isActive ? (el) => { activeCharRef.current = el; } : undefined}
                   className={`relative ${charClass}`}
                 >
                   {/* Blinking caret */}
@@ -107,7 +124,6 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
 
               return (
                 <span
-                  ref={isSpaceActive ? (el) => { activeCharRef.current = el; } : undefined}
                   className={`relative px-[0.15em] ${spaceClass}`}
                 >
                   {isSpaceActive && (
