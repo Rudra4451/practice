@@ -88,31 +88,34 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      // Execute both server and client logouts independently so one error doesn't block the other
-      await Promise.allSettled([
-        signOut(),
-        fetch('/api/auth/signout', { method: 'POST' })
-      ]);
+      // 1. End the user's session
+      const supabase = createClient();
+      await supabase.auth.signOut();
       
-      // Force clear any leftover local storage keys starting with 'sb-' (Supabase)
-      if (typeof window !== 'undefined') {
-        for (const key in window.localStorage) {
-          if (key.startsWith('sb-')) {
-            window.localStorage.removeItem(key);
-          }
-        }
-      }
+      // Clear server-side tokens
+      await fetch('/api/auth/signout', { method: 'POST' });
       
-      showToast('Successfully signed out.');
-    } catch (error) {
-      console.error('Error signing out:', error);
-      showToast('Unable to sign out. Please try again.', 'error');
-    } finally {
-      // Clear local states & redirect
+      // 2. Clear authentication state immediately
       setSession(null);
       setProfile(null);
-      // Hard reload to completely flush Next.js router cache and force re-auth check
-      window.location.href = '/';
+      
+      // 3. Optional toast message
+      showToast('Successfully signed out.');
+      
+      // 4. Redirect without refresh and update UI
+      router.push('/');
+      router.refresh();
+      
+    } catch (error) {
+      console.error('Error signing out:', error);
+      
+      // Force clear state anyway if network error
+      setSession(null);
+      setProfile(null);
+      
+      showToast('Successfully signed out.');
+      router.push('/');
+      router.refresh();
     }
   };
 
