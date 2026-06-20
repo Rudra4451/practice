@@ -29,6 +29,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [syncSuccess, setSyncSuccess] = useState(false);
+  const [historyMode, setHistoryMode] = useState<string>('all');
+  const [historyDuration, setHistoryDuration] = useState<string>('all');
+  const [historySort, setHistorySort] = useState<string>('latest');
 
   // Load either authenticated DB history or Local Guest history
   useEffect(() => {
@@ -71,7 +74,11 @@ export default function Dashboard() {
           guestHistory.map((h) => ({
             id: h.id,
             wpm: h.wpm,
+            raw_wpm: h.raw_wpm,
             accuracy: h.accuracy,
+            consistency: h.consistency,
+            error_count: h.error_count,
+            backspace_count: h.backspace_count,
             duration: h.duration,
             mode: h.mode,
             created_at: h.created_at,
@@ -169,6 +176,28 @@ export default function Dashboard() {
       wpm: item.wpm,
       accuracy: item.accuracy,
     }));
+
+  const filteredHistory = [...history]
+    .filter((run) => {
+      const matchesMode = historyMode === 'all' || run.mode === historyMode;
+      const matchesDuration = historyDuration === 'all' || run.duration === parseInt(historyDuration, 10);
+      return matchesMode && matchesDuration;
+    })
+    .sort((a, b) => {
+      if (historySort === 'latest') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      if (historySort === 'oldest') {
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+      }
+      if (historySort === 'highest_wpm') {
+        return b.wpm - a.wpm;
+      }
+      if (historySort === 'highest_accuracy') {
+        return b.accuracy - a.accuracy;
+      }
+      return 0;
+    });
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -305,6 +334,140 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Complete History Log */}
+        <div className="p-6 bg-surface border-3 border-border flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-border pb-4">
+            <div className="flex items-center gap-2.5">
+              <Database className="w-5 h-5 text-accent" />
+              <div className="flex flex-col">
+                <span className="text-sm font-black uppercase tracking-wider text-text-primary">Complete History Log</span>
+                <span className="text-xs uppercase font-bold text-text-secondary mt-0.5">{history.length} total runs recorded</span>
+              </div>
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Sort:</span>
+              <select
+                value={historySort}
+                onChange={(e) => setHistorySort(e.target.value)}
+                className="bg-background text-text-primary border-2 border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider outline-none cursor-pointer hover:bg-surface-accent transition-colors"
+              >
+                <option value="latest">Latest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="highest_wpm">Highest Speed</option>
+                <option value="highest_accuracy">Highest Accuracy</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Filters Row */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 bg-surface-accent border-2 border-border/80">
+            {/* Mode Filters */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
+              <span className="text-xs font-bold uppercase tracking-widest text-text-secondary mr-1">Mode:</span>
+              {['all', 'words', 'quotes', 'numbers', 'punctuation', 'code'].map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setHistoryMode(m)}
+                  className={`px-2.5 py-1.5 border-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                    historyMode === m
+                      ? 'bg-accent text-black border-border'
+                      : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
+                  }`}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+
+            {/* Duration Filters */}
+            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
+              <span className="text-xs font-bold uppercase tracking-widest text-text-secondary mr-1">Duration:</span>
+              {['all', '15', '30', '60', '120'].map((d) => (
+                <button
+                  key={d}
+                  onClick={() => setHistoryDuration(d)}
+                  className={`px-2.5 py-1.5 border-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                    historyDuration === d
+                      ? 'bg-accent text-black border-border'
+                      : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
+                  }`}
+                >
+                  {d === 'all' ? 'all' : `${d}s`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Table container */}
+          {filteredHistory.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 text-center py-12 bg-background border-2 border-border/40">
+              <span className="text-2xl">⌨️</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">No runs match the selected filters.</span>
+            </div>
+          ) : (
+            <div className="overflow-x-auto border-2 border-border max-h-[350px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-border text-[10px] uppercase font-black text-text-primary tracking-widest bg-surface-accent sticky top-0 z-10">
+                    <th className="py-2.5 px-3 w-10 text-center bg-surface-accent">#</th>
+                    <th className="py-2.5 px-4 text-right bg-surface-accent">Speed</th>
+                    <th className="py-2.5 px-4 text-right bg-surface-accent">Raw</th>
+                    <th className="py-2.5 px-4 text-right bg-surface-accent">Accuracy</th>
+                    <th className="py-2.5 px-4 text-right bg-surface-accent">Consistency</th>
+                    <th className="py-2.5 px-4 text-center bg-surface-accent">Errors</th>
+                    <th className="py-2.5 px-4 bg-surface-accent">Mode</th>
+                    <th className="py-2.5 px-4 bg-surface-accent">Duration</th>
+                    <th className="py-2.5 px-4 text-right bg-surface-accent">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                  {filteredHistory.map((run, idx) => {
+                    const number = idx + 1;
+                    return (
+                      <tr
+                        key={run.id || idx}
+                        className="border-b border-border/20 hover:bg-surface-accent/40 text-text-secondary hover:text-text-primary transition-colors"
+                      >
+                        <td className="py-3 px-3 text-center text-text-secondary/65 font-mono font-bold text-[10px]">
+                          {number}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-black text-accent">
+                          {run.wpm} WPM
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-text-secondary/80">
+                          {run.raw_wpm ? `${run.raw_wpm} WPM` : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-text-primary">
+                          {run.accuracy}%
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono">
+                          {run.consistency ? `${run.consistency}%` : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono text-text-secondary/80 text-[10px]">
+                          {run.error_count !== undefined ? (
+                            <span>{run.error_count} <span className="text-text-secondary/40">({run.backspace_count || 0} ⌫)</span></span>
+                          ) : '—'}
+                        </td>
+                        <td className="py-3 px-4 text-text-primary text-[10px] tracking-widest font-black">
+                          {run.mode}
+                        </td>
+                        <td className="py-3 px-4 text-text-primary text-[10px] tracking-widest font-black">
+                          {run.duration}s
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-[10px] text-text-secondary/65">
+                          {new Date(run.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </main>
     </div>
