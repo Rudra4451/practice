@@ -94,6 +94,15 @@ export const Navbar: React.FC = () => {
         fetch('/api/auth/signout', { method: 'POST' })
       ]);
       
+      // Force clear any leftover local storage keys starting with 'sb-' (Supabase)
+      if (typeof window !== 'undefined') {
+        for (const key in window.localStorage) {
+          if (key.startsWith('sb-')) {
+            window.localStorage.removeItem(key);
+          }
+        }
+      }
+      
       showToast('Successfully signed out.');
     } catch (error) {
       console.error('Error signing out:', error);
@@ -102,8 +111,8 @@ export const Navbar: React.FC = () => {
       // Clear local states & redirect
       setSession(null);
       setProfile(null);
-      router.push('/');
-      router.refresh();
+      // Hard reload to completely flush Next.js router cache and force re-auth check
+      window.location.href = '/';
     }
   };
 
