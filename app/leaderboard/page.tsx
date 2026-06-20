@@ -39,6 +39,7 @@ export default function LeaderboardPage() {
   const [mode, setMode] = useState<string>('words');
   const [duration, setDuration] = useState<number>(30);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
 
   useEffect(() => {
     let channel: any = null;
@@ -64,17 +65,27 @@ export default function LeaderboardPage() {
           query = query.gt('created_at', past7d);
         }
 
-        const { data, error } = await query
-          .order('wpm', { ascending: false })
-          .limit(50);
+        // Add a timeout fallback so the loading state eventually ends
+        // even if the Supabase client hangs due to auth state mismatch
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Leaderboard fetch timeout')), 8000)
+        );
+
+        const { data, error } = await Promise.race([
+          query.order('wpm', { ascending: false }).limit(50),
+          timeoutPromise
+        ]) as any;
 
         if (!error && data) {
           setEntries(data as unknown as LeaderboardEntry[]);
+          setFetchError(false);
         } else if (error) {
           console.error("Leaderboard query error:", error);
+          setFetchError(true);
         }
       } catch (err) {
         console.error("Leaderboard fetch error:", err);
+        setFetchError(true);
       } finally {
         setLoading(false);
       }
@@ -197,6 +208,17 @@ export default function LeaderboardPage() {
           {loading ? (
             <div className="flex justify-center py-20">
               <div className="w-8 h-8 bg-accent animate-spin" />
+            </div>
+          ) : fetchError ? (
+            <div className="flex flex-col gap-6 py-10 items-center justify-center text-center">
+              <ShieldAlert className="w-12 h-12 text-error" />
+              <div className="flex flex-col gap-2">
+                <span className="text-lg font-black uppercase tracking-wider text-text-primary">Unable to Load Rankings</span>
+                <span className="text-sm font-semibold text-text-secondary">Please check your connection and try again.</span>
+              </div>
+              <Button onClick={() => window.location.reload()} variant="secondary" className="mt-4">
+                Retry
+              </Button>
             </div>
           ) : entries.length === 0 ? (
             <div className="flex flex-col gap-8">

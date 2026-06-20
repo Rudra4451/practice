@@ -88,7 +88,12 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = async () => {
     try {
+      // 1. Clear local browser session
       await signOut();
+      
+      // 2. Clear Next.js server cookies
+      await fetch('/api/auth/signout', { method: 'POST' });
+      
       showToast('Successfully signed out.');
     } catch (error) {
       console.error('Error signing out:', error);
