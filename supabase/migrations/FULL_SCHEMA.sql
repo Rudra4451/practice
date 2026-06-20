@@ -310,8 +310,30 @@ end $$;
 
 
 -- ================================================================
+-- 10. CREATE LEADERBOARD VIEW (Highest WPM run per user, mode, and duration)
+-- ================================================================
+
+CREATE OR REPLACE VIEW public.leaderboard_view AS
+SELECT DISTINCT ON (user_id, mode, duration)
+  id,
+  user_id,
+  wpm,
+  accuracy,
+  consistency,
+  mode,
+  duration,
+  is_invalidated,
+  created_at
+FROM public.test_results
+WHERE is_invalidated = false
+ORDER BY user_id, mode, duration, wpm DESC;
+
+GRANT SELECT ON public.leaderboard_view TO anon, authenticated, service_role;
+
+
+-- ================================================================
 -- DONE. Verify by checking Table Editor in Supabase Dashboard.
--- All tables should now appear: profiles, test_results, replays,
+-- All tables/views should now appear: profiles, test_results, replays,
 -- streaks, daily_challenges, challenge_links, user_challenge_progress,
--- achievements, user_achievements.
+-- achievements, user_achievements, leaderboard_view.
 -- ================================================================
