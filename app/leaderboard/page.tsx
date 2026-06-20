@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/navbar';
 import { Award, Zap, Trophy, ShieldAlert, ArrowRight, User } from 'lucide-react';
@@ -41,63 +41,37 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
 
+  const fetchLeaderboard = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/leaderboard?mode=${mode}&duration=${duration}&timeframe=${timeframe}`);
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      const json = await res.json();
+      if (json.data) {
+        setEntries(json.data as LeaderboardEntry[]);
+        setFetchError(false);
+      } else {
+        setFetchError(true);
+      }
+    } catch (err) {
+      console.error("Leaderboard fetch error:", err);
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [mode, duration, timeframe]);
+
   useEffect(() => {
     let channel: any = null;
     let supabaseInstance: any = null;
-
-    async function fetchLeaderboard() {
-      setLoading(true);
-      try {
-        supabaseInstance = createClient();
-        let query = supabaseInstance
-          .from('test_results')
-          .select('id, wpm, accuracy, consistency, mode, duration, created_at, profiles(username, display_name, avatar_url)')
-          .eq('is_invalidated', false)
-          .eq('mode', mode)
-          .eq('duration', duration);
-
-        // Apply timeframe filters
-        if (timeframe === 'daily') {
-          const past24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-          query = query.gt('created_at', past24h);
-        } else if (timeframe === 'weekly') {
-          const past7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-          query = query.gt('created_at', past7d);
-        }
-
-        // Add a timeout fallback so the loading state eventually ends
-        // even if the Supabase client hangs due to auth state mismatch
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Leaderboard fetch timeout')), 8000)
-        );
-
-        const { data, error } = await Promise.race([
-          query.order('wpm', { ascending: false }).limit(50),
-          timeoutPromise
-        ]) as any;
-
-        if (!error && data) {
-          setEntries(data as unknown as LeaderboardEntry[]);
-          setFetchError(false);
-        } else if (error) {
-          console.error("Leaderboard query error:", error);
-          setFetchError(true);
-        }
-      } catch (err) {
-        console.error("Leaderboard fetch error:", err);
-        setFetchError(true);
-      } finally {
-        setLoading(false);
-      }
-    }
 
     fetchLeaderboard();
 
     // Subscribe to Postgres changes on test_results to refresh ranking automatically
     try {
-      if (!supabaseInstance) {
-        supabaseInstance = createClient();
-      }
+      supabaseInstance = createClient();
       channel = supabaseInstance
         .channel(`leaderboard-${mode}-${duration}-${timeframe}`)
         .on(
@@ -125,7 +99,7 @@ export default function LeaderboardPage() {
         }
       }
     };
-  }, [timeframe, mode, duration]);
+  }, [timeframe, mode, duration, fetchLeaderboard]);
 
   const timeframeOptions: Array<'daily' | 'weekly' | 'all_time'> = ['daily', 'weekly', 'all_time'];
   const modeOptions = ['words', 'quotes', 'numbers', 'punctuation', 'code'];
@@ -216,7 +190,7 @@ export default function LeaderboardPage() {
                 <span className="text-lg font-black uppercase tracking-wider text-text-primary">Unable to Load Rankings</span>
                 <span className="text-sm font-semibold text-text-secondary">Please check your connection and try again.</span>
               </div>
-              <Button onClick={() => window.location.reload()} variant="secondary" className="mt-4">
+              <Button onClick={() => fetchLeaderboard()} variant="secondary" className="mt-4">
                 Retry
               </Button>
             </div>
