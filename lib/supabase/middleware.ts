@@ -43,7 +43,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isProtectedPath = path.startsWith('/dashboard') || path.startsWith('/profile');
+  const isProtectedPath = (path.startsWith('/dashboard') || path.startsWith('/profile')) && path !== '/dashboard/performance-lab';
 
   if (isProtectedPath && !user) {
     const loginUrl = new URL('/login', request.url);

@@ -70,7 +70,7 @@ export const Navbar: React.FC = () => {
           setProfile(null);
           // If on a protected route, redirect to home page immediately
           const currentPath = window.location.pathname;
-          if (currentPath.startsWith('/dashboard') || currentPath.startsWith('/profile')) {
+          if ((currentPath.startsWith('/dashboard') || currentPath.startsWith('/profile')) && currentPath !== '/dashboard/performance-lab') {
             router.push('/');
             router.refresh();
           }
