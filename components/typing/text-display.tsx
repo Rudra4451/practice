@@ -65,18 +65,21 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
   return (
     <div
       ref={containerRef}
-      className="typing-font text-2xl md:text-3xl leading-relaxed select-none outline-none tracking-wide text-text-secondary/90 flex flex-wrap gap-x-[0.35em] gap-y-3 max-h-[160px] overflow-y-hidden w-full relative"
+      className="typing-font text-xl md:text-2xl leading-relaxed select-none outline-none tracking-wide text-text-secondary/90 flex flex-wrap gap-x-0 gap-y-3 max-h-[160px] overflow-y-hidden w-full relative"
       style={{ scrollBehavior: 'smooth' }}
     >
       {words.map((word, wordIdx) => {
         const offset = wordOffsets[wordIdx];
         const isActiveWord = wordIdx === activeWordIdx;
+        const isFarFutureWord = wordIdx > activeWordIdx + 3;
 
         return (
           <div
             key={wordIdx}
             ref={isActiveWord ? activeWordRef : undefined}
-            className="flex relative"
+            className={`flex relative transition-all duration-300 ${
+              isFarFutureWord ? 'opacity-20 blur-[0.5px] select-none pointer-events-none' : ''
+            }`}
           >
             {word.split('').map((char, charIdx) => {
               const absIdx = offset + charIdx;
@@ -124,7 +127,7 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
 
               return (
                 <span
-                  className={`relative px-[0.15em] ${spaceClass}`}
+                  className={`relative ${spaceClass}`}
                 >
                   {isSpaceActive && (
                     <span
