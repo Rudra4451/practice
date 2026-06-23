@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useUserStore } from '@/stores/user-store';
 import { Sun, Moon, Zap, User, Menu, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { resetClient } from '@/lib/supabase/client';
 import { signOut } from '@/lib/supabase/auth';
 import { Button } from '@/components/ui/button';
 import { useToastStore } from '@/stores/toast-store';
@@ -141,31 +142,35 @@ export const Navbar: React.FC = () => {
     }
 
     try {
-      // 1. End the user's session
+      // 1. End the user's session via Supabase client
       const supabase = createClient();
       await supabase.auth.signOut();
-      
+
+      // Reset the cached singleton so the next client is fresh
+      resetClient();
+
       // Clear server-side tokens
       await fetch('/api/auth/signout', { method: 'POST' });
-      
+
       // 2. Clear authentication state immediately
       setSession(null);
       setProfile(null);
-      
-      // 3. Optional toast message
+
+      // 3. Toast notification
       showToast('Successfully signed out.');
-      
-      // 4. Redirect without refresh and update UI
+
+      // 4. Redirect and refresh
       router.push('/');
       router.refresh();
-      
+
     } catch (error) {
       console.error('Error signing out:', error);
-      
-      // Force clear state anyway if network error
+
+      // Force clear state anyway on network error
+      resetClient();
       setSession(null);
       setProfile(null);
-      
+
       showToast('Successfully signed out.');
       router.push('/');
       router.refresh();

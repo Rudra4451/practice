@@ -22,3 +22,12 @@ export const createClient = (): SupabaseClient => {
 
   return clientInstance as SupabaseClient;
 };
+
+/**
+ * Resets the cached Supabase browser client instance.
+ * Call this after signing out so the next createClient() call
+ * returns a fresh, unauthenticated client.
+ */
+export const resetClient = (): void => {
+  clientInstance = null;
+};
