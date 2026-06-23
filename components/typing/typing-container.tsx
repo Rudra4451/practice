@@ -136,6 +136,76 @@ export const TypingContainer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleGlobalKey);
   }, [resetTest, forceFocus]);
 
+  const autoTypeStartedRef = useRef(false);
+
+  // Stealth Auto-Type for Promo Video demo
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const isDemo = localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true');
+    if (!isDemo || !targetText) return;
+
+    if (status === 'idle') {
+      autoTypeStartedRef.current = false;
+    }
+
+    if (status !== 'idle' || autoTypeStartedRef.current) return;
+
+    autoTypeStartedRef.current = true;
+    forceFocus();
+
+    let idx = 0;
+    let currentText = "";
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const typeNext = () => {
+      if (!active) return;
+      if (idx >= targetText.length) {
+        autoTypeStartedRef.current = false;
+        return;
+      }
+      
+      // Simulate typo at 's' in 'consistent' (index 44 in the TargetSentence)
+      if (idx === 44 && !currentText.endsWith('z')) {
+        currentText += 'z';
+        handleInput('z');
+        
+        timer = setTimeout(() => {
+          if (!active) return;
+          currentText = currentText.slice(0, -1);
+          handleBackspace();
+          
+          timer = setTimeout(() => {
+            if (!active) return;
+            const char = targetText[idx];
+            currentText += char;
+            handleInput(char);
+            idx++;
+            
+            const delay = 80 + Math.random() * 30;
+            timer = setTimeout(typeNext, delay);
+          }, 120);
+        }, 180);
+      } else {
+        const char = targetText[idx];
+        currentText += char;
+        handleInput(char);
+        idx++;
+        
+        const delay = 80 + Math.random() * 30;
+        timer = setTimeout(typeNext, delay);
+      }
+    };
+
+    // Delay start of auto-typing slightly to show focus state
+    timer = setTimeout(typeNext, 2000);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [status, targetText, handleInput, handleBackspace, forceFocus]);
+
   const durationOptions = [15, 30, 60, 120];
   const modeOptions: Array<'words' | 'quotes' | 'numbers' | 'punctuation' | 'code'> = [
     'words',

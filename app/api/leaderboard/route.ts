@@ -10,6 +10,49 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createClient();
 
+    const isDemo = searchParams.get('demo') === 'true' || searchParams.get('demo') !== null;
+    if (isDemo) {
+      // Pre-seeded high quality leaderboard entries representing active master typists
+      const baseMockData = [
+        { name: 'speed_demon', wpm: 154, acc: 99.1, tier: 'Grandmaster' },
+        { name: 'racer_x', wpm: 147, acc: 98.4, tier: 'Grandmaster' },
+        { name: 'key_ninja', wpm: 141, acc: 97.9, tier: 'Grandmaster' },
+        { name: 'rudra_practice', wpm: 135, acc: 99.0, tier: 'Master' },
+        { name: 'hyper_typer', wpm: 128, acc: 96.5, tier: 'Master' },
+        { name: 'key_slayer', wpm: 119, acc: 97.1, tier: 'Diamond' },
+        { name: 'matrix_flow', wpm: 112, acc: 96.0, tier: 'Diamond' },
+        { name: 'swift_keys', wpm: 104, acc: 96.8, tier: 'Diamond' }
+      ];
+
+      // Mutate mock scores based on filters to look live
+      const mutatedMockData = baseMockData.map((item, idx) => {
+        let speedOffset = 0;
+        if (timeframe === 'weekly') speedOffset = -2;
+        if (timeframe === 'daily') speedOffset = -5;
+        if (mode === 'quotes') speedOffset -= 8;
+        if (mode === 'code') speedOffset -= 15;
+        
+        const finalWpm = Math.max(40, item.wpm + speedOffset);
+        
+        return {
+          id: `mock-${idx}`,
+          wpm: finalWpm,
+          accuracy: item.acc,
+          consistency: 94 + (idx % 3),
+          mode,
+          duration,
+          created_at: new Date(Date.now() - idx * 3600000).toISOString(),
+          profiles: {
+            username: item.name,
+            display_name: item.name === 'rudra_practice' ? 'Rudra Pratap Swain' : item.name.replace('_', ' '),
+            avatar_url: null
+          }
+        };
+      });
+
+      return NextResponse.json({ data: mutatedMockData.sort((a, b) => b.wpm - a.wpm) });
+    }
+
     // 1. Attempt to fetch from leaderboard_view (distinct highest runs per user)
     let viewQuery = supabase
       .from('leaderboard_view')

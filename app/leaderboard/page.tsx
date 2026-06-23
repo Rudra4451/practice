@@ -44,7 +44,8 @@ export default function LeaderboardPage() {
   const fetchLeaderboard = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/leaderboard?mode=${mode}&duration=${duration}&timeframe=${timeframe}`);
+      const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
+      const res = await fetch(`/api/leaderboard?mode=${mode}&duration=${duration}&timeframe=${timeframe}${isDemo ? '&demo=true' : ''}`);
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
@@ -123,57 +124,72 @@ export default function LeaderboardPage() {
           </div>
         </div>
 
-        {/* Filter Controls Row */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-surface border-3 border-border overflow-hidden">
+        {/* Filter Controls Panel */}
+        <div className="flex flex-col gap-4 p-5 bg-surface border-3 border-border shadow-[6px_6px_0px_0px_var(--border)]">
           {/* Timeframe */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap pb-1 md:pb-0">
-            {timeframeOptions.map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setTimeframe(opt)}
-                className={`px-4 py-2 border-3 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                  timeframe === opt
-                    ? 'bg-accent text-black border-border'
-                    : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
-                }`}
-              >
-                {opt.replace('_', ' ')}
-              </button>
-            ))}
+          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
+            <span className="w-24 text-xs font-black uppercase tracking-widest text-text-secondary shrink-0">Timeframe</span>
+            <div className="overflow-x-auto scrollbar-none">
+              <div className="inline-flex border-3 border-border divide-x-3 divide-border bg-background min-w-max">
+                {timeframeOptions.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setTimeframe(opt)}
+                    className={`px-4 py-1.5 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer text-center whitespace-nowrap ${
+                      timeframe === opt
+                        ? 'bg-accent text-black font-black'
+                        : 'text-text-secondary hover:bg-surface-accent hover:text-text-primary'
+                    }`}
+                  >
+                    {opt.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Mode */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap pb-1 md:pb-0">
-            {modeOptions.map((opt) => (
-              <button
-                key={opt}
-                onClick={() => setMode(opt)}
-                className={`px-4 py-2 border-3 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                  mode === opt
-                    ? 'bg-accent text-black border-border'
-                    : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
+            <span className="w-24 text-xs font-black uppercase tracking-widest text-text-secondary shrink-0">Mode</span>
+            <div className="overflow-x-auto scrollbar-none">
+              <div className="inline-flex border-3 border-border divide-x-3 divide-border bg-background min-w-max">
+                {modeOptions.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setMode(opt)}
+                    className={`px-4 py-1.5 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer text-center whitespace-nowrap ${
+                      mode === opt
+                        ? 'bg-accent text-black font-black'
+                        : 'text-text-secondary hover:bg-surface-accent hover:text-text-primary'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Duration */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap pb-1 md:pb-0">
-            {durationOptions.map((time) => (
-              <button
-                key={time}
-                onClick={() => setDuration(time)}
-                className={`px-4 py-2 border-3 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                  duration === time
-                    ? 'bg-accent text-black border-border'
-                    : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
-                }`}
-              >
-                {time}s
-              </button>
-            ))}
+          <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
+            <span className="w-24 text-xs font-black uppercase tracking-widest text-text-secondary shrink-0">Duration</span>
+            <div className="overflow-x-auto scrollbar-none">
+              <div className="inline-flex border-3 border-border divide-x-3 divide-border bg-background min-w-max">
+                {durationOptions.map((time) => (
+                  <button
+                    key={time}
+                    onClick={() => setDuration(time)}
+                    className={`px-4 py-1.5 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer text-center whitespace-nowrap ${
+                      duration === time
+                        ? 'bg-accent text-black font-black'
+                        : 'text-text-secondary hover:bg-surface-accent hover:text-text-primary'
+                    }`}
+                  >
+                    {time}s
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 

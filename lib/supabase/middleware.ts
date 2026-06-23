@@ -45,7 +45,9 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isProtectedPath = (path.startsWith('/dashboard') || path.startsWith('/profile')) && path !== '/dashboard/performance-lab';
 
-  if (isProtectedPath && !user) {
+  const isDemo = request.cookies.get('typrox_demo_logged_in')?.value === 'true' || request.nextUrl.searchParams.get('demo') === 'true';
+
+  if (isProtectedPath && !user && !isDemo) {
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', path);
     return NextResponse.redirect(loginUrl);

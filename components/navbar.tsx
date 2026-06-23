@@ -24,6 +24,37 @@ export const Navbar: React.FC = () => {
   };
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [onlineCount, setOnlineCount] = useState(429);
+  const [pulse, setPulse] = useState(false);
+
+  // Simulated live online counter
+  useEffect(() => {
+    // Seed random starting count
+    setOnlineCount(Math.floor(Math.random() * (550 - 350 + 1)) + 350);
+    
+    let timeoutId: NodeJS.Timeout;
+    const updateCounter = () => {
+      setOnlineCount(prev => {
+        const change = Math.floor(Math.random() * (18 - 3 + 1)) + 3;
+        const sign = Math.random() > 0.5 ? 1 : -1;
+        let next = prev + (sign * change);
+        // Clamp between 200 and 700
+        if (next < 200) next = 200 + change;
+        if (next > 700) next = 700 - change;
+        return next;
+      });
+      setPulse(true);
+      const pulseTimeout = setTimeout(() => setPulse(false), 500);
+      
+      const nextDelay = Math.floor(Math.random() * 4000) + 6000; // 6-10 seconds
+      timeoutId = setTimeout(updateCounter, nextDelay);
+    };
+    
+    timeoutId = setTimeout(updateCounter, Math.floor(Math.random() * 4000) + 6000);
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, []);
 
   // Monitor scroll for shadow effect
   useEffect(() => {
@@ -36,6 +67,17 @@ export const Navbar: React.FC = () => {
 
   // Listen to Auth State
   useEffect(() => {
+    if (typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'))) {
+      localStorage.setItem('typrox_demo', 'true');
+      if (localStorage.getItem('typrox_demo_logged_in') === 'true') {
+        const mockSession = { user: { id: 'mock-user-id', email: 'rudra_practice@typrox.com' } };
+        const mockProfile = { id: 'mock-user-id', username: 'rudra_practice', display_name: 'Rudra Pratap Swain', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
+        setSession(mockSession);
+        setProfile(mockProfile);
+        return;
+      }
+    }
+
     const supabase = createClient();
     
     // Get initial session
@@ -87,6 +129,17 @@ export const Navbar: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    if (typeof window !== 'undefined' && localStorage.getItem('typrox_demo') === 'true') {
+      localStorage.removeItem('typrox_demo_logged_in');
+      document.cookie = "typrox_demo_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      setSession(null);
+      setProfile(null);
+      showToast('Successfully signed out.');
+      router.push('/');
+      router.refresh();
+      return;
+    }
+
     try {
       // 1. End the user's session
       const supabase = createClient();
@@ -135,10 +188,20 @@ export const Navbar: React.FC = () => {
             </span>
           </Link>
 
-          {/* Live Online Badge */}
+          {/* Live Online Badge - Desktop */}
           <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 border border-border bg-surface-accent text-[10px] font-black uppercase tracking-wider text-text-secondary select-none">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span>429 Online</span>
+            <span className={`inline-block transition-all duration-300 ${pulse ? 'scale-110 text-emerald-500 font-bold' : 'scale-100'}`}>
+              {onlineCount} Online
+            </span>
+          </div>
+
+          {/* Live Online Badge - Mobile */}
+          <div className="flex lg:hidden items-center gap-1 px-1.5 py-0.5 border border-border bg-surface-accent text-[8px] font-black uppercase tracking-wider text-text-secondary select-none">
+            <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
+            <span className={`inline-block transition-all duration-300 ${pulse ? 'scale-110 text-emerald-500 font-bold' : 'scale-100'}`}>
+              {onlineCount} Live
+            </span>
           </div>
         </div>
 
@@ -182,7 +245,7 @@ export const Navbar: React.FC = () => {
                 : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
             }`}
           >
-            Lab
+            Performance Lab
           </Link>
         </nav>
 
@@ -249,8 +312,10 @@ export const Navbar: React.FC = () => {
           <Link
             href="/typing"
             onClick={() => setMobileMenuOpen(false)}
-            className={`pb-2 border-b-2 border-border/10 transition-colors duration-150 ${
-              isActive('/typing') ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+            className={`pb-2 px-3 py-1.5 border-3 transition-all duration-150 ${
+              isActive('/typing')
+                ? 'text-accent bg-surface-accent border-accent'
+                : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-surface-accent/50'
             }`}
           >
             Practice
@@ -258,8 +323,10 @@ export const Navbar: React.FC = () => {
           <Link
             href="/leaderboard"
             onClick={() => setMobileMenuOpen(false)}
-            className={`pb-2 border-b-2 border-border/10 transition-colors duration-150 ${
-              isActive('/leaderboard') ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+            className={`pb-2 px-3 py-1.5 border-3 transition-all duration-150 ${
+              isActive('/leaderboard')
+                ? 'text-accent bg-surface-accent border-accent'
+                : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-surface-accent/50'
             }`}
           >
             Leaderboards
@@ -267,8 +334,10 @@ export const Navbar: React.FC = () => {
           <Link
             href="/dashboard"
             onClick={() => setMobileMenuOpen(false)}
-            className={`pb-2 border-b-2 border-border/10 transition-colors duration-150 ${
-              isActive('/dashboard') && !pathname.endsWith('/performance-lab') ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+            className={`pb-2 px-3 py-1.5 border-3 transition-all duration-150 ${
+              isActive('/dashboard') && !pathname.endsWith('/performance-lab')
+                ? 'text-accent bg-surface-accent border-accent'
+                : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-surface-accent/50'
             }`}
           >
             Dashboard
@@ -276,8 +345,10 @@ export const Navbar: React.FC = () => {
           <Link
             href="/dashboard/performance-lab"
             onClick={() => setMobileMenuOpen(false)}
-            className={`pb-2 border-b-2 border-border/10 transition-colors duration-150 ${
-              isActive('/dashboard/performance-lab') ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+            className={`pb-2 px-3 py-1.5 border-3 transition-all duration-150 ${
+              isActive('/dashboard/performance-lab')
+                ? 'text-accent bg-surface-accent border-accent'
+                : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-surface-accent/50'
             }`}
           >
             Performance Lab

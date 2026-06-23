@@ -49,7 +49,7 @@ export const useUserStore = create<UserState>()(
       session: null,
       profile: null,
       preferences: {
-        theme: 'dark',
+        theme: 'light',
         font_family: 'ibm-plex-mono',
         volume: 0.5,
       },

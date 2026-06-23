@@ -43,6 +43,24 @@ function LoginCard() {
     setErrorMsg('');
     setSuccessMsg('');
 
+    const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
+    if (isDemo) {
+      setTimeout(() => {
+        setSuccessMsg('Check your inbox — the magic link is on its way.');
+        localStorage.setItem('typrox_demo', 'true');
+        localStorage.setItem('typrox_demo_logged_in', 'true');
+        document.cookie = "typrox_demo_logged_in=true; path=/; max-age=86400";
+        const mockSession = { user: { id: 'mock-user-id', email: 'rudra_practice@typrox.com' } };
+        const mockProfile = { id: 'mock-user-id', username: 'rudra_practice', display_name: 'Rudra Pratap Swain', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
+        useUserStore.getState().setSession(mockSession);
+        useUserStore.getState().setProfile(mockProfile);
+        setTimeout(() => {
+          router.push('/dashboard?demo=true');
+        }, 1000);
+      }, 1000);
+      return;
+    }
+
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOtp({
@@ -65,6 +83,21 @@ function LoginCard() {
   const handleOAuth = async (provider: 'google' | 'github') => {
     setLoading(true);
     setErrorMsg('');
+
+    const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
+    if (isDemo) {
+      setTimeout(() => {
+        localStorage.setItem('typrox_demo', 'true');
+        localStorage.setItem('typrox_demo_logged_in', 'true');
+        document.cookie = "typrox_demo_logged_in=true; path=/; max-age=86400";
+        const mockSession = { user: { id: 'mock-user-id', email: `${provider}_user@typrox.com` } };
+        const mockProfile = { id: 'mock-user-id', username: 'rudra_practice', display_name: 'Rudra Pratap Swain', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
+        useUserStore.getState().setSession(mockSession);
+        useUserStore.getState().setProfile(mockProfile);
+        router.push('/dashboard?demo=true');
+      }, 1000);
+      return;
+    }
 
     try {
       if (provider === 'google') {
