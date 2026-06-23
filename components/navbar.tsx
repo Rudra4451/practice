@@ -130,8 +130,10 @@ export const Navbar: React.FC = () => {
   };
 
   const handleLogout = async () => {
+    // 1. Clear demo state if active
     if (typeof window !== 'undefined' && localStorage.getItem('typrox_demo') === 'true') {
       localStorage.removeItem('typrox_demo_logged_in');
+      localStorage.removeItem('typrox_demo');
       document.cookie = "typrox_demo_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       setSession(null);
       setProfile(null);
@@ -142,39 +144,60 @@ export const Navbar: React.FC = () => {
     }
 
     try {
-      // 1. End the user's session via Supabase client
+      // 2. Call Supabase signOut
       const supabase = createClient();
       await supabase.auth.signOut();
-
-      // Reset the cached singleton so the next client is fresh
-      resetClient();
-
-      // Clear server-side tokens
-      await fetch('/api/auth/signout', { method: 'POST' });
-
-      // 2. Clear authentication state immediately
-      setSession(null);
-      setProfile(null);
-
-      // 3. Toast notification
-      showToast('Successfully signed out.');
-
-      // 4. Redirect and refresh
-      router.push('/');
-      router.refresh();
-
     } catch (error) {
-      console.error('Error signing out:', error);
-
-      // Force clear state anyway on network error
-      resetClient();
-      setSession(null);
-      setProfile(null);
-
-      showToast('Successfully signed out.');
-      router.push('/');
-      router.refresh();
+      console.error('Supabase signOut error:', error);
     }
+
+    // 3. Force clean client-side tokens from localStorage and cookies
+    if (typeof window !== 'undefined') {
+      try {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && (key.startsWith('sb-') || key.startsWith('supabase.'))) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+      } catch (e) {
+        console.error('Error clearing localStorage auth tokens:', e);
+      }
+
+      try {
+        document.cookie.split(';').forEach(cookie => {
+          const eqPos = cookie.indexOf('=');
+          const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
+          if (name.startsWith('sb-')) {
+            document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+            document.cookie = `${name}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+          }
+        });
+      } catch (e) {
+        console.error('Error clearing cookies:', e);
+      }
+    }
+
+    // 4. Reset the client instance cache
+    resetClient();
+
+    // 5. Clear server-side tokens
+    try {
+      await fetch('/api/auth/signout', { method: 'POST' });
+    } catch (error) {
+      console.error('Server signout endpoint error:', error);
+    }
+
+    // 6. Reset store states
+    setSession(null);
+    setProfile(null);
+
+    // 7. Notify & redirect
+    showToast('Successfully signed out.');
+    router.push('/');
+    router.refresh();
   };
 
   return (
