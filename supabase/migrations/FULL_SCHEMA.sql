@@ -145,6 +145,10 @@ DROP POLICY IF EXISTS "Users can update their own profiles" ON public.profiles;
 CREATE POLICY "Users can update their own profiles"
     ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
+DROP POLICY IF EXISTS "Users can insert their own profiles" ON public.profiles;
+CREATE POLICY "Users can insert their own profiles"
+    ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- Test Results
 DROP POLICY IF EXISTS "Test results are readable by everyone" ON public.test_results;
 CREATE POLICY "Test results are readable by everyone"

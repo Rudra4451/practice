@@ -124,6 +124,8 @@ CREATE POLICY "Profiles are readable by everyone"
     ON public.profiles FOR SELECT USING (true);
 CREATE POLICY "Users can update their own profiles" 
     ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profiles" 
+    ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Test Results
 CREATE POLICY "Test results are readable by everyone" 

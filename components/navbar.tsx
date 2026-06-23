@@ -81,20 +81,69 @@ export const Navbar: React.FC = () => {
 
     const supabase = createClient();
     
+    // Helper to ensure profile exists
+    const ensureProfileExists = async (user: any) => {
+      if (!user) return null;
+      
+      try {
+        let { data: profileData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        
+        if (!profileData) {
+          // Extract username/display name/avatar from OAuth user metadata
+          const username = user.user_metadata?.user_name || 
+                           user.user_metadata?.preferred_username || 
+                           user.user_metadata?.username || 
+                           `user_${user.id.substring(0, 8)}`;
+          
+          const displayName = user.user_metadata?.display_name || 
+                              user.user_metadata?.full_name || 
+                              username;
+          
+          const avatarUrl = user.user_metadata?.avatar_url || null;
+
+          // 1. Create Profile row
+          const { data: newProfile, error: profileErr } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              username: username.substring(0, 30), // respect varchar(30) limit
+              display_name: displayName.substring(0, 50), // respect varchar(50) limit
+              avatar_url: avatarUrl,
+              theme: 'dark',
+              font_family: 'ibm-plex-mono'
+            })
+            .select()
+            .single();
+
+          if (!profileErr && newProfile) {
+            profileData = newProfile;
+          }
+
+          // 2. Create Streak row
+          await supabase
+            .from('streaks')
+            .insert({ user_id: user.id })
+            .maybeSingle();
+        }
+
+        return profileData;
+      } catch (err) {
+        console.error('Error ensuring profile exists:', err);
+        return null;
+      }
+    };
+
     // Get initial session
-    supabase.auth.getSession().then((res: any) => {
+    supabase.auth.getSession().then(async (res: any) => {
       const activeSession = res?.data?.session || null;
       setSession(activeSession);
       if (activeSession?.user) {
-        // Fetch profile
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', activeSession.user.id)
-          .single()
-          .then(({ data: profileData }: any) => {
-            if (profileData) setProfile(profileData);
-          });
+        const profileData = await ensureProfileExists(activeSession.user);
+        if (profileData) setProfile(profileData);
       }
     });
 
@@ -103,11 +152,7 @@ export const Navbar: React.FC = () => {
       async (event: any, currentSession: any) => {
         setSession(currentSession);
         if (currentSession?.user) {
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', currentSession.user.id)
-            .single();
+          const profileData = await ensureProfileExists(currentSession.user);
           if (profileData) setProfile(profileData);
         } else {
           setProfile(null);
