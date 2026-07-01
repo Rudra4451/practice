@@ -249,6 +249,8 @@ export const Hero3D = () => {
 
   // RGB Control states
   const [rgbMode, setRgbMode] = useState('amber');
+  const [rainbowHue, setRainbowHue] = useState(0);
+
   const rgbModes = [
     { id: 'off', label: 'Off', bg: 'bg-neutral-850' },
     { id: 'white', label: 'White', bg: 'bg-white' },
@@ -257,16 +259,26 @@ export const Hero3D = () => {
     { id: 'rainbow', label: 'Rainbow', bg: 'bg-gradient-to-r from-red-500 via-green-500 to-blue-500' }
   ];
 
+  // Cycle HSL hue when in Rainbow mode
+  useEffect(() => {
+    if (rgbMode !== 'rainbow') return;
+
+    const interval = setInterval(() => {
+      setRainbowHue((prev) => (prev + 3) % 360);
+    }, 40);
+    return () => clearInterval(interval);
+  }, [rgbMode]);
+
   // Resolve RGB values dynamically
   const rgbColorValue = useMemo(() => {
     switch (rgbMode) {
       case 'white': return '#F5F5F5';
       case 'ice': return '#22D3EE';
       case 'amber': return '#FF5C00';
-      case 'rainbow': return '#FF007F'; // dynamic sweep cycle mapped in css
+      case 'rainbow': return `hsl(${rainbowHue}, 100%, 60%)`;
       default: return 'transparent';
     }
-  }, [rgbMode]);
+  }, [rgbMode, rainbowHue]);
 
   // Spring camera parameters
   const springConfig = { stiffness: 50, damping: 20, mass: 1 };
