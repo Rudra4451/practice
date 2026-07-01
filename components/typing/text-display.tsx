@@ -99,7 +99,10 @@ export const TextDisplay: React.FC<TextDisplayProps> = React.memo(({
                   className={`relative ${charClass}`}
                   initial={false}
                   animate={isTyped && isCorrect ? { scale: [1, 1.15, 1], color: 'var(--color-text-primary)' } : { scale: 1 }}
-                  transition={{ duration: 0.2, type: 'spring', stiffness: 300, damping: 15 }}
+                  transition={{ 
+                    scale: { type: 'tween', ease: 'easeOut', duration: 0.2 },
+                    color: { duration: 0.15 }
+                  }}
                 >
                   {/* Blinking caret */}
                   {isActive && (
