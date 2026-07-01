@@ -9,6 +9,9 @@ import { RefreshCw, Play, Share2, Award, AlertCircle, TrendingUp } from 'lucide-
 import dynamic from 'next/dynamic';
 import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
+import { AnimatedCounter } from '@/components/ui/animated-counter';
+import confetti from 'canvas-confetti';
+import { motion } from 'framer-motion';
 
 const ResultChart = dynamic(() => import('./result-chart'), {
   ssr: false,
@@ -71,6 +74,33 @@ export const ResultScreen: React.FC = () => {
         created_at: new Date().toISOString(),
       });
     }
+    // Fire confetti on successful result
+    if (result.wpm > 0) {
+      const duration = 3000;
+      const end = Date.now() + duration;
+
+      const frame = () => {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: ['#FF5C00', '#E2E8F0', '#F5F5F5']
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: ['#FF5C00', '#E2E8F0', '#F5F5F5']
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      };
+      frame();
+    }
   }, [result, session, addGuestResult, seed, mode, duration]);
 
   if (!result) return null;
@@ -123,7 +153,7 @@ export const ResultScreen: React.FC = () => {
     <div className="w-full max-w-4xl mx-auto flex flex-col gap-8 px-4 py-6 animate-fade-in">
       {/* Saving indicator */}
       {saving && (
-        <div className="flex items-center gap-2 px-4 py-2 border-2 border-border bg-surface-accent text-xs font-bold uppercase tracking-wider text-text-secondary">
+        <div className="flex items-center gap-2 px-4 py-2.5 border border-border bg-surface rounded-lg text-xs font-bold uppercase tracking-wider text-text-secondary shadow-xs">
           <div className="w-3 h-3 bg-accent animate-spin flex-shrink-0" />
           <span>Saving your result…</span>
         </div>
@@ -139,7 +169,7 @@ export const ResultScreen: React.FC = () => {
         <>
           {/* Achievement Banner */}
           {unlocked.length > 0 && (
-            <div className="p-4 bg-bauhaus-yellow/10 border-3 border-bauhaus-yellow text-bauhaus-black dark:text-bauhaus-yellow flex items-center gap-3">
+            <div className="p-4 bg-accent-secondary/5 border border-accent-secondary/35 text-accent-secondary flex items-center gap-3 rounded-xl shadow-xs">
               <Award className="w-5 h-5 flex-shrink-0" />
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-wider">Achievement Unlocked</span>
@@ -150,36 +180,50 @@ export const ResultScreen: React.FC = () => {
 
           {/* Main Stat Numbers Cards Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-6 bg-accent border-3 border-border flex flex-col text-background">
-              <span className="text-xs font-bold uppercase tracking-wider opacity-85">Speed</span>
-              <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">{result.wpm}</span>
-              <span className="text-xs uppercase font-bold mt-1 opacity-80">WPM (net speed)</span>
-            </div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="p-6 bg-surface/30 backdrop-blur-md border border-border/80 text-text-primary rounded-2xl shadow-sm flex flex-col relative overflow-hidden">
+              {/* Personal Best Tag */}
+              {result.wpm > 80 && (
+                <div className="absolute top-3 right-3 px-2 py-0.5 bg-accent/10 border border-accent/20 rounded text-[9px] font-bold uppercase tracking-widest text-text-primary">
+                  Personal Best
+                </div>
+              )}
+              <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Speed</span>
+              <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none text-accent">
+                <AnimatedCounter value={result.wpm} duration={1500} />
+              </span>
+              <span className="text-[10px] uppercase font-bold mt-1 text-text-tertiary">WPM (net speed)</span>
+            </motion.div>
 
-            <div className="p-6 bg-bauhaus-red border-3 border-border flex flex-col text-white">
-              <span className="text-xs font-bold uppercase tracking-wider opacity-85">Accuracy</span>
-              <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">{result.accuracy}%</span>
-              <span className="text-xs uppercase font-bold mt-1 opacity-80">based on correct keys</span>
-            </div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="p-6 bg-surface/30 backdrop-blur-md border border-border/80 text-text-primary rounded-2xl shadow-sm flex flex-col">
+              <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Accuracy</span>
+              <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none text-accent-secondary">
+                <AnimatedCounter value={result.accuracy} duration={1500} suffix="%" />
+              </span>
+              <span className="text-[10px] uppercase font-bold mt-1 text-text-tertiary">based on correct keys</span>
+            </motion.div>
 
-            <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="p-6 bg-surface/30 backdrop-blur-md border border-border/80 flex flex-col text-text-primary rounded-2xl shadow-sm">
               <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Consistency</span>
-              <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">{result.consistency}%</span>
-              <span className="text-xs uppercase font-bold mt-1 text-text-secondary">keystroke deviation</span>
-            </div>
+              <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">
+                <AnimatedCounter value={result.consistency} duration={1500} suffix="%" />
+              </span>
+              <span className="text-[10px] uppercase font-bold mt-1 text-text-tertiary">keystroke deviation</span>
+            </motion.div>
 
-            <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }} className="p-6 bg-surface/30 backdrop-blur-md border border-border/80 flex flex-col text-text-primary rounded-2xl shadow-sm">
               <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Time</span>
-              <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">{result.duration}s</span>
-              <span className="text-xs uppercase font-bold mt-1 text-text-secondary">total test duration</span>
-            </div>
+              <span className="text-4xl md:text-5xl font-black font-mono mt-2 leading-none">
+                <AnimatedCounter value={result.duration} duration={1000} suffix="s" />
+              </span>
+              <span className="text-[10px] uppercase font-bold mt-1 text-text-tertiary">total test duration</span>
+            </motion.div>
           </div>
 
           {/* Secondary stats & Recharts Graph Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
             {/* Graph Card */}
-            <div className="lg:col-span-2 p-6 bg-surface border-3 border-border flex flex-col min-h-[300px]">
-              <div className="flex items-center gap-2 border-b-2 border-border pb-4 mb-4">
+            <div className="lg:col-span-2 p-6 bg-surface border border-border flex flex-col min-h-[300px] rounded-xl shadow-sm">
+              <div className="flex items-center gap-2 border-b border-border/80 pb-4 mb-4">
                 <TrendingUp className="w-4 h-4 text-accent" />
                 <span className="text-sm font-bold uppercase tracking-wider text-text-primary">WPM Speed Evolution</span>
               </div>
@@ -189,34 +233,34 @@ export const ResultScreen: React.FC = () => {
             </div>
 
             {/* Performance Stats Panel */}
-            <div className="p-6 bg-surface border-3 border-border flex flex-col justify-between gap-6">
+            <div className="p-6 bg-surface border border-border flex flex-col justify-between gap-6 rounded-xl shadow-sm">
               <div className="flex flex-col gap-4">
-                <div className="flex items-center gap-2 border-b-2 border-border pb-4">
+                <div className="flex items-center gap-2 border-b border-border/80 pb-4">
                   <Award className="w-4 h-4 text-accent" />
                   <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Performance Summary</span>
                 </div>
                 
-                <div className="flex flex-col gap-3 text-xs md:text-sm font-bold uppercase tracking-wider">
-                  <div className="flex justify-between items-center py-1 border-b border-border/10">
+                <div className="flex flex-col gap-1.5 text-xs md:text-sm font-bold uppercase tracking-wider">
+                  <div className="flex justify-between items-center py-2 border-b border-border/60">
                     <span className="text-text-secondary">Raw speed</span>
                     <span className="text-text-primary font-mono">{result.rawWpm} WPM</span>
                   </div>
-                  <div className="flex justify-between items-center py-1 border-b border-border/10">
+                  <div className="flex justify-between items-center py-2 border-b border-border/60">
                     <span className="text-text-secondary">Errors (uncorrected)</span>
                     <span className="text-text-primary font-mono">{result.errorCount > 0 ? `${result.errorCount}` : '—'}</span>
                   </div>
-                  <div className="flex justify-between items-center py-1 border-b border-border/10">
+                  <div className="flex justify-between items-center py-2 border-b border-border/60">
                     <span className="text-text-secondary">Characters typed</span>
                     <span className="text-text-primary font-mono">{userInput.length}</span>
                   </div>
-                  <div className="flex justify-between items-center py-1 border-b border-border/10">
+                  <div className="flex justify-between items-center py-2 border-b border-border/60">
                     <span className="text-text-secondary">Mistakes registered</span>
                     <span className="text-error font-mono flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
+                      <AlertCircle className="w-3.5 h-3.5" />
                       {result.errorCount}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center py-1">
+                  <div className="flex justify-between items-center py-2">
                     <span className="text-text-secondary">Backspaces pressed</span>
                     <span className="text-text-primary font-mono">{result.backspaceCount}</span>
                   </div>
@@ -225,11 +269,11 @@ export const ResultScreen: React.FC = () => {
 
               {/* Missed Keys Heatmap Info */}
               {missedKeys.length > 0 && (
-                <div className="flex flex-col gap-2 p-3 bg-surface-accent border-3 border-border">
+                <div className="flex flex-col gap-2.5 p-4 bg-surface-accent/40 border border-border rounded-xl">
                   <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">Top Weak Keys</span>
-                  <div className="flex gap-2 mt-1">
+                  <div className="flex gap-2.5 mt-1.5">
                     {missedKeys.map(([key, count]) => (
-                      <div key={key} className="flex-1 flex flex-col items-center p-2 bg-background border-3 border-border">
+                      <div key={key} className="flex-1 flex flex-col items-center p-2 bg-surface border border-border rounded-lg shadow-sm font-mono">
                         <kbd className="font-mono text-xs font-bold text-text-primary">{key === ' ' ? 'Space' : key}</kbd>
                         <span className="text-xs font-bold text-error mt-0.5">{count}x</span>
                       </div>
@@ -241,7 +285,7 @@ export const ResultScreen: React.FC = () => {
           </div>
 
           {/* Action Row */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t-2 border-border/10 pt-6 font-sans">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-border/60 pt-6 font-sans">
             <Button
               onClick={resetTest}
               variant="primary"
@@ -254,7 +298,7 @@ export const ResultScreen: React.FC = () => {
             <Button
               onClick={() => setShowReplay(true)}
               variant="secondary"
-              className="flex-1 min-w-[140px] py-4"
+              className="flex-1 min-w-[140px] py-4 border border-border"
             >
               <Play className="w-4 h-4" />
               <span>Watch Replay</span>
@@ -263,7 +307,7 @@ export const ResultScreen: React.FC = () => {
             <Button
               onClick={handleShare}
               variant="secondary"
-              className="flex-1 min-w-[140px] py-4"
+              className="flex-1 min-w-[140px] py-4 border border-border"
             >
               <Share2 className="w-4 h-4" />
               <span>{copied ? 'Copied Link!' : 'Share Challenge'}</span>

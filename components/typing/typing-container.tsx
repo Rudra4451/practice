@@ -19,6 +19,7 @@ export const TypingContainer: React.FC = () => {
     mode,
     wpm,
     accuracy,
+    combo,
     setDuration,
     setMode,
     startTest,
@@ -216,90 +217,108 @@ export const TypingContainer: React.FC = () => {
   ];
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col gap-6 px-4">
-      {/* Top Configuration Bar — always rendered but faded during test to prevent layout shift */}
+    <div className="w-full max-w-5xl mx-auto flex flex-col gap-8 px-4 relative">
+      {/* Reactive ambient glows based on WPM */}
+      <div 
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[100%] pointer-events-none transition-all duration-700 ease-out" 
+        style={{
+          width: status === 'running' ? `${Math.min(800, 400 + wpm * 4)}px` : '600px',
+          height: status === 'running' ? `${Math.min(400, 200 + wpm * 2)}px` : '300px',
+          background: `radial-gradient(circle, var(--accent) 0%, transparent 70%)`,
+          opacity: status === 'running' ? Math.min(0.08, 0.02 + wpm * 0.0005) : 0.02,
+          filter: `blur(${status === 'running' ? '140px' : '120px'})`
+        }} 
+      />
+
+      {/* Top Configuration Bar */}
       <div
-        className={`flex flex-wrap items-center justify-between gap-4 p-3 bg-surface border-3 border-border transition-all duration-300 ${
-          status !== 'idle' ? 'opacity-20 pointer-events-none cursor-default' : ''
+        className={`flex flex-col sm:flex-row items-center justify-between gap-4 p-2 bg-surface/50 backdrop-blur-md border border-border/80 rounded-2xl shadow-sm transition-all duration-700 ease-in-out relative z-10 ${
+          status !== 'idle' ? 'opacity-0 -translate-y-4 pointer-events-none absolute w-full' : 'opacity-100 translate-y-0'
         }`}
       >
         {/* Modes */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 p-1 bg-surface-accent/30 rounded-xl">
           {modeOptions.map((opt) => (
             <button
               key={opt}
               onClick={() => {
                 startTestWithConfig({ mode: opt, duration });
               }}
-              className={`px-4 py-2 border-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`relative px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer rounded-lg z-10 ${
                 mode === opt
-                  ? 'bg-accent text-black border-border'
-                  : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
+                  ? 'text-text-primary'
+                  : 'text-text-tertiary hover:text-text-primary'
               }`}
             >
+              {mode === opt && (
+                <div className="absolute inset-0 bg-surface rounded-lg shadow-sm border border-border/60 -z-10" />
+              )}
               {opt}
             </button>
           ))}
         </div>
 
         {/* Durations */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 p-1 bg-surface-accent/30 rounded-xl">
           {durationOptions.map((time) => (
             <button
               key={time}
               onClick={() => {
                 startTestWithConfig({ mode, duration: time });
               }}
-              className={`px-4 py-2 border-2 text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`relative px-4 py-2 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer rounded-lg z-10 ${
                 duration === time
-                  ? 'bg-accent text-black border-border'
-                  : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
+                  ? 'text-text-primary'
+                  : 'text-text-tertiary hover:text-text-primary'
               }`}
             >
+              {duration === time && (
+                <div className="absolute inset-0 bg-surface rounded-lg shadow-sm border border-border/60 -z-10" />
+              )}
               {time}s
             </button>
           ))}
         </div>
       </div>
 
-      {/* Real-time stats (always visible - Bauhaus segmented layout) */}
-      <div className="flex items-center gap-0 border-3 border-border bg-surface-accent font-sans">
-        <div className="flex-1 flex flex-col items-center justify-center p-4 border-r-3 border-border text-center">
-          <span className="text-accent text-3xl font-black font-mono leading-none">
-            {status === 'running' ? `${timeLeft}s` : `${duration}s`}
-          </span>
-          <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-1">Remaining</span>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-4 border-r-3 border-border text-center">
-          <span className="text-text-primary text-3xl font-black font-mono leading-none">
-            {status === 'running' ? wpm : '--'}
-          </span>
-          <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-1">WPM</span>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-4 border-r-3 border-border text-center">
-          <span className="text-text-primary text-3xl font-black font-mono leading-none">
-            {status === 'running' ? `${accuracy}%` : '--%'}
-          </span>
-          <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-1">Accuracy</span>
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-          <span className="text-text-primary text-3xl font-black font-mono leading-none">
-            {streakDays} {streakDays === 1 ? 'Day' : 'Days'}
-          </span>
-          <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-1">Active Streak</span>
-        </div>
+      {/* Real-time stats (modern glass layout) */}
+      <div 
+        className={`grid grid-cols-2 md:grid-cols-5 gap-4 font-sans transition-all duration-700 ease-in-out relative z-10 ${
+          status === 'idle' ? 'opacity-40 grayscale' : 
+          status === 'running' ? 'opacity-0 -translate-y-4 pointer-events-none absolute w-full' : 'opacity-100'
+        }`}
+      >
+        {[
+          { label: 'Remaining', value: status === 'running' ? `${timeLeft}s` : `${duration}s`, active: true },
+          { label: 'WPM', value: status === 'running' ? wpm : '--', highlight: true },
+          { label: 'Accuracy', value: status === 'running' ? `${accuracy}%` : '--%' },
+          { label: 'Combo', value: status === 'running' ? combo : '--' },
+          { label: 'Active Streak', value: `${streakDays} Day${streakDays !== 1 ? 's' : ''}` }
+        ].map((stat, i) => (
+          <div key={i} className="flex flex-col items-center justify-center p-4 bg-surface/60 backdrop-blur-sm border border-border/80 rounded-2xl text-center shadow-xs">
+            <span className={`text-3xl font-bold font-mono leading-none ${stat.highlight ? 'text-accent' : 'text-text-primary'}`}>
+              {stat.value}
+            </span>
+            <span className="text-[11px] font-semibold uppercase tracking-widest text-text-tertiary mt-2">{stat.label}</span>
+          </div>
+        ))}
       </div>
 
       {/* Main Typing Viewport */}
       <div
         ref={containerRef}
         onClick={handleContainerClick}
-        className={`relative p-8 bg-surface border-3 transition-all duration-150 cursor-pointer min-h-[220px] flex items-center ${
+        className={`relative p-8 md:p-12 bg-surface/30 backdrop-blur-md border rounded-3xl transition-all duration-300 cursor-pointer min-h-[260px] flex items-center shadow-sm z-10 ${
           isFocused
-            ? 'border-accent bg-surface-accent'
-            : 'border-border hover:border-border/80'
+            ? 'border-accent/40 bg-surface/60 shadow-glow'
+            : 'border-border/60 hover:border-border hover:bg-surface/50'
         }`}
       >
+        {/* Inner glow on focus */}
+        {isFocused && (
+          <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
+        )}
+
         {/* Hidden input capture textarea */}
         <textarea
           ref={textareaRef}
@@ -317,18 +336,18 @@ export const TypingContainer: React.FC = () => {
           tabIndex={0}
         />
 
-        {/* Elegant Minimalist Floating Focus Overlay */}
+        {/* Elegant Minimalist Floating Focus Prompt */}
         {!isFocused && status !== 'completed' && (
-          <div className="absolute inset-x-0 bottom-4 z-10 flex items-center justify-center pointer-events-none">
-            <div className="flex items-center gap-2 px-4 py-2 bg-surface border-2 border-border text-xs font-bold text-text-primary uppercase tracking-wider shadow-sm animate-pulse">
+          <div className="absolute inset-x-0 bottom-6 z-20 flex items-center justify-center pointer-events-none">
+            <div className="flex items-center gap-2 px-4 py-2 bg-background/90 backdrop-blur-md border border-border/80 text-xs font-semibold text-text-primary uppercase tracking-widest shadow-lg rounded-xl animate-pulse">
               <Keyboard className="w-3.5 h-3.5 text-accent" />
-              <span>Click or start typing to focus</span>
+              <span>Click or press any key to focus</span>
             </div>
           </div>
         )}
 
         {/* Text rendering viewport */}
-        <div className={`w-full transition-all duration-200 ${!isFocused && status !== 'completed' ? 'blur-[0.5px] opacity-30' : ''}`}>
+        <div className={`w-full transition-all duration-300 ${!isFocused && status !== 'completed' ? 'blur-[1px] opacity-40' : ''}`}>
           <TextDisplay
             targetText={targetText}
             userInput={userInput}
@@ -337,10 +356,12 @@ export const TypingContainer: React.FC = () => {
         </div>
       </div>
 
-      {/* Control Row */}
-      <div className="flex items-center justify-between px-1 text-xs font-bold uppercase tracking-wider text-text-secondary">
-        <div className="flex items-center gap-2">
-          <kbd className="px-2 py-1 bg-surface-accent border-2 border-border text-text-primary font-mono text-xs">Esc</kbd>
+      {/* Control Row (Hidden in focus mode) */}
+      <div className={`flex items-center justify-between px-2 text-[11px] font-semibold uppercase tracking-widest text-text-tertiary relative z-10 transition-all duration-700 ease-in-out ${
+        status === 'running' ? 'opacity-0 translate-y-4 pointer-events-none' : 'opacity-100 translate-y-0'
+      }`}>
+        <div className="flex items-center gap-2 opacity-60">
+          <kbd className="px-2 py-1 bg-surface-accent border border-border/60 text-text-secondary font-mono rounded shadow-xs">Esc</kbd>
           <span>to restart</span>
         </div>
 
@@ -349,10 +370,10 @@ export const TypingContainer: React.FC = () => {
             resetTest();
             requestAnimationFrame(() => forceFocus());
           }}
-          variant="primary"
-          className="flex items-center gap-2"
+          variant="ghost"
+          className="flex items-center gap-2 text-text-secondary hover:text-text-primary"
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5" />
           <span>Restart Test</span>
         </Button>
       </div>

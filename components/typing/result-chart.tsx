@@ -39,9 +39,9 @@ export default function ResultChart({ timeline }: ResultChartProps) {
         />
         <Tooltip
           contentStyle={{
-            background: 'var(--surface-accent)',
-            border: '2px solid var(--border)',
-            borderRadius: '0px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
             fontSize: '12px',
             fontWeight: 'bold',
             textTransform: 'uppercase',
@@ -53,15 +53,15 @@ export default function ResultChart({ timeline }: ResultChartProps) {
           dataKey="wpm"
           name="Net WPM"
           stroke="var(--accent)"
-          strokeWidth={3}
+          strokeWidth={3.5}
           dot={false}
-          activeDot={{ r: 6, strokeWidth: 2, stroke: 'var(--border)' }}
+          activeDot={{ r: 6, strokeWidth: 1.5, stroke: 'var(--accent)' }}
         />
         <Line
           type="monotone"
           dataKey="rawWpm"
           name="Raw WPM"
-          stroke="var(--text-secondary)"
+          stroke="var(--accent-secondary)"
           strokeWidth={1.5}
           strokeDasharray="4 4"
           dot={false}

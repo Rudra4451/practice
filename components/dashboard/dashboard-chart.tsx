@@ -26,9 +26,9 @@ export default function DashboardChart({ chartData }: DashboardChartProps) {
         <YAxis stroke="var(--text-secondary)" fontSize={11} tickLine={true} axisLine={true} />
         <Tooltip
           contentStyle={{
-            background: 'var(--surface-accent)',
-            border: '2px solid var(--border)',
-            borderRadius: '0px',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '8px',
             fontSize: '12px',
             fontWeight: 'bold',
             textTransform: 'uppercase',
@@ -40,8 +40,9 @@ export default function DashboardChart({ chartData }: DashboardChartProps) {
           dataKey="wpm"
           name="Speed (WPM)"
           stroke="var(--accent)"
-          strokeWidth={3}
+          strokeWidth={3.5}
           dot={false}
+          activeDot={{ r: 6, strokeWidth: 1.5, stroke: 'var(--accent)' }}
         />
       </LineChart>
     </ResponsiveContainer>

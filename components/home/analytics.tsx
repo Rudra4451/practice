@@ -7,55 +7,87 @@ import { BarChart2 } from 'lucide-react';
 
 export default function AnalyticsSection() {
   return (
-    <section className="py-24 px-4 md:px-6 border-b-3 border-border bg-surface-accent">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-        <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="flex flex-col gap-6">
-          <span className="text-xs font-bold text-accent uppercase tracking-widest">Analytics & Progress</span>
-          <h2 className="text-3xl sm:text-5xl font-black tracking-tight uppercase text-text-primary leading-none">Deep Metric Visibility</h2>
-          <div className="w-16 h-2 bg-accent mt-1" />
-          <p className="text-sm md:text-base text-text-secondary font-semibold leading-relaxed mt-1">
+    <section className="py-20 md:py-28 px-4 md:px-6">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+        <motion.div 
+          initial={{ opacity: 0, x: -20 }} 
+          whileInView={{ opacity: 1, x: 0 }} 
+          viewport={{ once: true }} 
+          className="flex flex-col gap-6"
+        >
+          <span className="text-xs font-semibold text-accent uppercase tracking-wider">Analytics & Progress</span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-text-primary leading-tight font-display">Deep Metric Visibility</h2>
+          <p className="text-base text-text-secondary leading-relaxed">
             Your dashboard shows more than a single speed number. Track where your speed comes from and what keeps you back.
           </p>
-          <ul className="flex flex-col gap-3 text-xs md:text-sm font-bold uppercase tracking-wider mt-2 text-left">
+          <ul className="flex flex-col gap-4 text-sm font-medium text-text-secondary mt-2">
             {[
-              'Track your second-by-second speed improvements',
-              'Identify weak keys from your personal error history',
-              'Measure your consistency and typing rhythm',
+              'Track second-by-second speed improvements',
+              'Identify weak keys from personal error history',
+              'Measure typing consistency and rhythm',
               'Build daily streaks and visual typing habits',
             ].map((item) => (
               <li key={item} className="flex items-center gap-3">
-                <div className="w-5 h-5 bg-accent border-2 border-border flex items-center justify-center text-xs text-white flex-shrink-0">✔</div>
-                <span className="text-text-primary">{item}</span>
+                <div className="w-5 h-5 rounded-full bg-accent/10 text-accent flex items-center justify-center shrink-0">
+                  <span className="text-xs">✔</span>
+                </div>
+                <span>{item}</span>
               </li>
             ))}
           </ul>
-          <Button href="/dashboard" variant="secondary" className="self-start mt-2">
+          <Button href="/dashboard" variant="secondary" className="self-start mt-2 px-6">
             <BarChart2 className="w-4 h-4" />
             <span>Open Dashboard</span>
           </Button>
         </motion.div>
 
-        {/* Bauhaus chart mockup */}
-        <motion.div initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} className="p-6 bg-background border-3 border-border flex flex-col gap-4 max-w-lg mx-auto w-full font-mono relative">
-          <div className="absolute -top-3 -right-3 w-6 h-6 bg-bauhaus-red border-2 border-border" />
-          <div className="flex items-center justify-between border-b-2 border-border pb-2">
-            <span className="text-xs font-bold text-text-primary uppercase tracking-wider">WPM — Last 7 Runs</span>
-            <span className="w-3 h-3 bg-accent border border-border" />
+        {/* Branded chart mockup */}
+        <motion.div 
+          initial={{ opacity: 0, x: 20 }} 
+          whileInView={{ opacity: 1, x: 0 }} 
+          viewport={{ once: true }} 
+          className="p-6 rounded-2xl border border-border bg-surface/50 backdrop-blur-sm shadow-xl hover:shadow-2xl hover:border-accent/30 transition-all duration-300 max-w-lg mx-auto w-full relative group"
+        >
+          {/* Inner glow */}
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+          
+          <div className="flex items-center justify-between border-b border-border/60 pb-4 mb-6 relative z-10">
+            <span className="text-xs font-semibold text-text-primary uppercase tracking-wider">WPM — Last 7 Runs</span>
+            <span className="w-2.5 h-2.5 bg-accent rounded-full animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.6)]" />
           </div>
-          <div className="h-44 bg-surface-accent border-2 border-border flex items-end justify-between p-4 gap-2 relative overflow-hidden">
-            <div className="absolute inset-0 grid grid-cols-6 grid-rows-4 pointer-events-none opacity-10">
-              {Array.from({ length: 6 }).map((_, i) => <div key={i} className="border-r border-b border-text-primary" />)}
+          
+          <div className="h-48 bg-surface-accent/20 rounded-xl flex items-end justify-between p-4 gap-3 relative overflow-hidden z-10 border border-border/40">
+            <div className="absolute inset-0 pointer-events-none opacity-[0.03]">
+              <svg width="100%" height="100%">
+                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                  <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="1"/>
+                </pattern>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+              </svg>
             </div>
+            
             {[10, 16, 24, 20, 28, 36].map((h, i) => (
-              <div
+              <motion.div
                 key={i}
-                className="w-full border-t border-x border-border z-10 bg-accent"
-                style={{ height: `${h * 4}px`, opacity: 0.2 + i * 0.12 }}
+                initial={{ height: 0 }}
+                whileInView={{ height: `${h * 4}px` }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6, delay: 0.1 + i * 0.1, type: 'spring' }}
+                className="w-full rounded-t-md relative group-hover:bg-accent/40 bg-accent/20 transition-colors"
               />
             ))}
-            <div className="w-full bg-accent h-36 border-2 border-border z-10 flex items-center justify-center text-xs text-white font-bold">96</div>
+            <motion.div 
+              initial={{ height: 0 }}
+              whileInView={{ height: '144px' }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.7, type: 'spring' }}
+              className="w-full rounded-t-md relative bg-gradient-to-t from-accent/80 to-accent shadow-glow flex items-center justify-center"
+            >
+              <span className="text-xs font-bold text-white font-mono absolute top-2">96</span>
+            </motion.div>
           </div>
-          <div className="flex justify-between text-xs text-text-secondary font-bold uppercase tracking-wider">
+          
+          <div className="flex justify-between text-[10px] text-text-tertiary font-medium uppercase tracking-wider mt-4 px-2 relative z-10">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Today'].map((d) => (
               <span key={d}>{d}</span>
             ))}

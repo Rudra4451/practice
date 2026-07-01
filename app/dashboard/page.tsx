@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
 import { useToastStore } from '@/stores/toast-store';
+import { motion } from 'framer-motion';
 
 const DashboardChart = dynamic(() => import('@/components/dashboard/dashboard-chart'), {
   ssr: false,
@@ -383,18 +384,18 @@ export default function Dashboard() {
         
         {/* Sync panel indicator for logging users with local buffers */}
         {session && guestHistory.length > 0 && (
-          <div className="p-4 bg-accent border-3 border-border text-background flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-5 bg-accent/5 border border-accent/25 text-text-primary rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <Database className="w-5 h-5 text-background" />
+              <Database className="w-5 h-5 text-accent" />
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-wider">Local runs detected</span>
-                <span className="text-xs uppercase font-bold opacity-80">You have {guestHistory.length} local practice tests to sync.</span>
+                <span className="text-xs uppercase font-bold opacity-80 mt-0.5">You have {guestHistory.length} local practice tests to sync.</span>
               </div>
             </div>
             <Button
               onClick={handleSyncHistory}
               disabled={syncing}
-              variant="secondary"
+              variant="primary"
               className="px-4 py-2"
             >
               {syncing ? 'Syncing...' : 'Sync History'}
@@ -404,12 +405,10 @@ export default function Dashboard() {
 
         {/* Guest Warning Card */}
         {!session && (
-          <div className="p-6 bg-surface-accent border-3 border-border flex flex-col sm:flex-row items-center justify-between gap-4 relative">
-            {/* Small red Bauhaus square decoration */}
-            <div className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-bauhaus-red border-2 border-border" />
+          <div className="p-6 bg-surface border border-border flex flex-col sm:flex-row items-center justify-between gap-4 relative rounded-xl shadow-sm">
             <div className="flex flex-col gap-1 text-center sm:text-left">
               <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary">Guest Session Active</h2>
-              <p className="text-xs font-bold uppercase tracking-wider text-text-secondary">Your runs are saved locally. Sign in to persist results, unlock leaderboards, and track long-term progress.</p>
+              <p className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-0.5">Your runs are saved locally. Sign in to persist results, unlock leaderboards, and track long-term progress.</p>
             </div>
             <Button
               href="/login"
@@ -423,13 +422,13 @@ export default function Dashboard() {
         )}
 
         {/* Main Title Header & Profile Action */}
-        <div className="flex flex-col gap-4 border-b-3 border-border pb-6 mb-2">
+        <div className="flex flex-col gap-4 border-b border-border/80 pb-6 mb-2">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-text-primary flex items-center gap-3">
+              <h1 className="text-3xl md:text-5xl font-extrabold uppercase tracking-tight text-text-primary flex items-center gap-3 font-sans">
                 <span>{session ? (profile?.display_name || profile?.username || 'Dashboard') : 'Dashboard'}</span>
                 {session && (
-                  <span className="text-[10px] md:text-xs font-mono font-bold text-text-secondary bg-surface-accent border border-border px-2 py-0.5 uppercase tracking-wider">
+                  <span className="text-[10px] md:text-xs font-mono font-bold text-text-secondary bg-surface-accent border border-border px-2 py-0.5 uppercase tracking-wider rounded-md">
                     @{profile?.username}
                   </span>
                 )}
@@ -443,13 +442,13 @@ export default function Dashboard() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsEditingProfile(!isEditingProfile)}
-                  className="px-4 py-2 border-3 border-border bg-surface hover:bg-surface-accent text-text-primary text-xs font-black uppercase tracking-widest transition-all cursor-pointer shadow-[3px_3px_0px_0px_var(--border)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-[0px_0px_0px_0px_var(--border)]"
+                  className="px-4 py-2 border border-border bg-surface hover:bg-surface-accent text-text-primary text-xs font-bold uppercase tracking-widest transition-all cursor-pointer rounded-lg shadow-xs hover:shadow-sm active:scale-[0.98]"
                 >
                   {isEditingProfile ? 'Cancel' : 'Edit Profile'}
                 </button>
                 <button
                   onClick={() => loadDashboardData()}
-                  className="p-2 border-3 border-border bg-surface hover:bg-surface-accent text-text-primary transition-all cursor-pointer shadow-[3px_3px_0px_0px_var(--border)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-[0px_0px_0px_0px_var(--border)]"
+                  className="p-2.5 border border-border bg-surface hover:bg-surface-accent text-text-primary transition-all cursor-pointer rounded-lg shadow-xs hover:shadow-sm active:scale-[0.98]"
                   title="Refresh Data"
                 >
                   <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
@@ -460,25 +459,25 @@ export default function Dashboard() {
 
           {/* Edit Profile Form */}
           {session && isEditingProfile && (
-            <form onSubmit={handleUpdateProfile} className="mt-2 p-5 bg-surface border-3 border-border shadow-[4px_4px_0px_0px_var(--border)] flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl animate-fade-in">
+            <form onSubmit={handleUpdateProfile} className="mt-2 p-5 bg-surface border border-border flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl rounded-xl shadow-md animate-fade-in">
               <div className="flex-1 flex flex-col gap-2">
-                <label className="text-xs font-black uppercase tracking-wider text-text-primary">Display Name</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-text-primary">Display Name</label>
                 <input
                   type="text"
                   value={newDisplayName}
                   onChange={(e) => setNewDisplayName(e.target.value)}
                   placeholder="Enter display name"
-                  className="w-full bg-background text-text-primary border-3 border-border px-3 py-2 text-xs font-bold uppercase tracking-wider outline-none focus:border-accent"
+                  className="w-full bg-background text-text-primary border border-border rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wider outline-none focus:border-accent focus:ring-1 focus:ring-accent/15"
                   maxLength={50}
                   required
                 />
               </div>
               <div className="flex-1 flex flex-col gap-2 opacity-65">
-                <label className="text-xs font-black uppercase tracking-wider text-text-primary flex items-center gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5">
                   <span>Username</span>
-                  <span className="text-[10px] text-bauhaus-red">(Locked)</span>
+                  <span className="text-[10px] text-rose-500">(Locked)</span>
                 </label>
-                <div className="w-full bg-surface-accent text-text-secondary border-3 border-border/60 px-3 py-2 text-xs font-bold uppercase tracking-wider select-none flex items-center justify-between">
+                <div className="w-full bg-surface-accent text-text-secondary border border-border/80 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wider select-none flex items-center justify-between">
                   <span>@{profile?.username}</span>
                   <span>🔒</span>
                 </div>
@@ -486,7 +485,7 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={updatingProfile}
-                className="px-6 py-2.5 border-3 border-border bg-accent text-black hover:bg-accent/90 text-xs font-black uppercase tracking-widest transition-all cursor-pointer disabled:opacity-50"
+                className="px-6 py-2.5 bg-accent border-transparent text-white hover:bg-accent/90 text-xs font-bold uppercase tracking-widest transition-all cursor-pointer rounded-lg shadow-sm shadow-accent/15 disabled:opacity-50"
               >
                 {updatingProfile ? 'Saving...' : 'Save Changes'}
               </button>
@@ -500,44 +499,51 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats Metrics Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <div className="p-6 bg-accent border-3 border-border flex flex-col text-background justify-between min-h-[100px]">
-            <span className="text-xs font-bold uppercase tracking-widest opacity-85">Top Speed</span>
-            <span className="text-2xl md:text-3xl font-black font-mono mt-2">{stats.bestWpm} WPM</span>
-          </div>
-          <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary justify-between min-h-[100px]">
+        {/* Stats Bento Grid */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, staggerChildren: 0.1 }}
+          className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"
+        >
+          <motion.div className="col-span-2 p-6 bg-accent/10 border border-accent/20 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <span className="text-xs font-bold uppercase tracking-widest text-accent z-10">Peak Performance</span>
+            <span className="text-4xl md:text-5xl font-black font-mono mt-2 text-text-primary z-10">{stats.bestWpm} <span className="text-lg opacity-50">WPM</span></span>
+          </motion.div>
+          <motion.div className="col-span-2 md:col-span-1 p-6 bg-surface/40 backdrop-blur-md border border-border/60 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
             <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Average Speed</span>
-            <span className="text-2xl md:text-3xl font-black font-mono mt-2">{stats.avgWpm} WPM</span>
-          </div>
-          <div className="p-6 bg-bauhaus-red border-3 border-border flex flex-col text-white justify-between min-h-[100px]">
-            <span className="text-xs font-bold uppercase tracking-widest opacity-85">Accuracy</span>
-            <span className="text-2xl md:text-3xl font-black font-mono mt-2">{stats.avgAccuracy}%</span>
-          </div>
-          <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary justify-between min-h-[100px]">
-            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Tests Run</span>
-            <span className="text-2xl md:text-3xl font-black font-mono mt-2">{stats.testsCompleted}</span>
-          </div>
-          <div className="p-6 bg-bauhaus-yellow border-3 border-border text-bauhaus-black flex flex-col justify-between min-h-[100px]">
-            <span className="text-xs font-bold uppercase tracking-widest opacity-85">Active Streak</span>
-            <div className="flex items-center gap-1.5 mt-2 text-bauhaus-black font-mono font-black text-2xl leading-none">
-              <Zap className="w-5 h-5 fill-current" />
-              <span>{streak.current} Days</span>
+            <span className="text-3xl font-black font-mono mt-2 text-text-primary">{stats.avgWpm} <span className="text-sm opacity-50">WPM</span></span>
+          </motion.div>
+          <motion.div className="col-span-2 md:col-span-1 p-6 bg-surface/40 backdrop-blur-md border border-border/60 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
+            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Accuracy</span>
+            <span className="text-3xl font-black font-mono mt-2 text-accent-secondary">{stats.avgAccuracy}%</span>
+          </motion.div>
+          <motion.div className="col-span-2 md:col-span-1 p-6 bg-surface/40 backdrop-blur-md border border-border/60 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
+            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Active Streak</span>
+            <div className="flex items-center gap-2 mt-2 text-text-primary font-mono font-black text-3xl">
+              <Zap className="w-6 h-6 text-warning fill-current drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+              <span>{streak.current}</span>
             </div>
-          </div>
-          <div className="p-6 bg-surface-accent border-3 border-border flex flex-col text-text-primary justify-between min-h-[100px]">
+          </motion.div>
+          <motion.div className="col-span-2 md:col-span-1 p-6 bg-surface/40 backdrop-blur-md border border-border/60 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
             <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Time Practiced</span>
-            <div className="flex items-center gap-1.5 mt-2 text-text-primary font-mono font-black text-2xl leading-none">
-              <Clock className="w-4 h-4 text-accent" />
+            <div className="flex items-center gap-2 mt-2 text-text-primary font-mono font-black text-xl">
+              <Clock className="w-5 h-5 text-accent opacity-80" />
               <span>{formatTotalTime(stats.totalTimeSecs)}</span>
             </div>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        {/* Recharts Progress Graph & Recent Runs */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
-          <div className="lg:col-span-2 p-6 bg-surface border-3 border-border flex flex-col min-h-[300px]">
-            <div className="flex items-center gap-2 border-b-2 border-border pb-4 mb-4">
+        {/* Recharts Progress Graph & Recent Runs (Bento Layer 2) */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="grid grid-cols-1 lg:grid-cols-3 gap-4 font-sans"
+        >
+          <div className="lg:col-span-2 p-6 bg-surface border border-border flex flex-col min-h-[300px] rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 border-b border-border/80 pb-4 mb-4">
               <ChartIcon className="w-4 h-4 text-accent" />
               <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Speed Trend · Last 30 Tests</span>
             </div>
@@ -555,8 +561,8 @@ export default function Dashboard() {
           </div>
 
           {/* Recent list block */}
-          <div className="p-6 bg-surface border-3 border-border flex flex-col gap-4">
-            <div className="flex items-center gap-2 border-b-2 border-border pb-4">
+          <div className="p-6 bg-surface border border-border flex flex-col gap-4 rounded-xl shadow-sm">
+            <div className="flex items-center gap-2 border-b border-border/80 pb-4">
               <Clock className="w-4 h-4 text-accent" />
               <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Recent Runs</span>
             </div>
@@ -569,7 +575,7 @@ export default function Dashboard() {
             ) : (
               <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
                 {history.slice(0, 5).map((run, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-3 bg-surface-accent border-2 border-border text-xs font-bold uppercase tracking-wider">
+                  <div key={idx} className="flex justify-between items-center p-3.5 bg-surface-accent/40 border border-border/80 text-xs font-bold uppercase tracking-wider rounded-lg hover:border-accent/30 transition-colors duration-200">
                     <div className="flex flex-col">
                       <span className="text-text-primary font-mono text-sm font-black">{run.wpm} WPM</span>
                       <span className="text-xs text-text-secondary uppercase mt-0.5">{run.mode} ({run.duration}s)</span>
@@ -585,11 +591,16 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Complete History Log */}
-        <div className="p-6 bg-surface border-3 border-border flex flex-col gap-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-border pb-4">
+        {/* Complete History Log (Bento Layer 3) */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="p-6 bg-surface/40 backdrop-blur-md border border-border/60 flex flex-col gap-6 rounded-2xl shadow-sm"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
             <div className="flex items-center gap-2.5">
               <Database className="w-5 h-5 text-accent" />
               <div className="flex flex-col">
@@ -604,7 +615,7 @@ export default function Dashboard() {
               <select
                 value={historySort}
                 onChange={(e) => setHistorySort(e.target.value)}
-                className="bg-background text-text-primary border-2 border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider outline-none cursor-pointer hover:bg-surface-accent transition-colors"
+                className="bg-background text-text-primary border border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider outline-none cursor-pointer hover:bg-surface-accent transition-colors rounded-lg shadow-xs"
               >
                 <option value="latest">Latest First</option>
                 <option value="oldest">Oldest First</option>
@@ -615,7 +626,7 @@ export default function Dashboard() {
           </div>
 
           {/* Filters Row */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 bg-surface-accent border-2 border-border/80">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 bg-surface-accent/30 border border-border rounded-xl">
             {/* Mode Filters */}
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
               <span className="text-xs font-bold uppercase tracking-widest text-text-secondary mr-1">Mode:</span>
@@ -623,9 +634,9 @@ export default function Dashboard() {
                 <button
                   key={m}
                   onClick={() => setHistoryMode(m)}
-                  className={`px-2.5 py-1.5 border-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 border text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer rounded-lg ${
                     historyMode === m
-                      ? 'bg-accent text-black border-border'
+                      ? 'bg-accent text-white border-transparent shadow-xs'
                       : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
                   }`}
                 >
@@ -641,9 +652,9 @@ export default function Dashboard() {
                 <button
                   key={d}
                   onClick={() => setHistoryDuration(d)}
-                  className={`px-2.5 py-1.5 border-2 text-[10px] font-black uppercase tracking-widest transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 border text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer rounded-lg ${
                     historyDuration === d
-                      ? 'bg-accent text-black border-border'
+                      ? 'bg-accent text-white border-transparent shadow-xs'
                       : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
                   }`}
                 >
@@ -655,7 +666,7 @@ export default function Dashboard() {
 
           {/* Table container */}
           {filteredHistory.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 text-center py-12 bg-background border-2 border-border/40">
+            <div className="flex flex-col items-center gap-2 text-center py-12 bg-background border border-border rounded-xl">
               <span className="text-2xl">⌨️</span>
               <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">No runs match the selected filters.</span>
             </div>
@@ -664,10 +675,10 @@ export default function Dashboard() {
               <div className="flex md:hidden items-center justify-end gap-1 text-[9px] font-black uppercase tracking-wider text-text-secondary/80 select-none pb-1 animate-pulse">
                 <span>← swipe table to see details →</span>
               </div>
-              <div className="overflow-x-auto border-2 border-border max-h-[350px] overflow-y-auto">
+              <div className="overflow-x-auto border border-border max-h-[350px] overflow-y-auto rounded-xl shadow-xs bg-surface">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b-2 border-border text-[10px] uppercase font-black text-text-primary tracking-widest bg-surface-accent sticky top-0 z-10">
+                    <tr className="border-b border-border text-[10px] uppercase font-bold text-text-primary tracking-widest bg-surface-accent sticky top-0 z-10">
                       <th className="py-2.5 px-3 w-10 text-center bg-surface-accent">#</th>
                       <th className="py-2.5 px-4 text-right bg-surface-accent">Speed</th>
                       <th className="py-2.5 px-4 text-right bg-surface-accent">Raw</th>
@@ -685,7 +696,7 @@ export default function Dashboard() {
                       return (
                         <tr
                           key={run.id || idx}
-                          className="border-b border-border/20 hover:bg-surface-accent/40 text-text-secondary hover:text-text-primary transition-colors"
+                          className="border-b border-border/40 hover:bg-surface-accent/25 text-text-secondary hover:text-text-primary transition-colors duration-200"
                         >
                           <td className="py-3 px-3 text-center text-text-secondary/65 font-mono font-bold text-[10px]">
                             {number}
@@ -724,7 +735,7 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-        </div>
+        </motion.div>
       </main>
     </div>
   );

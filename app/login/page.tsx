@@ -112,20 +112,22 @@ function LoginCard() {
   };
 
   return (
-    <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 border-3 border-border bg-surface relative">
-      {/* Bauhaus shapes corner decorations */}
-      <div className="absolute -top-3 -right-3 w-6 h-6 bg-bauhaus-red border-2 border-border rounded-full" />
-      <div className="absolute -bottom-3 -left-3 w-6 h-6 bg-bauhaus-yellow border-2 border-border" />
+    <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 bg-surface/30 backdrop-blur-md border border-border/60 rounded-2xl relative shadow-xl overflow-hidden">
+      {/* Background ambient lighting */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute -top-32 -left-32 w-64 h-64 bg-accent/20 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-warning/20 rounded-full blur-[100px]" />
+      </div>
 
       {/* Left Column: Login Form */}
-      <div className="p-8 border-b-3 md:border-b-0 md:border-r-3 border-border flex flex-col justify-center gap-6 font-sans">
+      <div className="p-10 border-b border-border/60 md:border-b-0 md:border-r flex flex-col justify-center gap-6 font-sans relative z-10">
         {/* Brand Header */}
-        <div className="flex flex-col items-center gap-3 text-center border-b-2 border-border pb-4">
-          <svg className="w-9 h-9 flex-shrink-0 text-text-primary" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div className="flex flex-col items-center gap-3 text-center border-b border-border/60 pb-6">
+          <svg className="w-10 h-10 flex-shrink-0 text-text-primary drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
-            <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
+            <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" className="drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
           </svg>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-text-primary">Join TYPROX</h1>
+          <h1 className="text-3xl font-black uppercase tracking-tight text-text-primary">Join TYPROX</h1>
           <div className="text-xs font-bold uppercase tracking-wider text-text-secondary flex flex-wrap justify-center gap-1.5 max-w-xs leading-normal">
             <span>Save records</span>
             <span className="opacity-80">·</span>
@@ -168,7 +170,7 @@ function LoginCard() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full pl-10 pr-4 py-3 bg-background border-2 border-border focus:border-accent text-sm font-bold transition-all focus:ring-0 outline-none text-text-primary"
+                className="w-full pl-10 pr-4 py-3 bg-surface/50 border border-border/80 focus:border-accent text-sm font-bold transition-all focus:ring-1 focus:ring-accent/20 focus:shadow-[0_0_15px_rgba(99,102,241,0.15)] outline-none text-text-primary rounded-xl"
               />
             </div>
           </div>
@@ -187,9 +189,9 @@ function LoginCard() {
         {/* Divider */}
         <div className="relative flex items-center justify-center py-2">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t-2 border-border" />
+            <div className="w-full border-t border-border/60" />
           </div>
-          <span className="relative px-3 bg-surface text-xs font-bold text-text-secondary uppercase tracking-widest">
+          <span className="relative px-3 bg-transparent backdrop-blur-md text-xs font-bold text-text-secondary uppercase tracking-widest">
             Or Continue With
           </span>
         </div>
@@ -240,16 +242,16 @@ function LoginCard() {
       </div>
 
       {/* Right Column: Premium Value Panel */}
-      <div className="p-8 bg-surface-accent flex flex-col justify-between gap-8 font-sans">
+      <div className="p-10 bg-surface-accent/20 flex flex-col justify-between gap-8 font-sans relative z-10 border-l border-border/40">
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-accent fill-current" />
+            <Zap className="w-5 h-5 text-accent fill-current drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
             <span className="text-xs font-black uppercase tracking-widest text-text-primary">Join the Community</span>
           </div>
-          <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight text-text-primary leading-tight text-left">
+          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-text-primary leading-tight text-left">
             Save Your Records.
           </h2>
-          <p className="text-xs text-text-secondary font-semibold leading-relaxed text-left">
+          <p className="text-sm text-text-secondary font-semibold leading-relaxed text-left">
             Become a part of the TyProX typing community to build your stats, test your skills, and see where you rank globally.
           </p>
 
@@ -262,9 +264,9 @@ function LoginCard() {
               { title: 'Compete globally', desc: 'Submit verified scores to the official rankings' }
             ].map((item, index) => (
               <div key={index} className="flex items-start gap-3">
-                <div className="w-5 h-5 bg-accent border border-border flex items-center justify-center text-xs text-white flex-shrink-0 mt-0.5">✔</div>
+                <div className="w-5 h-5 bg-accent/20 border border-accent/40 rounded-full flex items-center justify-center text-[10px] text-accent flex-shrink-0 mt-0.5 shadow-[0_0_10px_rgba(99,102,241,0.2)]">✔</div>
                 <div className="flex flex-col">
-                  <span className="leading-none">{item.title}</span>
+                  <span className="leading-none text-text-primary">{item.title}</span>
                   <span className="text-xs text-text-secondary mt-1 font-semibold normal-case">{item.desc}</span>
                 </div>
               </div>
@@ -273,10 +275,13 @@ function LoginCard() {
         </div>
 
         {/* Mini Mock Stats Grid */}
-        <div className="p-4 bg-background border-3 border-border flex flex-col gap-3 text-left">
-          <div className="flex justify-between items-center border-b border-border/20 pb-1.5">
+        <div className="p-5 bg-surface/50 border border-border/60 rounded-xl flex flex-col gap-3 text-left shadow-sm">
+          <div className="flex justify-between items-center border-b border-border/40 pb-2">
             <span className="text-xs font-black uppercase tracking-widest text-text-primary">Simulated Profile</span>
-            <span className="text-xs font-bold text-accent uppercase tracking-widest">Active</span>
+            <span className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              Active
+            </span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[

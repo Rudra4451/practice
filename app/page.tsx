@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, Variants } from 'framer-motion';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
+import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { ArrowRight, BarChart2, Trophy, ShieldCheck, Keyboard, User } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -12,392 +13,97 @@ const ComparisonSection = dynamic(() => import('@/components/home/comparison'), 
 const AnalyticsSection = dynamic(() => import('@/components/home/analytics'), { ssr: true });
 const AchievementsSection = dynamic(() => import('@/components/home/achievements'), { ssr: true });
 const FAQSection = dynamic(() => import('@/components/home/faq'), { ssr: true });
+import { Hero3D } from '@/components/home/hero-3d';
 
-const TargetSentence = "the fastest way to improve speed is through consistent daily practice.";
+const stagger: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
+  },
+};
 
-function LiveProductPreview() {
-  const [typedText, setTypedText] = useState("");
-  const [wpm, setWpm] = useState(0);
-  const [accuracy, setAccuracy] = useState(100);
-  const [timeLeft, setTimeLeft] = useState(30);
+const fadeUp: Variants = {
+  hidden: { y: 20, opacity: 0 },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: { type: 'spring', stiffness: 300, damping: 28 },
+  },
+};
 
-  useEffect(() => {
-    let active = true;
-    let timer: ReturnType<typeof setTimeout>;
-    
-    const target = TargetSentence;
-    let currentTyped = "";
-    
-    const steps: Array<() => void> = [];
-
-    // Programmatically generate typing timeline with mistake/correction steps
-    for (let i = 0; i < target.length; i++) {
-      const char = target[i];
-      
-      // Simulate a typo at 's' in 'consistent' (index 44) by typing 'z'
-      if (i === 44) {
-        steps.push(() => {
-          currentTyped += "z";
-          setTypedText(currentTyped);
-          setAccuracy(95);
-          setWpm(Math.round(85 + Math.random() * 10));
-        });
-        steps.push(() => {}); // Pause frame
-        steps.push(() => {
-          currentTyped = currentTyped.slice(0, -1);
-          setTypedText(currentTyped);
-        });
-        steps.push(() => {
-          currentTyped += char;
-          setTypedText(currentTyped);
-          setAccuracy(100);
-          setWpm(Math.round(92 + Math.random() * 8));
-        });
-      } else {
-        steps.push(() => {
-          currentTyped += char;
-          setTypedText(currentTyped);
-          const progress = i / target.length;
-          const targetWpm = Math.round(75 + progress * 35 + Math.random() * 8);
-          setWpm(targetWpm);
-          if (i % 10 === 0) {
-            setTimeLeft(prev => Math.max(15, prev - 1));
-          }
-        });
-      }
-    }
-    
-    // Final completion frame
-    steps.push(() => {});
-
-    let currentStep = 0;
-    
-    function runNext() {
-      if (!active) return;
-      if (currentStep >= steps.length) {
-        timer = setTimeout(() => {
-          currentTyped = "";
-          currentStep = 0;
-          setTypedText("");
-          setWpm(0);
-          setAccuracy(100);
-          setTimeLeft(30);
-          runNext();
-        }, 2500);
-        return;
-      }
-      
-      steps[currentStep]();
-      currentStep++;
-      
-      const baseDelay = 110;
-      const jitter = Math.random() * 60 - 30;
-      let delay = baseDelay + jitter;
-      
-      if (currentStep === 45 || currentStep === 46) {
-        delay = 240; // pause for typing error and backspace correction
-      }
-      
-      timer = setTimeout(runNext, delay);
-    }
-
-    runNext();
-
-    return () => {
-      active = false;
-      clearTimeout(timer);
-    };
-  }, []);
-
-  return (
-    <div className="border-3 border-border bg-surface p-4 md:p-6 font-mono shadow-[6px_6px_0px_0px_var(--accent)] relative w-full text-left transform-gpu hover:-translate-y-1 hover:shadow-[8px_8px_0px_0px_var(--accent)] transition-all duration-300">
-      {/* Configuration row */}
-      <div className="flex items-center justify-between border-b-2 border-border pb-3 mb-4 text-xs uppercase font-bold text-text-secondary">
-        <div className="flex items-center gap-2">
-          <span className="px-2 py-0.5 border border-border bg-surface-accent text-accent font-black">words</span>
-          <span className="opacity-80 hidden md:inline">/</span>
-          <span className="hidden md:inline">30s</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-emerald-500 rounded-full animate-pulse" />
-          <span className="text-[10px] md:text-xs">LIVE PREVIEW</span>
-        </div>
-      </div>
-
-      {/* Live Stats display */}
-      <div className="grid grid-cols-3 border-3 border-border bg-surface-accent py-2 text-center mb-4">
-        <div className="border-r border-border">
-          <span className="block text-[10px] md:text-xs font-bold text-text-secondary uppercase">Time</span>
-          <span className="text-xs md:text-sm font-black text-accent">{timeLeft}s</span>
-        </div>
-        <div className="border-r border-border">
-          <span className="block text-[10px] md:text-xs font-bold text-text-secondary uppercase">WPM</span>
-          <span className="text-xs md:text-sm font-black text-text-primary">{wpm || "--"}</span>
-        </div>
-        <div>
-          <span className="block text-[10px] md:text-xs font-bold text-text-secondary uppercase">Accuracy</span>
-          <span className="text-xs md:text-sm font-black text-text-primary">{typedText ? `${accuracy}%` : "--"}</span>
-        </div>
-      </div>
-
-      {/* Typing viewport */}
-      <div className="relative text-xs md:text-sm font-medium leading-relaxed min-h-[70px] md:min-h-[90px]">
-        {TargetSentence.split("").map((char, i) => {
-          let charClass = "text-text-secondary opacity-80";
-          
-          if (i < typedText.length) {
-            const typedChar = typedText[i];
-            if (typedChar === char) {
-              charClass = "text-text-primary font-bold";
-            } else {
-              charClass = "text-error border-b-2 border-error font-bold";
-            }
-          }
-          
-          const isCaret = i === typedText.length;
-          
-          return (
-            <span key={i} className={`relative ${charClass}`}>
-              {isCaret && (
-                <span className="absolute -left-[1px] top-0 bottom-0 border-l-2 border-accent animate-caret h-full" />
-              )}
-              {char}
-            </span>
-          );
-        })}
-        {typedText.length === TargetSentence.length && (
-          <span className="absolute border-l-2 border-accent animate-caret" style={{ marginLeft: "1px" }}>&nbsp;</span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Reusable animated counter component
-function Counter({ from, to, duration = 2 }: { from: number, to: number, duration?: number }) {
-  const [count, setCount] = useState(from);
-  const nodeRef = React.useRef<HTMLSpanElement>(null);
-  const inView = useInView(nodeRef as any, { once: true, margin: "-50px" });
-
-  useEffect(() => {
-    if (!inView) return;
-    let startTime: number | null = null;
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
-      const progress = Math.min((timestamp - startTime) / (duration * 1000), 1);
-      // easeOutExpo
-      const easeProgress = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-      setCount(Math.floor(from + (to - from) * easeProgress));
-      if (progress < 1) {
-        requestAnimationFrame(animate);
-      } else {
-        setCount(to);
-      }
-    };
-    requestAnimationFrame(animate);
-  }, [inView, from, to, duration]);
-
-  return <span ref={nodeRef}>{count.toLocaleString('en-US')}</span>;
-}
+const features = [
+  {
+    icon: BarChart2,
+    title: 'Track Your Growth',
+    description: 'See your speed, accuracy, and consistency improve over time with detailed historical charts.',
+    color: 'text-accent',
+    bg: 'bg-accent/8',
+  },
+  {
+    icon: Trophy,
+    title: 'Climb the Leaderboard',
+    description: 'Compete against typists worldwide. Every rank is earned, every score is verified.',
+    color: 'text-accent-secondary',
+    bg: 'bg-accent-secondary/8',
+  },
+  {
+    icon: ShieldCheck,
+    title: 'Build Consistency',
+    description: 'Eliminate common mistakes. View accuracy telemetry to perfect your rhythm.',
+    color: 'text-success',
+    bg: 'bg-success/8',
+  },
+  {
+    icon: Keyboard,
+    title: 'Master Real-World Typing',
+    description: 'Train with words, quotes, code, and punctuation for real-world programming and writing.',
+    color: 'text-error',
+    bg: 'bg-error/8',
+  },
+];
 
 export default function Home() {
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.08, delayChildren: 0.05 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 16, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { type: 'spring' as const, stiffness: 320, damping: 26 },
-    },
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
 
-      {/* ── Hero ── */}
-      <section className="relative overflow-hidden py-12 md:py-20 lg:py-32 px-4 md:px-6 flex flex-col justify-center border-b-3 border-border bg-background">
-        
-        {/* Subtle grid pattern background with slow animated drift */}
-        <motion.div 
-          animate={{ x: [0, -10, 0], y: [0, -5, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 pointer-events-none z-0 overflow-hidden opacity-[0.1] dark:opacity-[0.15]"
-        >
-          <svg className="absolute inset-x-0 -inset-y-5 w-full h-[110%] stroke-border [mask-image:radial-gradient(100%_100%_at_top_center,white,transparent)]" aria-hidden="true">
-            <defs>
-              <pattern id="grid-pattern" width="40" height="40" patternUnits="userSpaceOnUse" x="50%">
-                <path d="M.5 40V.5H40" fill="none" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid-pattern)" />
-          </svg>
-        </motion.div>
-
-        <div className="max-w-7xl mx-auto w-full z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12 items-center">
-          {/* Left Column: Headline and CTAs */}
-          <motion.div 
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="lg:col-span-7 flex flex-col items-center lg:items-start text-center lg:text-left gap-6 md:gap-8"
-          >
-            {/* Title */}
-            <motion.h1
-              variants={itemVariants}
-              className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tighter uppercase leading-[0.9] text-text-primary"
-            >
-              The Fastest Way <br className="hidden sm:inline" />
-              to Improve <br className="hidden sm:inline" />
-              Your Typing
-              <span className="inline-block w-2.5 h-8 md:h-10 lg:h-12 bg-accent ml-2 animate-caret align-middle" />
-            </motion.h1>
-
-            {/* Subtitle */}
-            <motion.p
-              variants={itemVariants}
-              className="max-w-xl text-sm sm:text-base md:text-lg text-text-secondary font-semibold leading-relaxed"
-            >
-              Track speed, accuracy, consistency, and progress with a distraction-free typing platform built for serious improvement.
-            </motion.p>
-
-            {/* CTAs */}
-            <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto justify-center lg:justify-start">
-              <Button href="/typing" variant="primary" className="px-8 py-4 w-full sm:w-auto flex justify-center shadow-[4px_4px_0px_0px_rgba(var(--text-primary),0.2)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
-                <span className="font-black tracking-wider text-sm">Start Typing</span>
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-              <Button href="/leaderboard" variant="secondary" className="px-8 py-4 w-full sm:w-auto flex justify-center">
-                <span className="font-bold tracking-wider text-sm">View Leaderboard</span>
-              </Button>
-            </motion.div>
-            
-            {/* Social Proof Badges under CTA for mobile prominence */}
-            <motion.div variants={itemVariants} className="flex items-center gap-4 mt-2 justify-center lg:justify-start">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-background bg-surface-accent flex items-center justify-center overflow-hidden">
-                    <User className="w-4 h-4 text-text-secondary" />
-                  </div>
-                ))}
-              </div>
-              <div className="text-xs font-bold text-text-secondary uppercase tracking-widest text-left">
-                Join <span className="text-accent">142,000+</span> typists<br/>
-                improving daily
-              </div>
-            </motion.div>
-          </motion.div>
-
-          {/* Right Column: Live Product Preview Showcase */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.7 }}
-            className="lg:col-span-5 flex flex-col gap-2 w-full max-w-md mx-auto lg:max-w-none mt-4 lg:mt-0"
-          >
-            <div className="flex items-center justify-between px-1 text-[10px] md:text-xs font-bold uppercase tracking-widest text-text-secondary">
-              <span>LIVE PREVIEW</span>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 md:w-2.5 md:h-2.5 bg-emerald-500 rounded-full animate-pulse" />
-                <span>Online</span>
-              </div>
-            </div>
-            
-            <LiveProductPreview />
-          </motion.div>
-        </div>
-      </section>
-
-      {/* ── Social Proof / Global Stats ── */}
-      <section className="py-12 border-b-3 border-border bg-surface-accent relative z-10">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 text-center divide-x-0 md:divide-x-2 divide-border">
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="flex flex-col gap-1">
-              <span className="text-3xl md:text-4xl font-black text-text-primary font-mono"><Counter from={0} to={142592} duration={2} /></span>
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-text-secondary">Tests Completed</span>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="flex flex-col gap-1">
-              <span className="text-3xl md:text-4xl font-black text-accent font-mono"><Counter from={0} to={58.4} duration={2} />M</span>
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-text-secondary">Words Typed</span>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="flex flex-col gap-1">
-              <span className="text-3xl md:text-4xl font-black text-text-primary font-mono">+<Counter from={0} to={24} duration={2} />%</span>
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-text-secondary">Avg. WPM Improvement</span>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }} className="flex flex-col gap-1">
-              <span className="text-3xl md:text-4xl font-black text-text-primary font-mono"><Counter from={0} to={99} duration={2} />.9%</span>
-              <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-text-secondary">Uptime Reliability</span>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+      <Hero3D />
 
       {/* ── Feature Cards ── */}
-      <section id="features" className="py-20 md:py-24 px-4 md:px-6 border-b-3 border-border bg-background">
-        <div className="max-w-7xl mx-auto">
+      <section id="features" className="py-20 md:py-28 px-4 md:px-6">
+        <div className="max-w-6xl mx-auto">
           <motion.div 
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            className="text-center max-w-2xl mx-auto mb-16 flex flex-col gap-3"
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-xl mx-auto mb-14 flex flex-col gap-3"
           >
-            <span className="text-xs font-bold text-accent uppercase tracking-widest">Features</span>
-            <h2 className="text-3xl sm:text-5xl font-black tracking-tight uppercase text-text-primary">Build Real Typing Mastery</h2>
-            <div className="w-16 h-2 bg-accent mx-auto mt-1" />
-            <p className="text-sm md:text-base text-text-secondary font-semibold leading-relaxed mt-1">
-              TyProX is designed to give you the exact tools you need to track speed, analyze consistency, and rank up.
+            <span className="text-xs font-semibold text-accent uppercase tracking-wider">Core Capabilities</span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-text-primary font-display">Build Real Typing Mastery</h2>
+            <p className="text-sm text-text-secondary leading-relaxed">
+              TyProX gives you the tools to track speed, analyze consistency, and rank up.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Card 1 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="p-6 bg-background border-3 border-border flex flex-col gap-4 hover:bg-bauhaus-red/5 hover:-translate-y-2 hover:shadow-[6px_6px_0px_0px_rgba(229,57,53,1)] transition-all duration-300">
-              <div className="w-10 h-10 bg-bauhaus-red border-2 border-border flex items-center justify-center text-white flex-shrink-0">
-                <BarChart2 className="w-5 h-5" />
-              </div>
-              <div className="flex flex-col gap-1.5 text-left">
-                <h3 className="text-base font-bold uppercase tracking-tight text-text-primary">Track Your Growth</h3>
-                <p className="text-xs text-text-secondary leading-relaxed font-semibold">See your speed, accuracy, and consistency improve over time with detailed historical charts.</p>
-              </div>
-            </motion.div>
-
-            {/* Card 2 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="p-6 bg-background border-3 border-border flex flex-col gap-4 hover:bg-bauhaus-yellow/5 hover:-translate-y-2 hover:shadow-[6px_6px_0px_0px_rgba(253,216,53,1)] transition-all duration-300">
-              <div className="w-10 h-10 bg-bauhaus-yellow border-2 border-border flex items-center justify-center text-text-primary flex-shrink-0">
-                <Trophy className="w-5 h-5 fill-current" />
-              </div>
-              <div className="flex flex-col gap-1.5 text-left">
-                <h3 className="text-base font-bold uppercase tracking-tight text-text-primary">Climb the Leaderboard</h3>
-                <p className="text-xs text-text-secondary leading-relaxed font-semibold">Compete against typists from around the world. Every rank is earned, and every score is verified.</p>
-              </div>
-            </motion.div>
-
-            {/* Card 3 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="p-6 bg-background border-3 border-border flex flex-col gap-4 hover:bg-text-primary/5 hover:-translate-y-2 hover:shadow-[6px_6px_0px_0px_var(--text-primary)] transition-all duration-300">
-              <div className="w-10 h-10 bg-text-primary border-2 border-border flex items-center justify-center text-white flex-shrink-0">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div className="flex flex-col gap-1.5 text-left">
-                <h3 className="text-base font-bold uppercase tracking-tight text-text-primary">Build Consistency</h3>
-                <p className="text-xs text-text-secondary leading-relaxed font-semibold">Practice smarter and eliminate common mistakes. View accuracy telemetry to perfect your rhythm.</p>
-              </div>
-            </motion.div>
-
-            {/* Card 4 */}
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.3 }} className="p-6 bg-background border-3 border-border flex flex-col gap-4 hover:bg-accent/5 hover:-translate-y-2 hover:shadow-[6px_6px_0px_0px_var(--accent)] transition-all duration-300">
-              <div className="w-10 h-10 bg-accent border-2 border-border flex items-center justify-center text-white flex-shrink-0">
-                <Keyboard className="w-5 h-5" />
-              </div>
-              <div className="flex flex-col gap-1.5 text-left">
-                <h3 className="text-base font-bold uppercase tracking-tight text-text-primary">Master Real-World Typing</h3>
-                <p className="text-xs text-text-secondary leading-relaxed font-semibold">Train with words, quotes, code, and punctuation. Prepare yourself for real-world programming and writing.</p>
-              </div>
-            </motion.div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {features.map((feat, i) => (
+              <motion.div
+                key={feat.title}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.08 }}
+                className="group p-6 rounded-3xl border border-border/60 bg-surface/30 backdrop-blur-md hover:-translate-y-1 hover:shadow-glow hover:border-accent/40 transition-all duration-300 relative overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className={`w-12 h-12 ${feat.bg} ${feat.color} rounded-xl flex items-center justify-center mb-5 relative z-10 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]`}>
+                  <feat.icon className="w-6 h-6 drop-shadow-md" />
+                </div>
+                <h3 className="text-sm font-bold text-text-primary mb-2 relative z-10 tracking-wide">{feat.title}</h3>
+                <p className="text-xs text-text-secondary leading-relaxed relative z-10">{feat.description}</p>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -408,65 +114,60 @@ export default function Home() {
       <AchievementsSection />
 
       {/* ── Testimonials ── */}
-      <section className="py-20 md:py-24 px-4 md:px-6 border-b-3 border-border bg-surface-accent">
-        <div className="max-w-7xl mx-auto">
+      <section className="py-20 md:py-28 px-4 md:px-6 border-t border-border">
+        <div className="max-w-5xl mx-auto">
           <motion.div 
-            initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-            className="text-center max-w-2xl mx-auto mb-16 flex flex-col gap-3"
+            initial={{ opacity: 0, y: 12 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center max-w-xl mx-auto mb-14 flex flex-col gap-3"
           >
-            <span className="text-xs font-bold text-accent uppercase tracking-widest">Community</span>
-            <h2 className="text-3xl sm:text-5xl font-black tracking-tight uppercase text-text-primary">From the Typists</h2>
-            <div className="w-16 h-2 bg-accent mx-auto mt-1" />
+            <span className="text-xs font-semibold text-accent uppercase tracking-wider">Community</span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-text-primary font-display">From the Typists</h2>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-3 border-border max-w-5xl mx-auto shadow-[8px_8px_0px_0px_var(--border)]">
-            <motion.div 
-              initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
-              className="p-8 md:p-10 bg-background border-b-3 md:border-b-0 md:border-r-3 border-border flex flex-col justify-between gap-8 relative overflow-hidden"
-            >
-              <div className="absolute -top-3 -right-3 w-8 h-8 bg-text-primary border-2 border-border transform rotate-12" />
-              <p className="text-base md:text-lg text-text-primary italic font-semibold leading-relaxed relative z-10">
-                "The zero-lag input is immediately noticeable coming from other platforms. There's no stutter when I'm at full speed — it just keeps up. The dashboard insights completely changed how I practice."
-              </p>
-              <div className="flex items-center gap-4 border-t-2 border-border pt-6 mt-4">
-                <div className="w-12 h-12 rounded-none border-2 border-border bg-accent/20 flex items-center justify-center">
-                  <User className="w-6 h-6 text-accent" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[
+              {
+                quote: "The zero-lag input is immediately noticeable coming from other platforms. There's no stutter when I'm at full speed — it just keeps up. The dashboard insights completely changed how I practice.",
+                name: "Alex M.",
+                role: "Software Engineer",
+                improvement: "90 → 142 WPM",
+              },
+              {
+                quote: "The replay feature is the one thing I didn't know I needed. Watching my rhythm collapse mid-test showed me exactly what to practice. I've gained 30 WPM in just two months.",
+                name: "Sarah C.",
+                role: "Data Analyst",
+                improvement: "88 → 118 WPM",
+              },
+            ].map((t, i) => (
+              <motion.div
+                key={t.name}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="p-8 rounded-3xl border border-border/60 bg-surface/30 backdrop-blur-md flex flex-col justify-between gap-6 shadow-sm relative overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[50px] rounded-full pointer-events-none" />
+                <p className="text-base text-text-primary leading-relaxed italic">
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+                <div className="flex items-center gap-3 pt-4 border-t border-border/60">
+                  <div className="w-10 h-10 rounded-full bg-accent/10 text-accent flex items-center justify-center flex-shrink-0">
+                    <User className="w-5 h-5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-text-primary">{t.name}</span>
+                    <span className="text-xs text-text-tertiary">{t.role}</span>
+                  </div>
+                  <div className="ml-auto text-right">
+                    <span className="text-xs text-text-tertiary block">Improvement</span>
+                    <span className="text-sm font-bold text-success font-mono">{t.improvement}</span>
+                  </div>
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Alex M.</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Software Engineer</span>
-                </div>
-                <div className="ml-auto text-right flex flex-col items-end">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Improvement</span>
-                  <span className="text-sm font-black text-emerald-500 font-mono">90 → 142 WPM</span>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}
-              className="p-8 md:p-10 bg-background flex flex-col justify-between gap-8 relative overflow-hidden"
-            >
-              <div className="absolute -bottom-3 -right-3 w-8 h-8 bg-bauhaus-yellow border-2 border-border flex items-center justify-center transform -rotate-12">
-                <span className="text-bauhaus-black font-black text-xs">★</span>
-              </div>
-              <p className="text-base md:text-lg text-text-primary italic font-semibold leading-relaxed relative z-10">
-                "The replay feature is the one thing I didn't know I needed. Watching my rhythm collapse mid-test showed me exactly what to practice. I've gained 30 WPM in just two months."
-              </p>
-              <div className="flex items-center gap-4 border-t-2 border-border pt-6 mt-4">
-                <div className="w-12 h-12 rounded-none border-2 border-border bg-bauhaus-yellow/20 flex items-center justify-center">
-                  <User className="w-6 h-6 text-bauhaus-yellow" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Sarah C.</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Data Analyst</span>
-                </div>
-                <div className="ml-auto text-right flex flex-col items-end">
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">Improvement</span>
-                  <span className="text-sm font-black text-emerald-500 font-mono">88 → 118 WPM</span>
-                </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            ))}
           </div>
         </div>
       </section>
@@ -474,18 +175,18 @@ export default function Home() {
       <FAQSection />
 
       {/* ── Footer ── */}
-      <footer className="mt-auto border-t-3 border-border py-10 px-4 md:px-6 bg-background text-xs font-bold uppercase tracking-wider text-text-secondary">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5 flex-shrink-0 text-text-primary" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
-              <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
+      <footer className="mt-auto border-t border-border py-8 px-4 md:px-6 bg-background">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2.5">
+            <svg className="w-5 h-5 text-text-primary" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="font-sans font-bold text-text-primary text-base tracking-tighter">TyProX</span>
-            <span className="text-text-secondary">© 2026</span>
+            <span className="font-display font-semibold text-text-primary text-sm">TyProX</span>
+            <span className="text-text-tertiary text-xs">© 2026</span>
           </div>
 
-          <div className="flex gap-8">
+          <div className="flex gap-6 text-xs font-medium text-text-secondary">
             <Link href="/typing" className="hover:text-text-primary transition-colors">Practice</Link>
             <Link href="/leaderboard" className="hover:text-text-primary transition-colors">Leaderboard</Link>
             <Link href="/dashboard" className="hover:text-text-primary transition-colors">Dashboard</Link>

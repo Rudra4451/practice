@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/stores/user-store';
 import { Sun, Moon, Zap, User, Menu, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -245,108 +246,99 @@ export const Navbar: React.FC = () => {
     router.refresh();
   };
 
+  const navItems = [
+    { href: '/typing', label: 'Practice', isActive: isActive('/typing') },
+    { href: '/leaderboard', label: 'Leaderboards', isActive: isActive('/leaderboard') },
+    { href: '/dashboard', label: 'Dashboard', isActive: isActive('/dashboard') && !pathname.endsWith('/performance-lab') },
+    { href: '/dashboard/performance-lab', label: 'Performance Lab', isActive: pathname === '/dashboard/performance-lab' },
+  ];
+
   return (
-    <header className="sticky top-0 z-50 w-full bg-background border-b-3 border-border">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between relative">
+    <header
+      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
+        scrolled
+          ? 'bg-background/80 backdrop-blur-xl border-b border-border shadow-sm'
+          : 'bg-background/50 backdrop-blur-md border-b border-transparent'
+      }`}
+    >
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
         
-        {/* Left Side: Brand Logo & Online Counter */}
-        <div className="flex items-center gap-4">
-          <Link href="/" className="flex items-center gap-3 group">
-            <svg className="w-7 h-7 flex-shrink-0 text-text-primary transition-transform duration-150 group-hover:scale-105" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
-              <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
+        {/* Left: Logo & Online Counter */}
+        <div className="flex items-center gap-3">
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <svg className="w-6 h-6 flex-shrink-0 text-text-primary transition-transform duration-200 group-hover:scale-110" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <span className="font-sans font-bold text-lg md:text-xl tracking-tighter uppercase text-text-primary">
+            <span className="font-display font-bold text-lg tracking-tight text-text-primary">
               TyProX
             </span>
           </Link>
 
-          {/* Live Online Badge - Desktop */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 border border-border bg-surface-accent text-[10px] font-black uppercase tracking-wider text-text-secondary select-none">
+          {/* Online Counter */}
+          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-text-tertiary select-none">
             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className={`inline-block transition-all duration-300 ${pulse ? 'scale-110 text-emerald-500 font-bold' : 'scale-100'}`}>
-              {onlineCount} Online
+            <span className={`font-mono tabular-nums transition-all duration-300 ${pulse ? 'text-emerald-500' : ''}`}>
+              {onlineCount}
             </span>
-          </div>
-
-          {/* Live Online Badge - Mobile */}
-          <div className="flex lg:hidden items-center gap-1 px-1.5 py-0.5 border border-border bg-surface-accent text-[8px] font-black uppercase tracking-wider text-text-secondary select-none">
-            <span className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
-            <span className={`inline-block transition-all duration-300 ${pulse ? 'scale-110 text-emerald-500 font-bold' : 'scale-100'}`}>
-              {onlineCount} Live
-            </span>
+            <span>online</span>
           </div>
         </div>
 
-        {/* Center: Desktop Menu (Floating Neobrutalist Pill) */}
-        <nav className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center h-10 border-2 border-border bg-surface shadow-[3px_3px_0px_0px_var(--border)] overflow-hidden text-xs font-bold uppercase tracking-wider">
-          <Link
-            href="/typing"
-            className={`h-full px-5 flex items-center border-r-2 border-border transition-colors duration-150 ${
-              isActive('/typing')
-                ? 'text-accent bg-surface-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
-            }`}
-          >
-            Practice
-          </Link>
-          <Link
-            href="/leaderboard"
-            className={`h-full px-5 flex items-center border-r-2 border-border transition-colors duration-150 ${
-              isActive('/leaderboard')
-                ? 'text-accent bg-surface-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
-            }`}
-          >
-            Leaderboards
-          </Link>
-          <Link
-            href="/dashboard"
-            className={`h-full px-5 flex items-center border-r-2 border-border transition-colors duration-150 ${
-              isActive('/dashboard') && !pathname.endsWith('/performance-lab')
-                ? 'text-accent bg-surface-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
-            }`}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/dashboard/performance-lab"
-            className={`h-full px-5 flex items-center transition-colors duration-150 ${
-              isActive('/dashboard/performance-lab')
-                ? 'text-accent bg-surface-accent'
-                : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
-            }`}
-          >
-            Performance Lab
-          </Link>
+        {/* Center: Desktop Nav */}
+        <nav className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center h-9 bg-surface-accent/60 rounded-full p-0.5 gap-0.5">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`relative h-full px-4 flex items-center rounded-full text-[13px] font-medium transition-colors duration-200 ${
+                item.isActive
+                  ? 'text-text-primary'
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {item.isActive && (
+                <motion.div
+                  layoutId="nav-active"
+                  className="absolute inset-0 bg-surface rounded-full shadow-sm border border-border/60"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className="relative z-10">{item.label}</span>
+            </Link>
+          ))}
         </nav>
 
-        {/* Right Side: Options & Auth */}
-        <div className="hidden md:flex items-center gap-3">
-          {/* Theme switcher */}
+        {/* Right: Actions */}
+        <div className="hidden md:flex items-center gap-2">
           <button
             onClick={toggleTheme}
-            className="p-2 text-text-primary hover:bg-accent hover:text-black border-3 border-border transition-all cursor-pointer"
+            className="p-2 text-text-secondary hover:text-text-primary hover:bg-surface-accent rounded-xl transition-all duration-200 cursor-pointer"
             aria-label="Toggle theme"
           >
-            {preferences.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            <motion.div
+              key={preferences.theme}
+              initial={{ rotate: -90, opacity: 0 }}
+              animate={{ rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.2 }}
+            >
+              {preferences.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </motion.div>
           </button>
 
-          {/* User auth layout */}
           {session ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button
                 href="/dashboard"
-                variant="secondary"
-                className="px-4 py-2"
+                variant="ghost"
+                className="px-3 py-1.5 text-[13px]"
               >
                 <User className="w-3.5 h-3.5" />
                 <span>{profile?.username || 'Profile'}</span>
               </Button>
               <button
                 onClick={handleLogout}
-                className="text-xs font-bold uppercase tracking-wider text-text-secondary hover:text-error transition-colors cursor-pointer"
+                className="text-[13px] font-medium text-text-tertiary hover:text-error transition-colors cursor-pointer px-2 py-1"
               >
                 Sign Out
               </button>
@@ -355,111 +347,101 @@ export const Navbar: React.FC = () => {
             <Button
               href="/login"
               variant="primary"
-              className="px-5 py-2"
+              className="px-4 py-1.5 text-[13px]"
             >
               Sign In
             </Button>
           )}
         </div>
 
-        {/* Mobile Hamburger Trigger */}
-        <div className="flex items-center gap-2 md:hidden">
+        {/* Mobile: Theme + Hamburger */}
+        <div className="flex items-center gap-1.5 md:hidden">
           <button
             onClick={toggleTheme}
-            className="p-2 text-text-primary border-3 border-border"
+            className="p-2 text-text-secondary hover:text-text-primary rounded-xl transition-colors"
+            aria-label="Toggle theme"
           >
             {preferences.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
+
+          {/* Online - mobile */}
+          <div className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-text-tertiary">
+            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+            <span className="font-mono tabular-nums">{onlineCount}</span>
+          </div>
+
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-text-primary border-3 border-border"
+            className="p-2 text-text-primary hover:bg-surface-accent rounded-xl transition-colors"
+            aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu Dropdown */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t-2 border-border bg-background px-6 py-6 flex flex-col gap-4 animate-fade-in text-sm font-bold uppercase tracking-wider">
-          <Link
-            href="/typing"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`pb-2 px-3 py-1.5 border-3 transition-all duration-150 ${
-              isActive('/typing')
-                ? 'text-accent bg-surface-accent border-accent'
-                : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-surface-accent/50'
-            }`}
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl px-4 py-5 flex flex-col gap-2"
           >
-            Practice
-          </Link>
-          <Link
-            href="/leaderboard"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`pb-2 px-3 py-1.5 border-3 transition-all duration-150 ${
-              isActive('/leaderboard')
-                ? 'text-accent bg-surface-accent border-accent'
-                : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-surface-accent/50'
-            }`}
-          >
-            Leaderboards
-          </Link>
-          <Link
-            href="/dashboard"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`pb-2 px-3 py-1.5 border-3 transition-all duration-150 ${
-              isActive('/dashboard') && !pathname.endsWith('/performance-lab')
-                ? 'text-accent bg-surface-accent border-accent'
-                : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-surface-accent/50'
-            }`}
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/dashboard/performance-lab"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`pb-2 px-3 py-1.5 border-3 transition-all duration-150 ${
-              isActive('/dashboard/performance-lab')
-                ? 'text-accent bg-surface-accent border-accent'
-                : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-surface-accent/50'
-            }`}
-          >
-            Performance Lab
-          </Link>
-          {session ? (
-            <div className="flex flex-col gap-4 pt-2">
-              <Button
-                href="/dashboard"
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                variant="secondary"
-                className="w-full flex justify-center gap-2 px-4 py-2"
+                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  item.isActive
+                    ? 'text-text-primary bg-surface-accent'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent/50'
+                }`}
               >
-                <User className="w-4 h-4" />
-                <span>{profile?.username || 'My Dashboard'}</span>
-              </Button>
+                {item.label}
+              </Link>
+            ))}
+
+            <div className="h-px bg-border my-2" />
+
+            {session ? (
+              <div className="flex flex-col gap-2">
+                <Button
+                  href="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  variant="secondary"
+                  className="w-full justify-center"
+                >
+                  <User className="w-4 h-4" />
+                  <span>{profile?.username || 'My Dashboard'}</span>
+                </Button>
+                <Button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  variant="ghost"
+                  className="w-full justify-center text-error hover:text-error"
+                >
+                  Sign Out
+                </Button>
+              </div>
+            ) : (
               <Button
-                onClick={() => {
-                  handleLogout();
-                  setMobileMenuOpen(false);
-                }}
-                variant="danger"
+                href="/login"
+                onClick={() => setMobileMenuOpen(false)}
+                variant="primary"
                 className="w-full"
               >
-                Sign Out
+                Sign In
               </Button>
-            </div>
-          ) : (
-            <Button
-              href="/login"
-              onClick={() => setMobileMenuOpen(false)}
-              variant="primary"
-              className="px-4 py-2.5 w-full"
-            >
-              Sign In
-            </Button>
-          )}
-        </div>
-      )}
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 };

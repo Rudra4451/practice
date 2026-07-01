@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/navbar';
 import { Award, Zap, Trophy, ShieldAlert, ArrowRight, User } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 
 interface LeaderboardEntry {
@@ -22,15 +24,15 @@ interface LeaderboardEntry {
   } | null;
 }
 
-// Function to resolve WPM to Rank Tier (Bauhaus flat color blocks)
+// Function to resolve WPM to Rank Tier (Premium Glassmorphism styling)
 export function getRankTier(wpm: number) {
-  if (wpm >= 140) return { name: 'Grandmaster', color: 'text-white bg-bauhaus-red border-2 border-border font-bold' };
-  if (wpm >= 120) return { name: 'Master', color: 'text-white bg-accent border-2 border-border font-bold' };
-  if (wpm >= 100) return { name: 'Diamond', color: 'text-bauhaus-black bg-bauhaus-yellow border-2 border-border font-bold' };
-  if (wpm >= 80) return { name: 'Platinum', color: 'text-text-primary bg-surface-accent border-2 border-border font-bold' };
-  if (wpm >= 60) return { name: 'Gold', color: 'text-bauhaus-black bg-bauhaus-yellow/60 border-2 border-border font-bold' };
+  if (wpm >= 140) return { name: 'Grandmaster', color: 'text-error bg-error/10 border border-error/20 font-bold' };
+  if (wpm >= 120) return { name: 'Master', color: 'text-accent bg-accent/10 border border-accent/20 font-bold' };
+  if (wpm >= 100) return { name: 'Diamond', color: 'text-accent-secondary bg-accent-secondary/10 border border-accent-secondary/20 font-bold' };
+  if (wpm >= 80) return { name: 'Platinum', color: 'text-text-primary bg-surface border border-border font-bold' };
+  if (wpm >= 60) return { name: 'Gold', color: 'text-warning bg-warning/10 border border-warning/20 font-bold' };
   if (wpm >= 40) return { name: 'Silver', color: 'text-text-secondary bg-surface-accent border border-border/40 font-bold' };
-  return { name: 'Bronze', color: 'text-text-secondary bg-surface-accent border border-border/20 font-bold' };
+  return { name: 'Bronze', color: 'text-text-tertiary bg-surface-accent border border-border/20 font-bold' };
 }
 
 export default function LeaderboardPage() {
@@ -112,33 +114,36 @@ export default function LeaderboardPage() {
 
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 md:px-6 py-10 flex flex-col gap-8">
         {/* Header */}
-        <div className="flex flex-col gap-2 border-b-3 border-border pb-4 mb-2">
-          <div className="flex items-center gap-2 text-accent">
-            <Trophy className="w-6 h-6 fill-current" />
-            <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-text-primary">See Where You Stand.</h1>
+        <div className="flex flex-col gap-2 border-b border-border/60 pb-6 mb-2 relative">
+          <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-accent/5 blur-[120px] rounded-full pointer-events-none" />
+          <div className="flex items-center gap-3 text-accent">
+            <Trophy className="w-8 h-8 fill-current drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+            <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight text-text-primary flex items-center gap-3 font-sans">
+              Global Leaderboard
+            </h1>
           </div>
-          <div className="text-xs font-bold uppercase tracking-wider text-text-secondary flex flex-wrap gap-x-3 gap-y-1">
+          <div className="text-xs font-bold uppercase tracking-wider text-text-secondary flex flex-wrap gap-x-3 gap-y-1 mt-2">
             <span>Every score is verified ·</span>
             <span>Every ranking is earned ·</span>
-            <span className="text-text-primary">Complete a test and claim your spot</span>
+            <span className="text-accent">Compete to claim your spot</span>
           </div>
         </div>
 
         {/* Filter Controls Panel */}
-        <div className="flex flex-col gap-4 p-5 bg-surface border-3 border-border shadow-[6px_6px_0px_0px_var(--border)]">
+        <div className="flex flex-col gap-4 p-5 bg-surface/30 backdrop-blur-md border border-border/60 rounded-2xl shadow-sm">
           {/* Timeframe */}
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
             <span className="w-24 text-xs font-black uppercase tracking-widest text-text-secondary shrink-0">Timeframe</span>
             <div className="overflow-x-auto scrollbar-none">
-              <div className="inline-flex border-3 border-border divide-x-3 divide-border bg-background min-w-max">
+              <div className="inline-flex bg-surface-accent/30 p-1 rounded-xl">
                 {timeframeOptions.map((opt) => (
                   <button
                     key={opt}
                     onClick={() => setTimeframe(opt)}
-                    className={`px-4 py-1.5 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer text-center whitespace-nowrap ${
+                    className={`px-6 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center whitespace-nowrap rounded-lg ${
                       timeframe === opt
-                        ? 'bg-accent text-black font-black'
-                        : 'text-text-secondary hover:bg-surface-accent hover:text-text-primary'
+                        ? 'bg-surface border border-border/60 text-text-primary shadow-sm'
+                        : 'text-text-tertiary hover:text-text-primary'
                     }`}
                   >
                     {opt.replace('_', ' ')}
@@ -152,15 +157,15 @@ export default function LeaderboardPage() {
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
             <span className="w-24 text-xs font-black uppercase tracking-widest text-text-secondary shrink-0">Mode</span>
             <div className="overflow-x-auto scrollbar-none">
-              <div className="inline-flex border-3 border-border divide-x-3 divide-border bg-background min-w-max">
+              <div className="inline-flex bg-surface-accent/30 p-1 rounded-xl">
                 {modeOptions.map((opt) => (
                   <button
                     key={opt}
                     onClick={() => setMode(opt)}
-                    className={`px-4 py-1.5 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer text-center whitespace-nowrap ${
+                    className={`px-6 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center whitespace-nowrap rounded-lg ${
                       mode === opt
-                        ? 'bg-accent text-black font-black'
-                        : 'text-text-secondary hover:bg-surface-accent hover:text-text-primary'
+                        ? 'bg-surface border border-border/60 text-text-primary shadow-sm'
+                        : 'text-text-tertiary hover:text-text-primary'
                     }`}
                   >
                     {opt}
@@ -174,15 +179,15 @@ export default function LeaderboardPage() {
           <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-6">
             <span className="w-24 text-xs font-black uppercase tracking-widest text-text-secondary shrink-0">Duration</span>
             <div className="overflow-x-auto scrollbar-none">
-              <div className="inline-flex border-3 border-border divide-x-3 divide-border bg-background min-w-max">
+              <div className="inline-flex bg-surface-accent/30 p-1 rounded-xl">
                 {durationOptions.map((time) => (
                   <button
                     key={time}
                     onClick={() => setDuration(time)}
-                    className={`px-4 py-1.5 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer text-center whitespace-nowrap ${
+                    className={`px-6 py-2 text-xs font-black uppercase tracking-wider transition-all cursor-pointer text-center whitespace-nowrap rounded-lg ${
                       duration === time
-                        ? 'bg-accent text-black font-black'
-                        : 'text-text-secondary hover:bg-surface-accent hover:text-text-primary'
+                        ? 'bg-surface border border-border/60 text-text-primary shadow-sm'
+                        : 'text-text-tertiary hover:text-text-primary'
                     }`}
                   >
                     {time}s
@@ -194,7 +199,8 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Leaderboard Table Grid */}
-        <div className="p-6 bg-surface border-3 border-border">
+        <div className="p-6 bg-surface/30 backdrop-blur-md border border-border/60 rounded-2xl shadow-sm relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-surface/50 to-transparent pointer-events-none" />
           {loading ? (
             <div className="flex justify-center py-20">
               <div className="w-8 h-8 bg-accent animate-spin" />
@@ -304,8 +310,60 @@ export default function LeaderboardPage() {
               </div>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="flex flex-col gap-12 pt-8">
+              {/* 3D Podiums */}
+              {entries.length >= 3 && (
+                <div className="flex items-end justify-center gap-2 md:gap-6 h-[250px] relative z-10 px-4">
+                  {/* Silver - Rank 2 */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                    className="flex flex-col items-center justify-end w-[30%] md:w-32 h-[160px] relative group"
+                  >
+                    <div className="absolute -top-12 flex flex-col items-center text-center">
+                      <span className="text-text-secondary font-bold text-xs uppercase truncate w-24">{entries[1].profiles?.display_name || entries[1].profiles?.username || 'Guest'}</span>
+                      <span className="text-accent font-black font-mono text-sm">{entries[1].wpm}</span>
+                    </div>
+                    <div className="w-full h-full bg-gradient-to-t from-surface to-surface-accent border border-border/80 border-b-0 rounded-t-lg shadow-[0_-5px_15px_rgba(255,255,255,0.05)] flex items-start justify-center pt-2 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.1),transparent)] -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                      <span className="text-2xl font-black text-text-secondary opacity-50 font-mono">2</span>
+                    </div>
+                  </motion.div>
+
+                  {/* Gold - Rank 1 */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+                    className="flex flex-col items-center justify-end w-[35%] md:w-40 h-[220px] relative group z-20"
+                  >
+                    <div className="absolute -top-16 flex flex-col items-center text-center">
+                      <Trophy className="w-6 h-6 text-warning mb-1 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+                      <span className="text-text-primary font-bold text-sm uppercase truncate w-28">{entries[0].profiles?.display_name || entries[0].profiles?.username || 'Guest'}</span>
+                      <span className="text-warning font-black font-mono text-lg">{entries[0].wpm}</span>
+                    </div>
+                    <div className="w-full h-full bg-gradient-to-t from-warning/5 to-warning/20 border-2 border-warning/50 border-b-0 rounded-t-xl shadow-[0_-8px_25px_rgba(234,179,8,0.15)] flex items-start justify-center pt-4 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(234,179,8,0.2),transparent)] -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                      <span className="text-4xl font-black text-warning font-mono drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">1</span>
+                    </div>
+                  </motion.div>
+
+                  {/* Bronze - Rank 3 */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 50 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
+                    className="flex flex-col items-center justify-end w-[30%] md:w-32 h-[120px] relative group"
+                  >
+                    <div className="absolute -top-12 flex flex-col items-center text-center">
+                      <span className="text-text-tertiary font-bold text-xs uppercase truncate w-24">{entries[2].profiles?.display_name || entries[2].profiles?.username || 'Guest'}</span>
+                      <span className="text-error font-black font-mono text-sm">{entries[2].wpm}</span>
+                    </div>
+                    <div className="w-full h-full bg-gradient-to-t from-surface to-surface-accent border border-border/60 border-b-0 rounded-t-lg shadow-[0_-5px_15px_rgba(0,0,0,0.2)] flex items-start justify-center pt-2 relative overflow-hidden">
+                      <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.05),transparent)] -translate-x-full group-hover:animate-[shimmer_2s_infinite]" />
+                      <span className="text-2xl font-black text-text-tertiary opacity-40 font-mono">3</span>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+
+              <div className="overflow-x-auto relative z-20 bg-background/40 backdrop-blur-md rounded-xl border border-border/40">
+                <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b-3 border-border text-xs uppercase font-black text-text-primary tracking-widest pb-3">
                     <th className="py-3 px-2 w-12 text-center">Rank</th>
@@ -330,11 +388,11 @@ export default function LeaderboardPage() {
                       >
                         <td className="py-4 px-2 text-center">
                           {rank === 1 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 bg-bauhaus-yellow border-2 border-border text-bauhaus-black text-xs font-black">1</span>
+                            <span className="inline-flex items-center justify-center w-7 h-7 bg-warning/10 border border-warning/40 text-warning text-xs font-black rounded-lg shadow-[0_0_10px_rgba(234,179,8,0.2)]">1</span>
                           ) : rank === 2 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 bg-accent border-2 border-border text-black text-xs font-black">2</span>
+                            <span className="inline-flex items-center justify-center w-7 h-7 bg-surface border border-border/80 text-text-secondary text-xs font-black rounded-lg">2</span>
                           ) : rank === 3 ? (
-                            <span className="inline-flex items-center justify-center w-6 h-6 bg-bauhaus-red border-2 border-border text-white text-xs font-black">3</span>
+                            <span className="inline-flex items-center justify-center w-7 h-7 bg-surface border border-border/60 text-text-tertiary text-xs font-black rounded-lg">3</span>
                           ) : (
                             <span className="text-text-secondary font-mono font-bold text-xs">{rank}</span>
                           )}
@@ -344,12 +402,13 @@ export default function LeaderboardPage() {
                             href={`/u/${username}`}
                             className="flex items-center gap-2 hover:text-accent transition-colors"
                           >
-                            <div className="w-6 h-6 border border-border bg-accent/15 flex items-center justify-center text-xs text-accent">
+                            <div className="w-6 h-6 border border-border bg-accent/15 flex items-center justify-center text-xs text-accent overflow-hidden">
                               {entry.profiles?.avatar_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
+                                <Image
                                   src={entry.profiles.avatar_url}
-                                  alt={username}
+                                  alt={`${displayName}'s avatar`}
+                                  width={24}
+                                  height={24}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
@@ -378,6 +437,7 @@ export default function LeaderboardPage() {
                   })}
                 </tbody>
               </table>
+            </div>
             </div>
           )}
         </div>

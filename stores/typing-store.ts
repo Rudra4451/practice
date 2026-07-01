@@ -40,6 +40,8 @@ interface TypingState {
   wpm: number;
   rawWpm: number;
   accuracy: number;
+  combo: number;
+  maxCombo: number;
 
   // Final Result Data
   result: TestResultData | null;
@@ -121,6 +123,8 @@ export const useTypingStore = create<TypingState>((set, get) => {
       wpm: 0,
       rawWpm: 0,
       accuracy: 100,
+      combo: 0,
+      maxCombo: 0,
       result: null,
     });
   };
@@ -140,6 +144,8 @@ export const useTypingStore = create<TypingState>((set, get) => {
     wpm: 0,
     rawWpm: 0,
     accuracy: 100,
+    combo: 0,
+    maxCombo: 0,
     result: null,
 
     setDuration: (duration) => set({ duration, timeLeft: duration }),
@@ -196,6 +202,9 @@ export const useTypingStore = create<TypingState>((set, get) => {
       }
 
       const expectedKey = targetText[currentIndex];
+      const isCorrect = char === expectedKey;
+      const currentCombo = isCorrect ? get().combo + 1 : 0;
+      const newMaxCombo = Math.max(currentCombo, get().maxCombo);
 
       if (worker) {
         worker.postMessage({
@@ -216,6 +225,8 @@ export const useTypingStore = create<TypingState>((set, get) => {
       set({
         userInput: newUserInput,
         currentIndex: nextIndex,
+        combo: currentCombo,
+        maxCombo: newMaxCombo,
       });
 
       // Complete test if typing reached end of text

@@ -2,46 +2,63 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { Check, X } from 'lucide-react';
 
 export default function ComparisonSection() {
   return (
-    <section className="py-20 px-4 md:px-6 border-b-3 border-border bg-surface-accent">
+    <section className="py-20 md:py-28 px-4 md:px-6 bg-surface-accent/20">
       <div className="max-w-4xl mx-auto">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-center mb-12 flex flex-col gap-3">
-          <span className="text-xs font-bold text-accent uppercase tracking-widest">Why TyProX</span>
-          <h2 className="text-2xl sm:text-4xl font-black tracking-tight uppercase text-text-primary">How We Compare</h2>
-          <div className="w-16 h-1 bg-accent mx-auto mt-1" />
+        <motion.div 
+          initial={{ opacity: 0, y: 12 }} 
+          whileInView={{ opacity: 1, y: 0 }} 
+          viewport={{ once: true }} 
+          className="text-center mb-12 flex flex-col gap-3"
+        >
+          <span className="text-xs font-semibold text-accent uppercase tracking-wider">Why TyProX</span>
+          <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-text-primary font-display">How We Compare</h2>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="overflow-x-auto border-3 border-border bg-background">
-          <table className="w-full text-left border-collapse text-xs md:text-sm font-bold uppercase tracking-wider">
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 16 }} 
+          whileInView={{ opacity: 1, y: 0 }} 
+          viewport={{ once: true }} 
+          className="overflow-x-auto border border-border bg-surface rounded-2xl shadow-md"
+        >
+          <table className="w-full text-left border-collapse text-sm font-medium">
             <thead>
-              <tr className="border-b-3 border-border bg-surface text-[10px] uppercase font-black text-text-primary tracking-widest">
-                <th className="p-4">Feature</th>
-                <th className="p-4 text-accent">TyProX</th>
-                <th className="p-4 text-text-secondary">Traditional Sites</th>
+              <tr className="border-b border-border bg-surface-accent/50 text-[11px] uppercase font-bold text-text-tertiary tracking-wider">
+                <th className="p-5 w-1/3">Feature</th>
+                <th className="p-5 w-1/3 text-accent border-l border-border/50 bg-accent/5">TyProX</th>
+                <th className="p-5 w-1/3 text-text-secondary border-l border-border/50">Traditional Sites</th>
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b-2 border-border/10">
-                <td className="p-4 text-text-primary">Focus Environment</td>
-                <td className="p-4 text-accent">Distraction-free, zero-ads</td>
-                <td className="p-4 text-text-secondary">Cluttered with ads & popups</td>
-              </tr>
-              <tr className="border-b-2 border-border/10">
-                <td className="p-4 text-text-primary">Rhythm & Flow</td>
-                <td className="p-4 text-accent">Consistency indexing & error telemetry</td>
-                <td className="p-4 text-text-secondary">Simple WPM average only</td>
-              </tr>
-              <tr className="border-b-2 border-border/10">
-                <td className="p-4 text-text-primary">Fair Competition</td>
-                <td className="p-4 text-accent">Verified & secure rankings</td>
-                <td className="p-4 text-text-secondary">Easily manipulated scores</td>
-              </tr>
-              <tr>
-                <td className="p-4 text-text-primary">Progress Analytics</td>
-                <td className="p-4 text-accent">Historical trends & key graphs</td>
-                <td className="p-4 text-text-secondary">Basic high-score summaries</td>
-              </tr>
+              {[
+                { feature: 'Focus Environment', pro: 'Distraction-free, zero ads', con: 'Cluttered with ads' },
+                { feature: 'Analytics', pro: 'Telemetry & consistency indexing', con: 'Basic WPM average' },
+                { feature: 'Leaderboards', pro: 'Verified, secure rankings', con: 'Easily manipulated' },
+                { feature: 'Growth Tracking', pro: 'Historical trend graphs', con: 'Basic high scores' }
+              ].map((row, idx, arr) => (
+                <tr key={row.feature} className={`group hover:bg-surface-accent/30 transition-colors ${idx !== arr.length - 1 ? 'border-b border-border/60' : ''}`}>
+                  <td className="p-5 text-text-primary font-semibold">{row.feature}</td>
+                  <td className="p-5 border-l border-border/50 bg-accent/[0.02] group-hover:bg-accent/[0.04] transition-colors">
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 w-4 h-4 rounded-full bg-success/20 text-success flex items-center justify-center shrink-0">
+                        <Check className="w-2.5 h-2.5" />
+                      </div>
+                      <span className="text-text-primary">{row.pro}</span>
+                    </div>
+                  </td>
+                  <td className="p-5 text-text-secondary border-l border-border/50">
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 w-4 h-4 rounded-full bg-error/10 text-error flex items-center justify-center shrink-0">
+                        <X className="w-2.5 h-2.5" />
+                      </div>
+                      <span className="text-text-tertiary">{row.con}</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </motion.div>

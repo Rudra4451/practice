@@ -3,68 +3,109 @@
 @theme {
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
   --color-surface-accent: var(--surface-accent);
+  --color-surface-glass: var(--surface-glass);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
   --color-accent: var(--accent);
+  --color-accent-secondary: var(--accent-secondary);
   --color-error: var(--error);
+  --color-success: var(--success);
   --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
   --color-char-correct: var(--char-correct);
   --color-char-wrong: var(--char-wrong);
 
-  --color-bauhaus-red: #E53935;
-  --color-bauhaus-yellow: #FDD835;
-  --color-bauhaus-blue: #1E88E5;
-  --color-bauhaus-black: #212121;
-  --color-bauhaus-white: #FAFAFA;
-  --color-bauhaus-gray: #9E9E9E;
+  /* Backward-compat aliases */
+  --color-bauhaus-red: var(--error);
+  --color-bauhaus-yellow: var(--accent-secondary);
+  --color-bauhaus-blue: var(--accent);
+  --color-bauhaus-black: var(--background);
+  --color-bauhaus-white: var(--text-primary);
+  --color-bauhaus-gray: var(--text-secondary);
 
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
-  --radius-xl: 0px;
-  --radius-2xl: 0px;
-  --radius-3xl: 0px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
 }
 
 :root {
-  --background: #FAFAFA;
-  --surface: #FAFAFA;
-  --surface-accent: #FFFFFF;
-  --text-primary: #212121;
-  --text-secondary: #757575;
-  --accent: #1E88E5;
-  --error: #E53935;
-  --border: #212121;
-  --char-correct: #1E88E5;
-  --char-wrong: #E53935;
+  --background: #F5F5F7;
+  --surface: #FFFFFF;
+  --surface-elevated: #EAEAEA;
+  --surface-accent: #DFDFDF;
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  --text-primary: #0F0F10;
+  --text-secondary: #555555;
+  --text-tertiary: #888888;
+  --accent: #FF5C00;
+  --accent-secondary: #FF5C00;
+  --error: #E03E3E;
+  --success: #1E824C;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --char-correct: #1E824C;
+  --char-wrong: #E03E3E;
 
-  --font-sans: var(--font-space-grotesk), system-ui, sans-serif;
-  --font-mono: var(--font-space-mono), monospace;
+  --gradient-primary: linear-gradient(135deg, #FF5C00, #FF7A00);
+  --gradient-glow: radial-gradient(circle, rgba(255, 92, 0, 0.04), transparent 70%);
+  --gradient-surface: linear-gradient(180deg, var(--surface) 0%, var(--surface-accent) 100%);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.04), 0 2px 4px -2px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.02);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.06), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-glow: 0 0 12px rgba(255, 92, 0, 0.04);
+  --shadow-glow-lg: 0 0 24px rgba(255, 92, 0, 0.08);
 }
 
-/* Enable manual dark class selection */
 .dark {
-  --background: #212121;
-  --surface: #212121;
-  --surface-accent: #2C2C2C;
-  --text-primary: #FAFAFA;
-  --text-secondary: #9E9E9E;
-  --accent: #FDD835;
-  --error: #E53935;
-  --border: #FAFAFA;
-  --char-correct: #FDD835;
-  --char-wrong: #E53935;
+  --background: #0F0F10;
+  --surface: #171717;
+  --surface-elevated: #222222;
+  --surface-accent: #2E2E2E;
+  --surface-glass: rgba(23, 23, 23, 0.85);
+  --text-primary: #F5F5F5;
+  --text-secondary: #A5A5A5;
+  --text-tertiary: #6C6C6C;
+  --accent: #FF5C00;
+  --accent-secondary: #FF5C00;
+  --error: #E03E3E;
+  --success: #2ECC71;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-subtle: rgba(255, 255, 255, 0.04);
+  --char-correct: #2ECC71;
+  --char-wrong: #E03E3E;
+
+  --gradient-primary: linear-gradient(135deg, #FF5C00, #FF7A00);
+  --gradient-glow: radial-gradient(circle, rgba(255, 92, 0, 0.03), transparent 70%);
+  --gradient-surface: linear-gradient(180deg, var(--surface) 0%, var(--background) 100%);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -2px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -4px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 8px 10px -6px rgba(0, 0, 0, 0.25);
+  --shadow-glow: 0 0 12px rgba(255, 92, 0, 0.06);
+  --shadow-glow-lg: 0 0 24px rgba(255, 92, 0, 0.1);
 }
 
+/* ─── Base ─── */
 body {
   background-color: var(--background);
   color: var(--text-primary);
   font-family: var(--font-sans);
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
   overflow-x: hidden;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -72,58 +113,258 @@ body {
   scroll-behavior: smooth;
 }
 
-/* Monospace font settings for typing container */
+/* ─── Typography ─── */
+.font-display {
+  font-family: var(--font-display);
+}
+
 .typing-font {
   font-family: var(--font-mono);
 }
 
-/* Caret blinking keyframe animations */
-@keyframes caretBlink {
+/* ─── Glass Utility ─── */
+.glass {
+  background: var(--surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-subtle {
+  background: var(--surface-glass);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ─── Gradient Text ─── */
+.gradient-text {
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Caret ─── */
+@keyframes caretPulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  50% { opacity: 0.3; }
 }
 
 .animate-caret {
-  animation: caretBlink 1s infinite;
+  animation: caretPulse 1.1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  box-shadow: 0 0 8px var(--accent), 0 0 16px color-mix(in srgb, var(--accent) 25%, transparent);
+  will-change: opacity;
 }
 
-/* Fade-in animation used across result screens and mobile menus */
+/* ─── Shake (error) ─── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1.5px); }
+  80% { transform: translateX(1px); }
+}
+
+.animate-shake {
+  animation: shake 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* ─── Fade In ─── */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.25s ease-out forwards;
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* Disable focus outline but maintain custom focus visibility */
+/* ─── Slide Up ─── */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-up {
+  animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── Float ─── */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-slow {
+  animation: float 8s ease-in-out infinite;
+  will-change: transform;
+}
+
+.animate-float-delayed {
+  animation: float 7s ease-in-out 2s infinite;
+  will-change: transform;
+}
+
+/* ─── Glow Pulse ─── */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.15); }
+  50% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.3); }
+}
+
+.animate-glow {
+  animation: glowPulse 3s ease-in-out infinite;
+  will-change: box-shadow;
+}
+
+/* ─── Shimmer (skeleton) ─── */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ─── Spin (loading) ─── */
+@keyframes spinSmooth {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-smooth {
+  animation: spinSmooth 0.8s linear infinite;
+}
+
+/* ─── Focus ─── */
 *:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+  border-radius: 4px;
 }
 
-/* Bauhaus flat scrollbar */
+/* ─── Selection ─── */
+::selection {
+  background: color-mix(in srgb, var(--accent) 25%, transparent);
+  color: var(--text-primary);
+}
+
+/* ─── Scrollbars ─── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--background);
-  border-left: 2px solid var(--border);
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
+  border-radius: 9999px;
+  transition: background 0.2s;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
 }
 
-/* Scrollbar Utility for smooth horizontal scrolling menus without visual tracks */
 .scrollbar-none::-webkit-scrollbar {
   display: none !important;
 }
 .scrollbar-none {
-  -ms-overflow-style: none !important;  /* IE and Edge */
-  scrollbar-width: none !important;  /* Firefox */
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* ─── Accessibility: Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .animate-caret {
+    animation: none;
+    opacity: 1;
+  }
+
+  .animate-float,
+  .animate-float-slow,
+  .animate-float-delayed {
+    animation: none;
+  }
+}
+
+/* ─── Premium 3D & Perspectives (Milestone 1) ─── */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-2000 {
+  perspective: 2000px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* ─── Hero Advanced Motion Keyframes ─── */
+@keyframes ambientGlow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.animate-ambient-glow {
+  animation: ambientGlow 8s ease-in-out infinite;
+  will-change: opacity, transform;
+}
+
+@keyframes cursorSlice {
+  0% { transform: translateY(-100%) scaleY(0.5); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(100%) scaleY(1.5); opacity: 0; }
+}
+
+.animate-cursor-slice {
+  animation: cursorSlice 2s cubic-bezier(0.19, 1, 0.22, 1) forwards;
+}
+
+@keyframes gridScroll {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(40px); }
+}
+
+.animate-grid-scroll {
+  animation: gridScroll 3s linear infinite;
+}
+
+/* ─── Signature TyProX Geometry ─── */
+.mechanical-key {
+  border-radius: 12px;
+  background: linear-gradient(145deg, var(--surface), var(--surface-elevated));
+  box-shadow: 
+    inset 0 2px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.1),
+    0 4px 6px var(--shadow-xs),
+    0 8px 12px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mechanical-key:active {
+  transform: translateY(2px);
+  box-shadow: 
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    0 2px 3px var(--shadow-xs);
 }
