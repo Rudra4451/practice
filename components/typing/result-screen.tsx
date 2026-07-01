@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTypingStore } from '@/stores/typing-store';
 import { useUserStore } from '@/stores/user-store';
 import { ReplayPlayer } from './replay-player';
+import { CatCompanion } from './cat-companion';
 import { createClient } from '@/lib/supabase/client';
 import { RefreshCw, Play, Share2, Award, AlertCircle, TrendingUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -218,6 +219,13 @@ export const ResultScreen: React.FC = () => {
               <span className="text-[10px] uppercase font-bold mt-1 text-text-tertiary">total test duration</span>
             </motion.div>
           </div>
+
+          {/* Gamified Cat Companion Reaction System */}
+          <CatCompanion 
+            wpm={result.wpm}
+            accuracy={result.accuracy}
+            errorCount={result.errorCount}
+          />
 
           {/* Secondary stats & Recharts Graph Row */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 font-sans">
