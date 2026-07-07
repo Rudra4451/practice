@@ -58,6 +58,11 @@ export const metadata: Metadata = {
     description:
       "Improve your typing speed, track WPM, analyze performance, compete on leaderboards, and master every keystroke with TyProX.",
   },
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
