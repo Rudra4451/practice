@@ -1,14 +1,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Award,
   Zap,
   Trophy,
   ArrowRight,
-  User,
   Mail,
   RefreshCw,
   Play,
@@ -16,15 +14,12 @@ import {
   AlertCircle,
   TrendingUp,
   Clock,
-  Database,
-  LogIn,
   ChevronLeft,
   ChevronRight,
   ShieldCheck,
   BarChart2,
   Keyboard,
   CheckCircle,
-  HelpCircle,
   X
 } from 'lucide-react';
 import {
@@ -278,9 +273,8 @@ export default function ShowcasePage() {
     { index: 15, wpm: 135 }
   ];
 
-  // Mock leaderboard list
   const getLeaderboardEntries = () => {
-    const listMap: Record<string, any[]> = {
+    const listMap: Record<string, Array<{ name: string; wpm: number; acc: number; rank: number; tier: string }>> = {
       all_time: [
         { name: 'speed_demon', wpm: 154, acc: 99.1, rank: 1, tier: 'Grandmaster' },
         { name: 'racer_x', wpm: 147, acc: 98.4, rank: 2, tier: 'Grandmaster' },

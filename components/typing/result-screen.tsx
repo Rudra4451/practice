@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTypingStore } from '@/stores/typing-store';
 import { useUserStore } from '@/stores/user-store';
 import { ReplayPlayer } from './replay-player';
@@ -27,14 +27,12 @@ export const ResultScreen: React.FC = () => {
 
   const { session } = useUserStore();
   const [unlocked, setUnlocked] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
 
   // Save guest run locally or upload to API if authenticated
   React.useEffect(() => {
     if (!result) return;
 
     if (session?.user) {
-      setSaving(true);
       fetch('/api/results', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,8 +55,7 @@ export const ResultScreen: React.FC = () => {
             setUnlocked(data.unlocked);
           }
         })
-        .catch((err) => logger.error('Error submitting test score', { category: 'api', error: err }))
-        .finally(() => setSaving(false));
+        .catch((err) => logger.error('Error submitting test score', { category: 'api', error: err }));
     } else {
       // Save locally to Guest log buffers
       addGuestResult({
@@ -152,13 +149,6 @@ export const ResultScreen: React.FC = () => {
 
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col gap-8 px-4 py-6 animate-fade-in">
-      {/* Saving indicator */}
-      {saving && (
-        <div className="flex items-center gap-2 px-4 py-2.5 border border-border bg-surface rounded-lg text-xs font-bold uppercase tracking-wider text-text-secondary shadow-xs">
-          <div className="w-3 h-3 bg-accent animate-spin flex-shrink-0" />
-          <span>Saving your result…</span>
-        </div>
-      )}
       {/* Show Replay Player Overlay */}
       {showReplay ? (
         <ReplayPlayer

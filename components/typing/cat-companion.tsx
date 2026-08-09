@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Trophy, Flame, ShieldAlert, BookOpen, Compass, Key } from 'lucide-react';
+import { Sparkles, Flame } from 'lucide-react';
 
 // --- Type Declarations ---
 export interface CatCompanionProps {
@@ -293,26 +293,26 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
   streakDays = 1
 }) => {
   // Read streak and unlocked cats from localStorage to maintain gaming vibe
-  const [unlockedIds, setUnlockedIds] = useState<string[]>(['orange', 'void', 'white']);
-  const [selectedCatId, setSelectedCatId] = useState<string>('orange');
+  const [unlockedIds, setUnlockedIds] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return ['orange', 'void', 'white'];
+    const local = localStorage.getItem('typrox_cats_unlocked');
+    if (local) {
+      try {
+        const parsed = JSON.parse(local);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
+    }
+    localStorage.setItem('typrox_cats_unlocked', JSON.stringify(['orange', 'void', 'white']));
+    return ['orange', 'void', 'white'];
+  });
+
+  const [selectedCatId, setSelectedCatId] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'orange';
+    return localStorage.getItem('typrox_cats_selected') || 'orange';
+  });
+
   const [showNotification, setShowNotification] = useState<string | null>(null);
   const [showCollectionDrawer, setShowCollectionDrawer] = useState(false);
-
-  useEffect(() => {
-    // Sync local storage on mount
-    const localUnlocked = localStorage.getItem('typrox_cats_unlocked');
-    const localSelected = localStorage.getItem('typrox_cats_selected');
-    
-    if (localUnlocked) {
-      setUnlockedIds(JSON.parse(localUnlocked));
-    } else {
-      localStorage.setItem('typrox_cats_unlocked', JSON.stringify(['orange', 'void', 'white']));
-    }
-
-    if (localSelected) {
-      setSelectedCatId(localSelected);
-    }
-  }, []);
 
   // Determine current rating category
   const performanceCategory = useMemo((): 'perfect' | 'fast' | 'pb' | 'slow' | 'mistakes' | 'default' => {
@@ -360,26 +360,29 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
       }
 
       if (targetUnlock) {
-        const nextList = [...unlockedIds, targetUnlock.id];
-        setUnlockedIds(nextList);
-        localStorage.setItem('typrox_cats_unlocked', JSON.stringify(nextList));
-        setShowNotification(`🎁 You discovered a new cat: ${targetUnlock.name}!`);
+        const unlockId = targetUnlock.id;
+        const unlockName = targetUnlock.name;
+        setUnlockedIds((prev) => {
+          if (prev.includes(unlockId)) return prev;
+          const nextList = [...prev, unlockId];
+          localStorage.setItem('typrox_cats_unlocked', JSON.stringify(nextList));
+          return nextList;
+        });
+        setShowNotification(`🎁 You discovered a new cat: ${unlockName}!`);
         setTimeout(() => setShowNotification(null), 4000);
       }
     };
 
     tryUnlock();
-  }, [wpm, accuracy, errorCount]);
+  }, [wpm, accuracy, errorCount, unlockedIds]);
 
   // Select a random dialogue for result feedback
   const catDialogue = useMemo(() => {
     return activeCat.dialogues[performanceCategory];
   }, [activeCat, performanceCategory]);
 
-  // Select random short quote
-  const shortQuote = useMemo(() => {
-    return SHORT_QUOTES[Math.floor(Math.random() * SHORT_QUOTES.length)];
-  }, []);
+  // Deterministic quote based on test metrics
+  const shortQuote = SHORT_QUOTES[(wpm + accuracy + errorCount) % SHORT_QUOTES.length];
 
   // Handle companion swap
   const selectCompanion = (id: string) => {

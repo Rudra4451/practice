@@ -2,7 +2,7 @@ type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 interface LogContext {
   category?: 'dom' | 'supabase' | 'api' | 'auth' | 'general';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   error?: Error | unknown;
 }
 

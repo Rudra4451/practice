@@ -1,5 +1,3 @@
-/* eslint-disable no-restricted-globals */
-
 interface KeystrokeEvent {
   key: string;
   time: number; // millisecond timestamp
@@ -10,8 +8,6 @@ interface KeystrokeEvent {
 
 // Running counters — O(1) per keystroke instead of O(n) scan on each event
 let startTime: number | null = null;
-let durationLimit = 60;
-let testMode = 'words';
 let keystrokes: KeystrokeEvent[] = [];
 let backspaceCount = 0;
 
@@ -40,8 +36,6 @@ self.onmessage = (e: MessageEvent) => {
       keystrokes = [];
       backspaceCount = 0;
       correctMap.clear();
-      durationLimit = payload.duration;
-      testMode = payload.mode;
       break;
     }
 
@@ -139,10 +133,7 @@ self.onmessage = (e: MessageEvent) => {
 
       // 2. Second-by-second WPM timeline for Recharts
       const timeline: Array<{ second: number; wpm: number; rawWpm: number }> = [];
-      
-      // Build a sorted timeline of input events only for perf
-      const inputKeystrokes = keystrokes.filter(k => k.type === 'input');
-      
+
       for (let s = 1; s <= totalElapsedSecs; s++) {
         const timeCutoff = startTime + s * 1000;
         const subMins = s / 60;

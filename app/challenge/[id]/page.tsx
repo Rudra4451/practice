@@ -5,8 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useTypingStore } from '@/stores/typing-store';
 import { Navbar } from '@/components/navbar';
 import { TypingContainer } from '@/components/typing/typing-container';
-import { Trophy, ArrowRight, Zap, Target, Award, Play, ShieldAlert, Sparkles } from 'lucide-react';
-import Link from 'next/link';
+import { Trophy, ArrowRight, Play, ShieldAlert, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface ChallengeLinkDetails {
@@ -63,7 +62,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   // Transition to comparison when typing completed
   useEffect(() => {
     if (gameState === 'typing' && status === 'completed' && result) {
-      setGameState('comparison');
+      Promise.resolve().then(() => setGameState('comparison'));
     }
   }, [status, gameState, result]);
 

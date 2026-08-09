@@ -19,8 +19,6 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackSpeed, setPlaybackSpeed] = useState(1); // 1x, 1.5x, 2x
   const [currentTime, setCurrentTime] = useState(0); // in ms
-  const [replayInput, setReplayInput] = useState('');
-  const [replayIndex, setReplayIndex] = useState(0);
 
   const requestRef = useRef<number | null>(null);
   const previousTimeRef = useRef<number | null>(null);
@@ -50,32 +48,38 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({
     return { input, idx };
   }, [telemetry]);
 
-  // Handle animation frame update loop — reads isPlayingRef to avoid stale closure
-  const animate = useCallback((time: number) => {
-    if (!isPlayingRef.current) return; // bail if paused between frames
+  // Derived state computed directly during render
+  const { input: replayInput, idx: replayIndex } = getReplayStateAt(currentTime);
 
-    if (previousTimeRef.current !== null) {
-      const delta = time - previousTimeRef.current;
-      setCurrentTime((prev) => {
-        const next = prev + delta * playbackSpeed;
-        if (next >= totalDuration) {
-          isPlayingRef.current = false;
-          setIsPlaying(false);
-          return totalDuration;
-        }
-        return next;
-      });
-    }
-    previousTimeRef.current = time;
-    requestRef.current = requestAnimationFrame(animate);
-  }, [playbackSpeed, totalDuration]);
+  const animateRef = useRef<(time: number) => void>(() => {});
+
+  useEffect(() => {
+    animateRef.current = (time: number) => {
+      if (!isPlayingRef.current) return;
+
+      if (previousTimeRef.current !== null) {
+        const delta = time - previousTimeRef.current;
+        setCurrentTime((prev) => {
+          const next = prev + delta * playbackSpeed;
+          if (next >= totalDuration) {
+            isPlayingRef.current = false;
+            setIsPlaying(false);
+            return totalDuration;
+          }
+          return next;
+        });
+      }
+      previousTimeRef.current = time;
+      requestRef.current = requestAnimationFrame((t) => animateRef.current(t));
+    };
+  });
 
   // Sync animation loops with isPlaying state changes
   useEffect(() => {
     isPlayingRef.current = isPlaying;
     if (isPlaying) {
       previousTimeRef.current = null;
-      requestRef.current = requestAnimationFrame(animate);
+      requestRef.current = requestAnimationFrame((t) => animateRef.current(t));
     } else {
       if (requestRef.current) {
         cancelAnimationFrame(requestRef.current);
@@ -88,14 +92,7 @@ export const ReplayPlayer: React.FC<ReplayPlayerProps> = ({
         requestRef.current = null;
       }
     };
-  }, [isPlaying, animate]);
-
-  // Update input displays as current playback time updates
-  useEffect(() => {
-    const { input, idx } = getReplayStateAt(currentTime);
-    setReplayInput(input);
-    setReplayIndex(idx);
-  }, [currentTime, getReplayStateAt]);
+  }, [isPlaying]);
 
   const togglePlay = () => {
     if (currentTime >= totalDuration) {

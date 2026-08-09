@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     const supabase = await createClient();
     await supabase.auth.signOut();
@@ -17,7 +17,7 @@ export async function POST(request: Request) {
     }
     
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Server SignOut Exception:', err);
     try {
       const cookieStore = await cookies();
@@ -27,9 +27,10 @@ export async function POST(request: Request) {
           cookieStore.delete(cookie.name);
         }
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ success: false, error: msg }, { status: 500 });
   }
 }

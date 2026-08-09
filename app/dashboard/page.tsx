@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useUserStore } from '@/stores/user-store';
 import { Navbar } from '@/components/navbar';
 import { createClient } from '@/lib/supabase/client';
-import { Calendar, Zap, Award, LineChart as ChartIcon, CheckCircle, Database, LogIn, Clock, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import { Zap, LineChart as ChartIcon, Database, LogIn, Clock, RefreshCw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { logger } from '@/lib/logger';
 import { Button } from '@/components/ui/button';
@@ -17,22 +17,35 @@ const DashboardChart = dynamic(() => import('@/components/dashboard/dashboard-ch
   loading: () => <div className="h-[220px] flex items-center justify-center text-text-secondary uppercase tracking-widest text-xs font-bold font-mono">Loading Chart...</div>
 });
 
+interface TestResultRecord {
+  id?: string;
+  wpm: number;
+  raw_wpm?: number;
+  accuracy: number;
+  consistency?: number;
+  error_count?: number;
+  backspace_count?: number;
+  created_at: string;
+  duration?: number;
+  mode?: string;
+  seed?: string;
+}
+
+interface DashboardStats {
+  bestWpm: number;
+  avgWpm: number;
+  avgAccuracy: number;
+  testsCompleted: number;
+  totalTimeSecs: number;
+}
+
 export default function Dashboard() {
   const { session, profile, setProfile, guestHistory, clearGuestHistory } = useUserStore();
   const { showToast } = useToastStore();
   
-  const [history, setHistory] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>({
-    bestWpm: 0,
-    avgWpm: 0,
-    avgAccuracy: 0,
-    testsCompleted: 0,
-    totalTimeSecs: 0,
-  });
+  const [history, setHistory] = useState<TestResultRecord[]>([]);
   const [streak, setStreak] = useState({ current: 0, longest: 0 });
-  const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [syncSuccess, setSyncSuccess] = useState(false);
   const [historyMode, setHistoryMode] = useState<string>('all');
   const [historyDuration, setHistoryDuration] = useState<string>('all');
   const [historySort, setHistorySort] = useState<string>('latest');
@@ -89,7 +102,6 @@ export default function Dashboard() {
       setHistory(fullHistory);
       setStreak({ current: 18, longest: 25 });
       setLastUpdated(new Date().toLocaleTimeString());
-      setLoading(false);
       setRefreshing(false);
       return;
     }
@@ -150,21 +162,20 @@ export default function Dashboard() {
     }
     
     setLastUpdated(new Date().toLocaleTimeString());
-    setLoading(false);
     setRefreshing(false);
   }, [session, guestHistory]);
 
   // Load initial data
   useEffect(() => {
-    loadDashboardData();
+    Promise.resolve().then(() => loadDashboardData());
   }, [loadDashboardData]);
 
   // Supabase Realtime subscription
   useEffect(() => {
     if (!session?.user) return;
 
-    let channel: any = null;
-    let supabaseInstance: any = null;
+    let channel: RealtimeChannel | null = null;
+    let supabaseInstance: SupabaseClient | null = null;
 
     try {
       supabaseInstance = createClient();
@@ -200,11 +211,13 @@ export default function Dashboard() {
 
   // Set default display name when profile loads
   useEffect(() => {
-    if (profile?.display_name) {
-      setNewDisplayName(profile.display_name);
-    } else if (profile?.username) {
-      setNewDisplayName(profile.username);
-    }
+    Promise.resolve().then(() => {
+      if (profile?.display_name) {
+        setNewDisplayName(profile.display_name);
+      } else if (profile?.username) {
+        setNewDisplayName(profile.username);
+      }
+    });
   }, [profile]);
 
   // Handle display name update
@@ -257,40 +270,40 @@ export default function Dashboard() {
         showToast('Profile updated successfully!');
         setIsEditingProfile(false);
       }
-    } catch (err: any) {
-      showToast(err.message || 'An error occurred while updating profile.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'An error occurred while updating profile.';
+      showToast(msg);
       logger.error('Profile update failed', { category: 'api', error: err });
     } finally {
       setUpdatingProfile(false);
     }
   };
 
-  // Aggregate statistics calculations
-  useEffect(() => {
+  // Aggregate statistics calculations (purely derived)
+  const stats = useMemo((): DashboardStats => {
     if (history.length === 0) {
-      setStats({
+      return {
         bestWpm: 0,
         avgWpm: 0,
         avgAccuracy: 0,
         testsCompleted: 0,
         totalTimeSecs: 0,
-      });
-      return;
+      };
     }
 
     const wpmList = history.map((h) => h.wpm);
     const bestWpm = Math.max(...wpmList);
     const avgWpm = Math.round(wpmList.reduce((a, b) => a + b, 0) / history.length);
     const avgAccuracy = Math.round(history.map((h) => h.accuracy).reduce((a, b) => a + b, 0) / history.length);
-    const totalTimeSecs = history.reduce((a, b) => a + b.duration, 0);
+    const totalTimeSecs = history.reduce((a, b) => a + (b.duration || 30), 0);
 
-    setStats({
+    return {
       bestWpm,
       avgWpm,
       avgAccuracy,
       testsCompleted: history.length,
       totalTimeSecs,
-    });
+    };
   }, [history]);
 
   // Sync guest history to authenticated database post-login
@@ -301,7 +314,6 @@ export default function Dashboard() {
     const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
     if (isDemo) {
       clearGuestHistory();
-      setSyncSuccess(true);
       showToast('Guest history synced successfully! (Demo Mode)');
       setSyncing(false);
       return;
@@ -328,7 +340,6 @@ export default function Dashboard() {
       if (error) throw error;
       
       clearGuestHistory();
-      setSyncSuccess(true);
       
       // Reload page data
       const { data: dbResults } = await supabase

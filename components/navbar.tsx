@@ -5,10 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/stores/user-store';
-import { Sun, Moon, Zap, User, Menu, X } from 'lucide-react';
+import { Sun, Moon, User, Menu, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import type { User as SupabaseUser, Session as SupabaseSession, AuthChangeEvent } from '@supabase/supabase-js';
 import { resetClient } from '@/lib/supabase/client';
-import { signOut } from '@/lib/supabase/auth';
 import { Button } from '@/components/ui/button';
 import { useToastStore } from '@/stores/toast-store';
 
@@ -26,29 +26,25 @@ export const Navbar: React.FC = () => {
   };
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(429);
+  const [onlineCount, setOnlineCount] = useState(() => Math.floor(Math.random() * (550 - 350 + 1)) + 350);
   const [pulse, setPulse] = useState(false);
 
   // Simulated live online counter
   useEffect(() => {
-    // Seed random starting count
-    setOnlineCount(Math.floor(Math.random() * (550 - 350 + 1)) + 350);
-    
     let timeoutId: NodeJS.Timeout;
     const updateCounter = () => {
       setOnlineCount(prev => {
         const change = Math.floor(Math.random() * (18 - 3 + 1)) + 3;
         const sign = Math.random() > 0.5 ? 1 : -1;
         let next = prev + (sign * change);
-        // Clamp between 200 and 700
         if (next < 200) next = 200 + change;
         if (next > 700) next = 700 - change;
         return next;
       });
       setPulse(true);
-      const pulseTimeout = setTimeout(() => setPulse(false), 500);
+      setTimeout(() => setPulse(false), 500);
       
-      const nextDelay = Math.floor(Math.random() * 4000) + 6000; // 6-10 seconds
+      const nextDelay = Math.floor(Math.random() * 4000) + 6000;
       timeoutId = setTimeout(updateCounter, nextDelay);
     };
     
@@ -67,23 +63,23 @@ export const Navbar: React.FC = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Listen to Auth State
+  // Listen to Supabase Auth Changes & ensure profile row exists
   useEffect(() => {
-    if (typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'))) {
-      localStorage.setItem('typrox_demo', 'true');
-      if (localStorage.getItem('typrox_demo_logged_in') === 'true') {
-        const mockSession = { user: { id: 'mock-user-id', email: 'rudra_practice@typrox.com' } };
-        const mockProfile = { id: 'mock-user-id', username: 'rudra_practice', display_name: 'Rudra Pratap Swain', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
+    const isDemoMode = typeof window !== 'undefined' && localStorage.getItem('typrox_demo') === 'true';
+    if (isDemoMode) {
+      if (!session) {
+        const mockSession = { user: { id: 'mock-user-id', email: 'demo_user@typrox.com' } };
+        const mockProfile = { id: 'mock-user-id', username: 'demo_typist', display_name: 'Guest Typist', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
         setSession(mockSession);
         setProfile(mockProfile);
-        return;
       }
+      return;
     }
 
     const supabase = createClient();
     
     // Helper to ensure profile exists
-    const ensureProfileExists = async (user: any) => {
+    const ensureProfileExists = async (user: SupabaseUser | null) => {
       if (!user) return null;
       
       try {
@@ -139,7 +135,7 @@ export const Navbar: React.FC = () => {
     };
 
     // Get initial session
-    supabase.auth.getSession().then(async (res: any) => {
+    supabase.auth.getSession().then(async (res: { data: { session: SupabaseSession | null } }) => {
       const activeSession = res?.data?.session || null;
       setSession(activeSession);
       if (activeSession?.user) {
@@ -150,7 +146,7 @@ export const Navbar: React.FC = () => {
 
     // Listen for changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: any, currentSession: any) => {
+      async (_event: AuthChangeEvent, currentSession: SupabaseSession | null) => {
         setSession(currentSession);
         if (currentSession?.user) {
           const profileData = await ensureProfileExists(currentSession.user);
@@ -168,7 +164,7 @@ export const Navbar: React.FC = () => {
     );
 
     return () => subscription.unsubscribe();
-  }, [setSession, setProfile, router]);
+  }, [setSession, setProfile, router, session]);
 
   const toggleTheme = () => {
     const current = preferences.theme;

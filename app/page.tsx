@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import Link from 'next/link';
-import { motion, useInView, Variants } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Navbar } from '@/components/navbar';
-import { Button } from '@/components/ui/button';
-import { AnimatedCounter } from '@/components/ui/animated-counter';
-import { ArrowRight, BarChart2, Trophy, ShieldCheck, Keyboard, User } from 'lucide-react';
+import { BarChart2, Trophy, ShieldCheck, Keyboard, User } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
 const ComparisonSection = dynamic(() => import('@/components/home/comparison'), { ssr: true });
@@ -15,22 +13,7 @@ const AchievementsSection = dynamic(() => import('@/components/home/achievements
 const FAQSection = dynamic(() => import('@/components/home/faq'), { ssr: true });
 import { Hero3D } from '@/components/home/hero-3d';
 
-const stagger: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.05 },
-  },
-};
 
-const fadeUp: Variants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: { type: 'spring', stiffness: 300, damping: 28 },
-  },
-};
 
 const features = [
   {

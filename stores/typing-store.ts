@@ -281,7 +281,7 @@ export const useTypingStore = create<TypingState>((set, get) => {
     },
 
     resumeTest: () => {
-      const { status, timeLeft } = get();
+      const { status } = get();
       if (status !== 'paused') return;
 
       set({ status: 'running' });

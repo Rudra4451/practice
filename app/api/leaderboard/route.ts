@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
 
     // Deduplicate in memory keeping only the highest score per user
     const seenUsers = new Set<string>();
-    const deduplicatedData: any[] = [];
+    const deduplicatedData: Array<Record<string, unknown>> = [];
 
     for (const entry of (fallbackData || [])) {
       const userId = entry.user_id || 'anonymous';
@@ -135,8 +135,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: deduplicatedData });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Leaderboard route error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

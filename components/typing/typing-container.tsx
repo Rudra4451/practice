@@ -20,8 +20,6 @@ export const TypingContainer: React.FC = () => {
     wpm,
     accuracy,
     combo,
-    setDuration,
-    setMode,
     startTest,
     startTestWithConfig,
     handleInput,

@@ -3,8 +3,7 @@
 import React, { useEffect, useState, use } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Navbar } from '@/components/navbar';
-import { Calendar, Zap, Award, CheckCircle, BarChart, ArrowRight, User } from 'lucide-react';
-import Link from 'next/link';
+import { Calendar, Zap, Award, CheckCircle, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface PublicProfile {
@@ -23,6 +22,15 @@ interface UserStats {
   totalTimeSecs: number;
 }
 
+interface AchievementRecord {
+  unlocked_at?: string;
+  achievements?: {
+    name?: string;
+    description?: string;
+    icon_path?: string;
+  } | Array<{ name?: string; description?: string; icon_path?: string }> | null;
+}
+
 export default function PublicProfilePage({ params }: { params: Promise<{ username: string }> }) {
   // Unpack Next 15 route params using React.use()
   const { username } = use(params);
@@ -30,7 +38,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [streak, setStreak] = useState<{ current: number; longest: number } | null>(null);
-  const [achievements, setAchievements] = useState<any[]>([]);
+  const [achievements, setAchievements] = useState<AchievementRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
@@ -60,13 +68,14 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
           .eq('is_invalidated', false);
 
         if (!resultsErr && results) {
-          const wpmList = results.map((r: any) => r.wpm);
+          const typedResults = results as Array<{ wpm: number; accuracy: number; duration: number }>;
+          const wpmList = typedResults.map((r) => r.wpm);
           const bestWpm = wpmList.length > 0 ? Math.max(...wpmList) : 0;
           const avgWpm = wpmList.length > 0 ? Math.round(wpmList.reduce((a: number, b: number) => a + b, 0) / wpmList.length) : 0;
-          const avgAccuracy = results.length > 0 
-            ? Math.round(results.map((r: any) => r.accuracy).reduce((a: number, b: number) => a + b, 0) / results.length) 
+          const avgAccuracy = typedResults.length > 0 
+            ? Math.round(typedResults.map((r) => r.accuracy).reduce((a: number, b: number) => a + b, 0) / typedResults.length) 
             : 0;
-          const totalTimeSecs = results.reduce((a: number, b: any) => a + b.duration, 0);
+          const totalTimeSecs = typedResults.reduce((a: number, b) => a + b.duration, 0);
 
           setStats({
             bestWpm,
@@ -97,7 +106,7 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
           .eq('user_id', profileData.id);
 
         if (userAchievements) {
-          setAchievements(userAchievements);
+          setAchievements(userAchievements as unknown as AchievementRecord[]);
         }
 
       } catch (err) {
@@ -207,24 +216,27 @@ export default function PublicProfilePage({ params }: { params: Promise<{ userna
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {achievements.map((ach, idx) => (
-                <div key={idx} className="flex items-start gap-3 p-3 bg-background/50 border-3 border-border/50">
-                  <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
-                    <CheckCircle className="w-5 h-5" />
+              {achievements.map((ach, idx) => {
+                const badge = Array.isArray(ach.achievements) ? ach.achievements[0] : ach.achievements;
+                return (
+                  <div key={idx} className="flex items-start gap-3 p-3 bg-background/50 border-3 border-border/50">
+                    <div className="w-10 h-10 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs font-bold text-text-primary">
+                        {badge?.name || 'Badge'}
+                      </span>
+                      <span className="text-xs text-text-secondary mt-0.5">
+                        {badge?.description || 'Unlocked achievement badge'}
+                      </span>
+                      <span className="text-xs text-text-secondary/80 mt-1">
+                        Unlocked {ach.unlocked_at ? new Date(ach.unlocked_at).toLocaleDateString() : 'Recently'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs font-bold text-text-primary">
-                      {ach.achievements?.name || 'Badge'}
-                    </span>
-                    <span className="text-xs text-text-secondary mt-0.5">
-                      {ach.achievements?.description || 'Unlocked achievement badge'}
-                    </span>
-                    <span className="text-xs text-text-secondary/80 mt-1">
-                      Unlocked {new Date(ach.unlocked_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

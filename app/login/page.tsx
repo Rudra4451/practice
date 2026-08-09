@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useUserStore } from '@/stores/user-store';
 import { Navbar } from '@/components/navbar';
@@ -20,20 +19,15 @@ function LoginCard() {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const urlError = searchParams.get('error') === 'auth-failed' ? 'Authentication failed. Please check your link or try again.' : '';
+  const activeError = errorMsg || urlError;
+
   // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (session) {
       router.push('/dashboard');
     }
   }, [session, router]);
-
-  // Load URL errors
-  useEffect(() => {
-    const err = searchParams.get('error');
-    if (err === 'auth-failed') {
-      setErrorMsg('Authentication failed. Please check your link or try again.');
-    }
-  }, [searchParams]);
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,8 +67,9 @@ function LoginCard() {
       if (error) throw error;
       setSuccessMsg('Check your inbox — the magic link is on its way.');
       setEmail('');
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during authentication.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'An error occurred during authentication.';
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }
@@ -105,8 +100,9 @@ function LoginCard() {
       } else {
         await signInWithGithub();
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during provider authentication.');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'An error occurred during provider authentication.';
+      setErrorMsg(msg);
       setLoading(false);
     }
   };
@@ -140,10 +136,10 @@ function LoginCard() {
         </div>
 
         {/* Messages */}
-        {errorMsg && (
+        {activeError && (
           <div className="p-3 bg-error/15 border-2 border-error text-error text-xs font-bold uppercase tracking-wide flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{errorMsg}</span>
+            <span>{activeError}</span>
           </div>
         )}
 
@@ -183,6 +179,25 @@ function LoginCard() {
           >
             <span>Send Magic Link</span>
             <ArrowRight className="w-4 h-4" />
+          </Button>
+
+          <Button
+            type="button"
+            onClick={() => {
+              localStorage.setItem('typrox_demo', 'true');
+              localStorage.setItem('typrox_demo_logged_in', 'true');
+              document.cookie = "typrox_demo_logged_in=true; path=/; max-age=86400";
+              const mockSession = { user: { id: 'mock-user-id', email: 'demo_user@typrox.com' } };
+              const mockProfile = { id: 'mock-user-id', username: 'demo_typist', display_name: 'Guest Typist', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
+              useUserStore.getState().setSession(mockSession);
+              useUserStore.getState().setProfile(mockProfile);
+              router.push('/dashboard?demo=true');
+            }}
+            variant="secondary"
+            className="w-full border-accent/40 text-accent font-bold"
+          >
+            <Zap className="w-4 h-4 text-accent" />
+            <span>Enter Guest Demo Mode (Instant Access)</span>
           </Button>
         </form>
 

@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import { Navbar } from '@/components/navbar';
-import { Award, Zap, Trophy, ShieldAlert, ArrowRight, User } from 'lucide-react';
+import { Trophy, ShieldAlert, ArrowRight, User } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
@@ -67,10 +68,10 @@ export default function LeaderboardPage() {
   }, [mode, duration, timeframe]);
 
   useEffect(() => {
-    let channel: any = null;
-    let supabaseInstance: any = null;
+    let channel: RealtimeChannel | null = null;
+    let supabaseInstance: SupabaseClient | null = null;
 
-    fetchLeaderboard();
+    Promise.resolve().then(() => fetchLeaderboard());
 
     // Subscribe to Postgres changes on test_results to refresh ranking automatically
     try {

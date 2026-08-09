@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+interface Diagnostics {
+  timestamp: string;
+  environment: Record<string, unknown>;
+  connection: Record<string, unknown>;
+  auth: Record<string, unknown>;
+  tables: Record<string, unknown>;
+  policies: Record<string, unknown>;
+  trigger: Record<string, unknown>;
+  insertTest?: Record<string, unknown>;
+}
+
 export async function GET() {
-  const diagnostics: Record<string, any> = {
+  const diagnostics: Diagnostics = {
     timestamp: new Date().toISOString(),
     environment: {},
     connection: {},
@@ -29,7 +40,7 @@ export async function GET() {
     const supabase = await createClient();
 
     // 2. Connection test
-    const { data: connTest, error: connErr } = await supabase
+    const { error: connErr } = await supabase
       .from('profiles')
       .select('id')
       .limit(1);
@@ -122,10 +133,11 @@ export async function GET() {
     }
 
     return NextResponse.json(diagnostics);
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
     diagnostics.connection = {
       status: 'EXCEPTION',
-      error: err.message,
+      error: message,
     };
     return NextResponse.json(diagnostics, { status: 500 });
   }

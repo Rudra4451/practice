@@ -23,7 +23,7 @@ interface HUDItemProps {
 
 interface KeycapProps {
   label: string;
-  code: string;
+  _code: string;
   isPressed: boolean;
   row: number;
   rgbColor: string;
@@ -123,7 +123,7 @@ const ANSI_60_LAYOUT: KeyConfig[][] = [
 ];
 
 // --- Keycap Component (OEM sculpted profile) ---
-const Keycap: React.FC<KeycapProps> = React.memo(({ label, code, isPressed, row, rgbColor, lightingMode }) => {
+const Keycap: React.FC<KeycapProps> = React.memo(({ label, isPressed, row, rgbColor, lightingMode }) => {
   const oemConfig = useMemo(() => {
     switch (row) {
       case 0: return { zHeight: 15, tilt: 8 };   // Numeric
@@ -563,7 +563,7 @@ export const Hero3D = () => {
                       >
                         <Keycap 
                           label={k.label} 
-                          code={k.code} 
+                          _code={k.code} 
                           isPressed={isPressed || false} 
                           row={k.row} 
                           rgbColor={rgbColorValue}

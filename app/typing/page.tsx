@@ -23,8 +23,8 @@ function TypingArena() {
       setSeed(urlSeed);
       changed = true;
     }
-    if (urlMode) {
-      setMode(urlMode as any);
+    if (urlMode && ['words', 'quotes', 'numbers', 'punctuation', 'code'].includes(urlMode)) {
+      setMode(urlMode as 'words' | 'quotes' | 'numbers' | 'punctuation' | 'code');
       changed = true;
     }
     if (urlDuration) {

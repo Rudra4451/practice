@@ -29,7 +29,7 @@ export async function createClient() {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             );
-          } catch (error) {
+          } catch {
             // Can be ignored if invoked in a Server Component where setting cookies is restricted
           }
         },

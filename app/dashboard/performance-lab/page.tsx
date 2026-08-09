@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import Link from 'next/link';
 import { useUserStore } from '@/stores/user-store';
 import { Navbar } from '@/components/navbar';
 import { createClient } from '@/lib/supabase/client';
-import { Lock, Zap, Keyboard, Sparkles, BarChart2, CheckCircle, ShieldAlert, Award } from 'lucide-react';
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
+import { Lock, Zap, Keyboard, Sparkles, BarChart2, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Keyboard Layout Mapping for Heatmap render
@@ -31,13 +31,12 @@ const FINGER_MAP: Record<string, string> = {
 };
 
 export default function PerformanceLabPage() {
-  const { session, profile } = useUserStore();
+  const { session } = useUserStore();
   const [loading, setLoading] = useState(true);
   const [hasData, setHasData] = useState(false);
 
   // Performance Telemetry Aggregates
   const [heatmap, setHeatmap] = useState<Record<string, number>>({});
-  const [fingerLoads, setFingerLoads] = useState<Record<string, number>>({});
   const [handDistribution, setHandDistribution] = useState({ left: 50, right: 50 });
   const [slowBigrams, setSlowBigrams] = useState<Array<{ bigram: string; speed: number }>>([]);
   const [weakKeys, setWeakKeys] = useState<Array<{ key: string; count: number }>>([]);
@@ -112,8 +111,8 @@ export default function PerformanceLabPage() {
       const bigramSpeeds: Record<string, number[]> = {};
       const errorsList: Record<string, number> = {};
 
-      replays.forEach((rep: any) => {
-        const telemetry = rep.telemetry as any[];
+      replays.forEach((rep: { telemetry?: Array<{ t: number; k: string; y: number; i: number }> }) => {
+        const telemetry = (rep.telemetry || []) as Array<{ t: number; k: string; y: number; i: number }>;
         
         for (let i = 1; i < telemetry.length; i++) {
           const prev = telemetry[i - 1];
@@ -175,7 +174,6 @@ export default function PerformanceLabPage() {
       const totalHits = leftHits + rightHits || 1;
 
       setHeatmap(keyUsage);
-      setFingerLoads(fingerHits);
       setHandDistribution({
         left: Math.round((leftHits / totalHits) * 100),
         right: Math.round((rightHits / totalHits) * 100),
@@ -193,15 +191,15 @@ export default function PerformanceLabPage() {
 
   // Load telemetry data on mount/session changes
   useEffect(() => {
-    loadTelemetry();
+    Promise.resolve().then(() => loadTelemetry());
   }, [loadTelemetry]);
 
   // Realtime subscription for Supabase replays table
   useEffect(() => {
     if (!session?.user) return;
 
-    let channel: any = null;
-    let supabaseInstance: any = null;
+    let channel: RealtimeChannel | null = null;
+    let supabaseInstance: SupabaseClient | null = null;
 
     try {
       supabaseInstance = createClient();
@@ -298,7 +296,7 @@ export default function PerformanceLabPage() {
             <div className="flex flex-col gap-2 max-w-md">
               <h2 className="text-lg font-black uppercase tracking-wider text-text-primary">No Replay Data Detected</h2>
               <p className="text-xs font-bold uppercase tracking-wider text-text-secondary leading-relaxed">
-                You haven't completed any typing tests in this account yet, or your tests don't have replay logs. Head over to the practice arena to register your first keystroke profile!
+                You haven&apos;t completed any typing tests in this account yet, or your tests don&apos;t have replay logs. Head over to the practice arena to register your first keystroke profile!
               </p>
             </div>
             <Button
@@ -388,7 +386,7 @@ export default function PerformanceLabPage() {
                   <div className="flex flex-col gap-3">
                     {slowBigrams.map((item, idx) => (
                       <div key={idx} className="flex justify-between items-center p-2 bg-background/50 border-3 border-border/50 font-mono text-xs">
-                        <span className="font-bold text-text-primary">"{item.bigram.toUpperCase()}"</span>
+                        <span className="font-bold text-text-primary">&quot;{item.bigram.toUpperCase()}&quot;</span>
                         <span className="text-error">{item.speed} ms delay</span>
                       </div>
                     ))}
@@ -418,7 +416,7 @@ export default function PerformanceLabPage() {
                       return (
                         <div key={idx} className="flex flex-col gap-1.5">
                           <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider font-mono">
-                            <span className="text-text-primary font-black">"{item.key.toUpperCase()}"</span>
+                            <span className="text-text-primary font-black">&quot;{item.key.toUpperCase()}&quot;</span>
                             <span className="text-bauhaus-red">{item.count} errors</span>
                           </div>
                           <div className="w-full h-2 bg-background border border-border overflow-hidden">

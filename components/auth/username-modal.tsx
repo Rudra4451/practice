@@ -20,14 +20,15 @@ export const UsernameModal = () => {
   useEffect(() => {
     if (session && profile) {
       const isDefault = /^user_[0-9a-f]{8}$/i.test(profile.username);
-      setIsOpen(isDefault);
-      if (isDefault) {
-        // Pre-fill display name from metadata if available
-        const metaName = session.user?.user_metadata?.full_name || session.user?.user_metadata?.display_name || '';
-        setDisplayName(metaName);
-      }
+      Promise.resolve().then(() => {
+        setIsOpen(isDefault);
+        if (isDefault) {
+          const metaName = session.user?.user_metadata?.full_name || session.user?.user_metadata?.display_name || '';
+          setDisplayName(String(metaName));
+        }
+      });
     } else {
-      setIsOpen(false);
+      Promise.resolve().then(() => setIsOpen(false));
     }
   }, [session, profile]);
 
@@ -104,9 +105,10 @@ export const UsernameModal = () => {
       showToast('Profile updated successfully!');
       setIsOpen(false);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to set username:', err);
-      setErrorMsg(err.message || 'An error occurred. Please try again.');
+      const msg = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      setErrorMsg(msg);
     } finally {
       setLoading(false);
     }

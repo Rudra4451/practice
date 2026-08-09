@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { Session } from '@supabase/supabase-js';
 
 export interface UserPreferences {
   theme: 'light' | 'dark';
@@ -31,12 +32,25 @@ export interface GuestResult {
   created_at: string;
 }
 
+export interface AppSession {
+  user: {
+    id: string;
+    email?: string;
+    user_metadata?: Record<string, unknown>;
+  };
+  access_token?: string;
+  expires_at?: number;
+  [key: string]: unknown;
+}
+
+export type UserSession = Session | AppSession | null;
+
 interface UserState {
-  session: any | null;
+  session: UserSession;
   profile: UserProfile | null;
   preferences: UserPreferences;
   guestHistory: GuestResult[];
-  setSession: (session: any | null) => void;
+  setSession: (session: UserSession) => void;
   setProfile: (profile: UserProfile | null) => void;
   updatePreferences: (prefs: Partial<UserPreferences>) => void;
   addGuestResult: (result: GuestResult) => void;
