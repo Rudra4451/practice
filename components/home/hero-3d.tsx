@@ -1,15 +1,16 @@
 'use client';
 
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { motion, useScroll, useTransform, useSpring, useReducedMotion, AnimatePresence } from 'framer-motion';
 import { Play, Trophy, Activity, Target, Flame, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { HeroSandbox } from './hero-sandbox';
 
 // --- Types ---
 interface KeyConfig {
   code: string;
   label: string;
-  unitWidth: number; // relative to 1u
+  unitWidth: number;
   row: number;
 }
 
@@ -138,7 +139,6 @@ const Keycap: React.FC<KeycapProps> = React.memo(({ label, isPressed, row, rgbCo
   const targetZ = isPressed ? oemConfig.zHeight - 3.5 : oemConfig.zHeight;
   const isMod = label.length > 1;
 
-  // Render switch casing borders on sides when pressed (reveals switch travel)
   return (
     <div className="w-full h-full preserve-3d relative">
       <motion.div
@@ -153,10 +153,8 @@ const Keycap: React.FC<KeycapProps> = React.memo(({ label, isPressed, row, rgbCo
             : 'bg-gradient-to-b from-[#2E2E31] to-[#1C1C1E] border-neutral-800 shadow-[0_3px_5px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.06)] hover:brightness-105'
         }`}
       >
-        {/* Subtle top edge highlight */}
         <div className="absolute inset-[1px] border border-white/2 rounded-[5px] pointer-events-none" />
 
-        {/* Legend: Placed in the upper-left corner exactly like standard ANSI keycaps */}
         <span className={`absolute left-1.5 top-1 font-mono lowercase tracking-tighter ${
           isPressed ? 'text-accent' : 'text-neutral-400'
         } ${
@@ -165,7 +163,6 @@ const Keycap: React.FC<KeycapProps> = React.memo(({ label, isPressed, row, rgbCo
           {label}
         </span>
 
-        {/* RGB Switch underglow */}
         {lightingMode !== 'off' && (
           <div 
             style={{ backgroundColor: rgbColor, boxShadow: `0 0 10px ${rgbColor}` }}
@@ -217,7 +214,7 @@ interface RGBToggleProps {
 
 const RGBToggle: React.FC<RGBToggleProps> = ({ currentMode, setMode, modes }) => (
   <div className="flex items-center gap-2 p-1.5 bg-surface-accent/40 backdrop-blur-md border border-border/40 rounded-full select-none z-30">
-    <span className="text-[9px] font-black uppercase tracking-wider text-text-tertiary pl-2.5">RGB Light</span>
+    <span className="text-[9px] font-black uppercase tracking-wider text-text-tertiary pl-2.5">RGB Theme</span>
     <div className="flex gap-1.5 pr-1">
       {modes.map((m) => (
         <button
@@ -359,48 +356,29 @@ export const Hero3D = () => {
     return () => clearInterval(idleBob);
   }, [rotateX, rotateY]);
 
-  // Automated logical human typing simulator with vibration
-  useEffect(() => {
-    const sequence = 'PRACTICE ON TYPROX TO MASTER EVERY KEYSTROKE COMPETE ON THE LEADERBOARDS FLOW SPEED';
-    const keys = sequence.split('');
-    let index = 0;
+  // Handle key press from inline sandbox
+  const handleSandboxKey = useCallback((char: string) => {
+    const key = char === ' ' ? 'SPACE' : char.toUpperCase();
 
-    const interval = setInterval(() => {
-      const char = keys[index % keys.length];
-      const up = char.toUpperCase();
+    setKeyboardShaking({
+      x: (Math.random() - 0.5) * 2.0,
+      y: (Math.random() - 0.5) * 2.0
+    });
+    setTimeout(() => setKeyboardShaking({ x: 0, y: 0 }), 50);
 
-      // Keyboard chassis vibration offsets on press
-      setKeyboardShaking({
-        x: (Math.random() - 0.5) * 1.4,
-        y: (Math.random() - 0.5) * 1.4
-      });
-      setTimeout(() => setKeyboardShaking({ x: 0, y: 0 }), 50);
+    setPressedKeys((prev) => ({ ...prev, [key]: true }));
+    setTimeout(() => {
+      setPressedKeys((prev) => ({ ...prev, [key]: false }));
+    }, 110);
 
-      if (char !== ' ') {
-        setPressedKeys((prev) => ({ ...prev, [up]: true }));
-        setTimeout(() => {
-          setPressedKeys((prev) => ({ ...prev, [up]: false }));
-        }, 110);
-
-        // Small floating words
-        if (Math.random() > 0.85) {
-          const words = ['120 WPM', 'perfect', 'flow', '98.7% accuracy', 'streak +1'];
-          const text = words[Math.floor(Math.random() * words.length)];
-          setTrails((prev) => [
-            ...prev,
-            { id: Date.now() + Math.random(), text, x: Math.random() * 40 - 20, y: Math.random() * 6 - 3 }
-          ].slice(-3));
-        }
-      } else {
-        setPressedKeys((prev) => ({ ...prev, SPACE: true }));
-        setTimeout(() => {
-          setPressedKeys((prev) => ({ ...prev, SPACE: false }));
-        }, 110);
-      }
-      index++;
-    }, 250);
-
-    return () => clearInterval(interval);
+    if (Math.random() > 0.7) {
+      const words = ['120 WPM', 'perfect', 'flow', '99.2% accuracy', 'thock!'];
+      const text = words[Math.floor(Math.random() * words.length)];
+      setTrails((prev) => [
+        ...prev,
+        { id: Date.now() + Math.random(), text, x: Math.random() * 40 - 20, y: Math.random() * 6 - 3 }
+      ].slice(-3));
+    }
   }, []);
 
   // Summon a random collectible cat (Daily Typing Cat experience)
@@ -435,29 +413,44 @@ export const Hero3D = () => {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="flex flex-col items-center gap-6"
+          className="flex flex-col items-center gap-4"
         >
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-accent/10 border border-accent/25 text-accent text-xs font-bold uppercase tracking-wider mb-2">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Next-Gen Zero-Lag Typing Arena</span>
+          </div>
+
           <h1 className="text-5xl sm:text-7xl lg:text-[85px] font-black tracking-tighter text-text-primary font-display leading-[0.95]">
             Master Every Keystroke.
           </h1>
           <p className="text-xs sm:text-sm text-text-secondary max-w-lg font-medium leading-relaxed font-sans lowercase">
-            improve your typing speed and accuracy with lessons, live feedback, challenges and detailed progress tracking.
+            improve your typing speed and accuracy with lessons, live telemetry feedback, challenges and detailed progress tracking.
           </p>
         </motion.div>
 
-        {/* Console CTAs and RGB Controller row (Height 40-42px) */}
+        {/* Live Interactive Hero Sandbox */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.15 }}
+          className="w-full mt-6"
+        >
+          <HeroSandbox onKeyType={handleSandboxKey} rgbColor={rgbColorValue} />
+        </motion.div>
+
+        {/* Console CTAs and RGB Controller row */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="flex flex-wrap items-center justify-center gap-4 mt-8"
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="flex flex-wrap items-center justify-center gap-4 mt-6"
         >
           <Button
             href="/typing"
             className="h-10 px-5 rounded-full bg-accent text-neutral-950 font-black uppercase tracking-wider text-[11px] hover:brightness-105 active:scale-[0.98] transition-all shadow-[0_3px_10px_rgba(255,92,0,0.2)] hover:shadow-[0_4px_15px_rgba(255,92,0,0.35)] duration-200"
           >
             <Play className="w-3.5 h-3.5 fill-current mr-1" />
-            <span>Start Typing</span>
+            <span>Start Full Test</span>
           </Button>
 
           <Button
@@ -577,7 +570,7 @@ export const Hero3D = () => {
             </div>
           </motion.div>
 
-          {/* Floating GlassmorphismHUD Panels (Accent color syncs with selected RGB Mode) */}
+          {/* Floating Glassmorphism HUD Panels */}
           <HUDPanel 
             label="Speed" 
             value="128 wpm" 
@@ -628,7 +621,6 @@ export const Hero3D = () => {
                 exit={{ opacity: 0, y: 10, scale: 0.95 }}
                 className={`p-4 border rounded-2xl flex items-center gap-4 max-w-sm shadow-md transition-all duration-300 relative ${summonedCat.bg}`}
               >
-                {/* Dismiss button */}
                 <button 
                   onClick={() => setSummonedCat(null)} 
                   className="absolute top-2 right-2 text-[10px] opacity-60 hover:opacity-100 font-bold font-mono px-1.5"

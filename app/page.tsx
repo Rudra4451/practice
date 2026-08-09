@@ -12,6 +12,7 @@ const AnalyticsSection = dynamic(() => import('@/components/home/analytics'), { 
 const AchievementsSection = dynamic(() => import('@/components/home/achievements'), { ssr: true });
 const FAQSection = dynamic(() => import('@/components/home/faq'), { ssr: true });
 import { Hero3D } from '@/components/home/hero-3d';
+import { LiveStatsBar } from '@/components/home/live-stats-bar';
 
 
 
@@ -52,6 +53,8 @@ export default function Home() {
       <Navbar />
 
       <Hero3D />
+
+      <LiveStatsBar />
 
       {/* ── Feature Cards ── */}
       <section id="features" className="py-20 md:py-28 px-4 md:px-6">
