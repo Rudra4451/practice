@@ -3,6 +3,10 @@
 -- Status: PREPARED ONLY (APPLY AFTER 20260621000000_typrox_2_hardening.sql)
 -- ================================================================
 
+BEGIN;
+
+SET LOCAL lock_timeout = '5s';
+
 -- 1. USER PROGRESSION (XP, LEVELS & MASTERY SUMMARY)
 CREATE TABLE IF NOT EXISTS public.user_progression (
     user_id UUID PRIMARY KEY REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -44,6 +48,12 @@ ALTER TABLE public.user_progression ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_lesson_progress ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.challenge_attempts ENABLE ROW LEVEL SECURITY;
 
+REVOKE ALL ON
+    public.user_progression,
+    public.user_lesson_progress,
+    public.challenge_attempts
+FROM PUBLIC, anon, authenticated;
+
 GRANT SELECT ON
     public.user_progression,
     public.user_lesson_progress,
@@ -60,8 +70,17 @@ CREATE POLICY "Users can read own lesson progress"
     USING (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Challenge attempts readable by participants or public" ON public.challenge_attempts;
-CREATE POLICY "Challenge attempts readable by participants or public"
-    ON public.challenge_attempts FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Active challenge attempts are readable" ON public.challenge_attempts;
+CREATE POLICY "Active challenge attempts are readable"
+    ON public.challenge_attempts FOR SELECT
+    USING (
+        EXISTS (
+            SELECT 1
+            FROM public.challenge_links cl
+            WHERE cl.id = challenge_id
+              AND cl.expires_at > timezone('utc'::text, now())
+        )
+    );
 
 CREATE INDEX IF NOT EXISTS idx_lesson_progress_user
     ON public.user_lesson_progress(user_id, updated_at DESC);
@@ -69,3 +88,4 @@ CREATE INDEX IF NOT EXISTS idx_lesson_progress_user
 CREATE INDEX IF NOT EXISTS idx_challenge_attempts_challenge
     ON public.challenge_attempts(challenge_id, created_at DESC);
 
+COMMIT;

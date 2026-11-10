@@ -1,4 +1,12 @@
 -- ================================================================
+-- HISTORICAL REFERENCE SNAPSHOT ONLY — NOT A SUPABASE CLI MIGRATION
+-- Relocated from supabase/migrations/FULL_SCHEMA.sql in Phase 1H
+-- because non-timestamped SQL files inside supabase/migrations/ risk
+-- out-of-order CLI execution or migration history failures.
+-- Retained strictly as a legacy baseline reference and CI upgrade fixture.
+-- ================================================================
+
+-- ================================================================
 -- TyProX FULL DATABASE SCHEMA
 -- ================================================================
 -- HOW TO USE:
@@ -341,3 +349,4 @@ GRANT SELECT ON public.leaderboard_view TO anon, authenticated, service_role;
 -- streaks, daily_challenges, challenge_links, user_challenge_progress,
 -- achievements, user_achievements, leaderboard_view.
 -- ================================================================
+

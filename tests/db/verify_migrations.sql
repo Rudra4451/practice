@@ -1,5 +1,5 @@
 -- ============================================================================
--- Real PostgreSQL 16 Verification Suite for TyProX Migrations (20260618..20260624)
+-- Real PostgreSQL 16 Verification Suite for TyProX Migrations (20260618..20260622)
 -- ============================================================================
 -- Executes across isolated transactions under explicit database roles:
 --   * postgres (catalog metadata & test fixture/cleanup only; NEVER security views/RLS proofs)
@@ -18,6 +18,7 @@ BEGIN;
 DO $$
 DECLARE
   v_bad_count INTEGER;
+  v_bad_list TEXT;
   v_priv_cols TEXT[];
   v_view_cols TEXT[];
   v_view_def TEXT;
@@ -70,20 +71,21 @@ BEGIN
       OR (tablename = 'challenge_links' AND policyname IN ('Anyone can insert challenge links', 'Authenticated users can create challenge links', 'Challenge links are readable by everyone'))
       OR (tablename = 'user_challenge_progress' AND policyname = 'Users can log their own challenge progress')
       OR (tablename = 'user_achievements' AND policyname = 'Users can insert their own achievements')
-      OR (tablename = 'profiles' AND policyname = 'Users can update their own profiles')
+      OR (tablename = 'profiles' AND policyname IN ('Users can update their own profiles', 'Users can insert their own profiles'))
+      OR (tablename = 'challenge_attempts' AND policyname = 'Challenge attempts readable by participants or public')
     );
   IF v_bad_count <> 0 THEN
     RAISE EXCEPTION 'Found % obsolete permissive RLS policy/policies still active in pg_policies', v_bad_count;
   END IF;
 
-  -- Assert NO non-SELECT policy exists outside public.profiles
+  -- Assert NO non-SELECT policy exists anywhere in public (including profiles INSERT/DELETE)
   SELECT COUNT(*) INTO v_bad_count
   FROM pg_policies
   WHERE schemaname = 'public'
-    AND tablename <> 'profiles'
-    AND cmd <> 'SELECT';
+    AND cmd <> 'SELECT'
+    AND NOT (tablename = 'profiles' AND cmd = 'UPDATE' AND policyname = 'Users can update their own profiles safely');
   IF v_bad_count <> 0 THEN
-    RAISE EXCEPTION 'Expected zero client DML policies outside public.profiles, found %', v_bad_count;
+    RAISE EXCEPTION 'Expected zero client DML policies in public except hardened profiles UPDATE, found %', v_bad_count;
   END IF;
 
   -- Assert profiles UPDATE policy strictly checks auth.uid() = id (not old username regex workaround)
@@ -100,7 +102,7 @@ BEGIN
     RAISE EXCEPTION 'Expected hardened profiles UPDATE policy in pg_policies (match count=%)', v_bad_count;
   END IF;
 
-  -- Assert required privacy policies exist in pg_policies
+  -- Assert required privacy & expiry policies exist in pg_policies
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='test_results' AND cmd='SELECT' AND policyname='Verified public or own test results readable') THEN
     RAISE EXCEPTION 'Missing hardened SELECT policy on public.test_results';
   END IF;
@@ -110,11 +112,25 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='challenge_links' AND cmd='SELECT' AND policyname='Non-expired challenge links are readable') THEN
     RAISE EXCEPTION 'Missing expiry SELECT policy on public.challenge_links';
   END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies
+    WHERE schemaname='public'
+      AND tablename='challenge_attempts'
+      AND cmd='SELECT'
+      AND policyname='Active challenge attempts are readable'
+      AND position('expires_at' IN COALESCE(qual, '')) > 0
+  ) THEN
+    RAISE EXCEPTION 'Missing expiry-enforced SELECT policy on public.challenge_attempts';
+  END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='user_lesson_progress' AND cmd='SELECT' AND policyname='Users can read own lesson progress') THEN
     RAISE EXCEPTION 'Missing owner-only SELECT policy on public.user_lesson_progress';
   END IF;
 
-  -- 1C. Assert table & column grants (anon: SELECT only; authenticated: SELECT + narrow profiles UPDATE without username)
+  -- 1C. Assert schema, table & column grants (anon: SELECT only; authenticated: SELECT + narrow profiles UPDATE without username)
+  IF has_schema_privilege('anon', 'public', 'CREATE')
+     OR has_schema_privilege('authenticated', 'public', 'CREATE') THEN
+    RAISE EXCEPTION 'anon and authenticated must not hold CREATE privilege on schema public';
+  END IF;
   SELECT COUNT(*) INTO v_bad_count
   FROM information_schema.role_table_grants
   WHERE table_schema = 'public'
@@ -145,14 +161,17 @@ BEGIN
     RAISE EXCEPTION 'authenticated UPDATE columns on public.profiles drifted: %', v_priv_cols;
   END IF;
 
-  -- 1D. Assert SECURITY DEFINER search_path & EXECUTE lockdowns
+  -- 1D. Assert search_path & complete non-extension routine EXECUTE lockdowns
   SELECT p.oid, p.prosecdef, p.proconfig
   INTO v_proc_oid, v_prosecdef, v_proconfig
   FROM pg_proc p
   JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.proname = 'submit_verified_result';
-  IF v_proc_oid IS NULL OR NOT v_prosecdef OR NOT ('search_path=public' = ANY(COALESCE(v_proconfig, ARRAY[]::text[]))) THEN
-    RAISE EXCEPTION 'submit_verified_result must be SECURITY DEFINER SET search_path = public';
+  IF v_proc_oid IS NULL OR NOT v_prosecdef OR NOT EXISTS (
+    SELECT 1 FROM unnest(COALESCE(v_proconfig, ARRAY[]::text[])) AS cfg
+    WHERE replace(regexp_replace(lower(cfg), '\s+', '', 'g'), '"', '') = 'search_path=public,pg_catalog'
+  ) THEN
+    RAISE EXCEPTION 'submit_verified_result must be SECURITY DEFINER SET search_path = public, pg_catalog (got %)', v_proconfig;
   END IF;
   IF has_function_privilege('anon', v_proc_oid, 'EXECUTE')
      OR has_function_privilege('authenticated', v_proc_oid, 'EXECUTE')
@@ -165,21 +184,97 @@ BEGIN
   FROM pg_proc p
   JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.proname = 'handle_new_user';
-  IF v_proc_oid IS NULL OR NOT v_prosecdef OR NOT ('search_path=public' = ANY(COALESCE(v_proconfig, ARRAY[]::text[]))) THEN
-    RAISE EXCEPTION 'handle_new_user must be SECURITY DEFINER SET search_path = public';
+  IF v_proc_oid IS NULL OR NOT v_prosecdef OR NOT EXISTS (
+    SELECT 1 FROM unnest(COALESCE(v_proconfig, ARRAY[]::text[])) AS cfg
+    WHERE replace(regexp_replace(lower(cfg), '\s+', '', 'g'), '"', '') = 'search_path=public,pg_catalog'
+  ) THEN
+    RAISE EXCEPTION 'handle_new_user must be SECURITY DEFINER SET search_path = public, pg_catalog (got %)', v_proconfig;
   END IF;
   IF has_function_privilege('anon', v_proc_oid, 'EXECUTE')
      OR has_function_privilege('authenticated', v_proc_oid, 'EXECUTE') THEN
     RAISE EXCEPTION 'handle_new_user EXECUTE must be revoked from anon/authenticated';
   END IF;
 
-  SELECT p.oid INTO v_proc_oid
+  SELECT p.oid, p.proconfig
+  INTO v_proc_oid, v_proconfig
   FROM pg_proc p
   JOIN pg_namespace n ON n.oid = p.pronamespace
   WHERE n.nspname = 'public' AND p.proname = 'enforce_profile_username_integrity';
+  IF v_proc_oid IS NULL OR NOT EXISTS (
+    SELECT 1 FROM unnest(COALESCE(v_proconfig, ARRAY[]::text[])) AS cfg
+    WHERE replace(regexp_replace(lower(cfg), '\s+', '', 'g'), '"', '') = 'search_path=public,pg_catalog'
+  ) THEN
+    RAISE EXCEPTION 'enforce_profile_username_integrity must SET search_path = public, pg_catalog (got %)', v_proconfig;
+  END IF;
   IF has_function_privilege('anon', v_proc_oid, 'EXECUTE')
      OR has_function_privilege('authenticated', v_proc_oid, 'EXECUTE') THEN
     RAISE EXCEPTION 'enforce_profile_username_integrity EXECUTE must be revoked from anon/authenticated';
+  END IF;
+
+  SELECT p.oid, p.proconfig
+  INTO v_proc_oid, v_proconfig
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public' AND p.proname = 'is_reserved_username';
+  IF v_proc_oid IS NULL OR NOT EXISTS (
+    SELECT 1 FROM unnest(COALESCE(v_proconfig, ARRAY[]::text[])) AS cfg
+    WHERE replace(regexp_replace(lower(cfg), '\s+', '', 'g'), '"', '') = 'search_path=public,pg_catalog'
+  ) THEN
+    RAISE EXCEPTION 'is_reserved_username must SET search_path = public, pg_catalog (got %)', v_proconfig;
+  END IF;
+  IF has_function_privilege('anon', v_proc_oid, 'EXECUTE')
+     OR has_function_privilege('authenticated', v_proc_oid, 'EXECUTE')
+     OR NOT has_function_privilege('service_role', v_proc_oid, 'EXECUTE') THEN
+    RAISE EXCEPTION 'is_reserved_username EXECUTE privileges violated (anon/auth/PUBLIC must be denied, service_role allowed)';
+  END IF;
+
+  -- Dynamic pg_proc sweep: ZERO non-extension routines in schema public may remain callable by PUBLIC, anon, or authenticated
+  SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text)
+  INTO v_bad_list
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.prokind IN ('f', 'p')
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_depend d
+      WHERE d.classid = 'pg_proc'::regclass
+        AND d.objid = p.oid
+        AND d.deptype = 'e'
+    )
+    AND (
+      has_function_privilege('anon', p.oid, 'EXECUTE')
+      OR has_function_privilege('authenticated', p.oid, 'EXECUTE')
+      OR p.proacl IS NULL
+      OR EXISTS (
+        SELECT 1 FROM aclexplode(p.proacl) a
+        WHERE a.grantee = 0 AND a.privilege_type = 'EXECUTE'
+      )
+    );
+  IF v_bad_list IS NOT NULL THEN
+    RAISE EXCEPTION 'Unexpected public routines remain callable by PUBLIC/anon/authenticated: %', v_bad_list;
+  END IF;
+
+  -- Dynamic SECURITY DEFINER search_path safety sweep across all non-extension public routines
+  SELECT string_agg(p.oid::regprocedure::text, ', ' ORDER BY p.oid::regprocedure::text)
+  INTO v_bad_list
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'public'
+    AND p.prokind IN ('f', 'p')
+    AND p.prosecdef = TRUE
+    AND NOT EXISTS (
+      SELECT 1 FROM pg_depend d
+      WHERE d.classid = 'pg_proc'::regclass
+        AND d.objid = p.oid
+        AND d.deptype = 'e'
+    )
+    AND NOT EXISTS (
+      SELECT 1 FROM unnest(COALESCE(p.proconfig, ARRAY[]::text[])) AS cfg
+      WHERE cfg LIKE 'search_path=%'
+        AND position('pg_temp' IN lower(cfg)) = 0
+    );
+  IF v_bad_list IS NOT NULL THEN
+    RAISE EXCEPTION 'SECURITY DEFINER routine(s) missing hardened search_path: %', v_bad_list;
   END IF;
 
   -- 1E. Assert leaderboard_view uses security_invoker = true, grants SELECT, filters private/unranked/invalidated, exposes only public columns
@@ -242,13 +337,31 @@ BEGIN
     FROM pg_class ic
     JOIN pg_index ix ON ix.indexrelid = ic.oid
     JOIN pg_namespace n ON n.oid = ic.relnamespace
+    JOIN pg_am am ON am.oid = ic.relam
     WHERE n.nspname = 'public'
       AND ic.relname = 'idx_test_results_leaderboard'
+      AND ix.indrelid = 'public.test_results'::regclass
+      AND NOT ix.indisunique
+      AND am.amname = 'btree'
+      AND position('USING btree (mode, duration, is_invalidated, wpm DESC)' IN pg_get_indexdef(ic.oid)) > 0
       AND ix.indpred IS NOT NULL
-      AND pg_get_expr(ix.indpred, ix.indrelid) ILIKE '%user_id IS NOT NULL%'
-      AND pg_get_expr(ix.indpred, ix.indrelid) ILIKE '%is_invalidated%'
+      AND regexp_replace(lower(pg_get_expr(ix.indpred, ix.indrelid)), '[()\s]+', '', 'g')
+          = 'user_idisnotnullandis_invalidated=falseandis_ranked=true'
   ) THEN
-    RAISE EXCEPTION 'Missing partial filtered index idx_test_results_leaderboard';
+    RAISE EXCEPTION 'Missing or mismatched partial filtered index idx_test_results_leaderboard';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_class ic
+    JOIN pg_index ix ON ix.indexrelid = ic.oid
+    JOIN pg_namespace n ON n.oid = ic.relnamespace
+    WHERE n.nspname = 'public'
+      AND ic.relname = 'idx_profiles_username_lower'
+      AND ix.indrelid = 'public.profiles'::regclass
+      AND pg_get_indexdef(ic.oid) ILIKE '%lower(%username%'
+  ) THEN
+    RAISE EXCEPTION 'Missing case-insensitive lookup index idx_profiles_username_lower on public.profiles';
   END IF;
 
   IF (SELECT COUNT(*) FROM public.achievements) <> 11 THEN
@@ -271,6 +384,7 @@ BEGIN;
 CREATE OR REPLACE FUNCTION public.test_force_replay_failure()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public, pg_catalog
 AS $$
 BEGIN
   IF NEW.telemetry::text LIKE '%force_replay_fail%' THEN
@@ -279,6 +393,7 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+REVOKE ALL ON FUNCTION public.test_force_replay_failure() FROM PUBLIC, anon, authenticated;
 
 DROP TRIGGER IF EXISTS trg_test_force_replay_failure ON public.replays;
 CREATE TRIGGER trg_test_force_replay_failure
@@ -635,6 +750,12 @@ BEGIN
     );
   EXCEPTION WHEN insufficient_privilege THEN v_raised := TRUE; END;
   IF NOT v_raised THEN RAISE EXCEPTION 'authenticated must not EXECUTE submit_verified_result'; END IF;
+
+  v_raised := FALSE;
+  BEGIN
+    PERFORM public.is_reserved_username('admin');
+  EXCEPTION WHEN insufficient_privilege THEN v_raised := TRUE; END;
+  IF NOT v_raised THEN RAISE EXCEPTION 'authenticated must not EXECUTE is_reserved_username'; END IF;
 END $$;
 COMMIT;
 
@@ -754,6 +875,12 @@ BEGIN
     );
   EXCEPTION WHEN insufficient_privilege THEN v_raised := TRUE; END;
   IF NOT v_raised THEN RAISE EXCEPTION 'anon must not EXECUTE submit_verified_result'; END IF;
+
+  v_raised := FALSE;
+  BEGIN
+    PERFORM public.is_reserved_username('admin');
+  EXCEPTION WHEN insufficient_privilege THEN v_raised := TRUE; END;
+  IF NOT v_raised THEN RAISE EXCEPTION 'anon must not EXECUTE is_reserved_username'; END IF;
 END $$;
 COMMIT;
 
@@ -771,9 +898,11 @@ DECLARE
   v_run_orphan UUID := 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
   v_run_inv UUID := 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
   v_run_inv_sig UUID := 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+  v_run_b_ranked UUID := 'ffffffff-ffff-4fff-8fff-fffffffffffb';
   v_resp JSONB;
   v_resp_dup JSONB;
   v_resp_rec JSONB;
+  v_ach_speed50_name TEXT;
   v_result_id UUID;
   v_orphan_id UUID;
   v_inv_id UUID;
@@ -787,7 +916,9 @@ DECLARE
 BEGIN
   SET LOCAL ROLE service_role;
 
-  -- Fresh run -> initializes streak=1 and unlocks Bronze Fingers (88 WPM)
+  SELECT name INTO v_ach_speed50_name FROM public.achievements WHERE code = 'SPEED_50';
+
+  -- Fresh run -> initializes streak=1 and unlocks SPEED_50 + Silver Fingers (88 WPM)
   v_resp := public.submit_verified_result(
     v_user_a, 88, 92, 97.5, 91, 1, 2, 'words', 30, 'pgseed_a1', v_run_a1, v_telemetry, TRUE
   );
@@ -797,8 +928,9 @@ BEGIN
   IF (v_resp->>'deduplicated')::boolean IS NOT FALSE OR (v_resp->>'streakDays')::integer <> 1 THEN
     RAISE EXCEPTION 'Expected fresh run with streakDays=1, got %', v_resp;
   END IF;
-  IF NOT (v_resp->'unlocked' @> '["Bronze Fingers"]'::jsonb) THEN
-    RAISE EXCEPTION 'Expected Bronze Fingers unlocked on 88 WPM run, got %', v_resp->'unlocked';
+  IF NOT ((v_resp->'unlocked') @> jsonb_build_array(v_ach_speed50_name))
+     OR NOT ((v_resp->'unlocked') @> '["Silver Fingers"]'::jsonb) THEN
+    RAISE EXCEPTION 'Expected SPEED_50 (%) and Silver Fingers unlocked on 88 WPM run, got %', v_ach_speed50_name, v_resp->'unlocked';
   END IF;
 
   -- Atomic rollback on replay failure leaves 0 orphaned test_results rows
@@ -920,11 +1052,19 @@ BEGIN
   PERFORM public.submit_verified_result(v_user_a, 70, 72, 95, 90, 1, 1, 'words', 15, 'pg_shared_seed', v_shared_client_run_id, v_telemetry, FALSE);
   PERFORM public.submit_verified_result(v_user_b, 75, 78, 96, 91, 1, 0, 'words', 15, 'pg_shared_seed', v_shared_client_run_id, v_telemetry, FALSE);
 
-  -- Populate privacy test fixtures as service_role (unranked, anonymous, challenges, lessons)
+  -- Populate privacy test fixtures as service_role (unranked, anonymous, challenges, challenge_attempts, lessons)
   INSERT INTO public.test_results (user_id, wpm, raw_wpm, accuracy, consistency, error_count, backspace_count, mode, duration, seed, is_ranked, is_invalidated)
   VALUES
     (v_user_b, 240, 245, 99, 95, 0, 0, 'words', 30, 'unranked_row', FALSE, FALSE),
     (NULL, 250, 255, 99, 95, 0, 0, 'words', 30, 'anon_row', TRUE, FALSE);
+
+  -- Verify submit_verified_result ignores is_ranked = FALSE (240 WPM) when computing Personal Best
+  v_resp := public.submit_verified_result(
+    v_user_b, 100, 104, 98, 94, 0, 0, 'words', 30, 'pgseed_b_ranked_100', v_run_b_ranked, v_telemetry, FALSE
+  );
+  IF (v_resp->>'isPersonalBest')::boolean IS NOT TRUE OR (v_resp->'previousBestWpm') <> 'null'::jsonb THEN
+    RAISE EXCEPTION 'Expected 100 WPM ranked run to ignore 240 WPM unranked row for PB calculation, got %', v_resp;
+  END IF;
 
   INSERT INTO public.challenge_links (creator_id, creator_wpm, creator_accuracy, mode, duration, seed, expires_at)
   VALUES (v_user_a, 99, 98, 'words', 30, 'active_chal', timezone('utc'::text, now()) + interval '2 days')
@@ -933,6 +1073,11 @@ BEGIN
   INSERT INTO public.challenge_links (creator_id, creator_wpm, creator_accuracy, mode, duration, seed, expires_at)
   VALUES (v_user_a, 99, 98, 'words', 30, 'expired_chal', timezone('utc'::text, now()) - interval '2 minutes')
   RETURNING id INTO v_expired_chal_id;
+
+  INSERT INTO public.challenge_attempts (challenge_id, challenger_id, wpm, accuracy, won)
+  VALUES
+    (v_active_chal_id, v_user_b, 95, 97, FALSE),
+    (v_expired_chal_id, v_user_b, 105, 98, TRUE);
 
   INSERT INTO public._verify_state (key, val_uuid) VALUES
     ('active_chal', v_active_chal_id),
@@ -984,7 +1129,7 @@ BEGIN
     RAISE EXCEPTION 'anon leaked user_id IS NULL test_result (got %)', v_count;
   END IF;
 
-  -- challenge_links expiry enforcement
+  -- challenge_links & challenge_attempts expiry enforcement
   SELECT COUNT(*) INTO v_count FROM public.challenge_links WHERE id = v_active_chal;
   IF v_count <> 1 THEN
     RAISE EXCEPTION 'anon should read non-expired challenge link (got %)', v_count;
@@ -992,6 +1137,14 @@ BEGIN
   SELECT COUNT(*) INTO v_count FROM public.challenge_links WHERE id = v_expired_chal;
   IF v_count <> 0 THEN
     RAISE EXCEPTION 'anon leaked expired challenge link (got %)', v_count;
+  END IF;
+  SELECT COUNT(*) INTO v_count FROM public.challenge_attempts WHERE challenge_id = v_active_chal;
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'anon should read active challenge attempt (got %)', v_count;
+  END IF;
+  SELECT COUNT(*) INTO v_count FROM public.challenge_attempts WHERE challenge_id = v_expired_chal;
+  IF v_count <> 0 THEN
+    RAISE EXCEPTION 'anon leaked expired challenge attempt (got %)', v_count;
   END IF;
 
   -- user_lesson_progress owner-only RLS hides rows from anon
@@ -1061,11 +1214,15 @@ BEGIN
     RAISE EXCEPTION 'user_b should read own unranked test_result (got %)', v_count;
   END IF;
 
-  -- challenge_links expiry for user_b
+  -- challenge_links & challenge_attempts expiry for user_b
   SELECT COUNT(*) INTO v_count FROM public.challenge_links WHERE id = v_active_chal;
   IF v_count <> 1 THEN RAISE EXCEPTION 'user_b should read active challenge link'; END IF;
   SELECT COUNT(*) INTO v_count FROM public.challenge_links WHERE id = v_expired_chal;
   IF v_count <> 0 THEN RAISE EXCEPTION 'user_b leaked expired challenge link'; END IF;
+  SELECT COUNT(*) INTO v_count FROM public.challenge_attempts WHERE challenge_id = v_active_chal;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'user_b should read active challenge attempt'; END IF;
+  SELECT COUNT(*) INTO v_count FROM public.challenge_attempts WHERE challenge_id = v_expired_chal;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'user_b leaked expired challenge attempt'; END IF;
 
   -- user_lesson_progress RLS isolation for user_b
   SELECT COUNT(*) INTO v_count FROM public.user_lesson_progress WHERE user_id = v_user_b;
@@ -1095,6 +1252,7 @@ DECLARE
   v_user_b UUID := '22222222-2222-4222-8222-222222222222';
   v_result_a1 UUID := (SELECT val_uuid FROM public._verify_state WHERE key = 'result_a1');
   v_result_inv UUID := (SELECT val_uuid FROM public._verify_state WHERE key = 'result_inv');
+  v_expired_chal UUID := (SELECT val_uuid FROM public._verify_state WHERE key = 'expired_chal');
   v_count INTEGER;
 BEGIN
   SET LOCAL ROLE authenticated;
@@ -1119,6 +1277,10 @@ BEGIN
   IF v_count <> 1 THEN RAISE EXCEPTION 'user_a should read own lesson progress'; END IF;
   SELECT COUNT(*) INTO v_count FROM public.user_lesson_progress WHERE user_id = v_user_b;
   IF v_count <> 0 THEN RAISE EXCEPTION 'user_a leaked user_b lesson progress (got %)', v_count; END IF;
+
+  -- Owner cannot read expired challenge_attempts even on own expired challenge_link
+  SELECT COUNT(*) INTO v_count FROM public.challenge_attempts WHERE challenge_id = v_expired_chal;
+  IF v_count <> 0 THEN RAISE EXCEPTION 'user_a leaked expired challenge attempt (got %)', v_count; END IF;
 
   -- Even for owner user_a who CAN see own 111 WPM invalidated row in test_results,
   -- leaderboard_view STILL suppresses invalidated rows and surfaces valid 99 WPM best!
@@ -1167,6 +1329,31 @@ BEGIN
   END IF;
 END $$;
 COMMIT;
+
+-- ============================================================================
+-- TX 12B: RUNTIME DEFENSE-IN-DEPTH PROOF THAT profiles INSERT POLICY IS GONE
+-- ============================================================================
+BEGIN;
+  DELETE FROM public.profiles WHERE id = '55555555-5555-4555-8555-555555555551'::uuid;
+  GRANT INSERT ON public.profiles TO authenticated;
+  DO $$
+  DECLARE
+    v_user_dup_a UUID := '55555555-5555-4555-8555-555555555551';
+    v_raised BOOLEAN := FALSE;
+  BEGIN
+    SET LOCAL ROLE authenticated;
+    PERFORM set_config('request.jwt.claim.sub', v_user_dup_a::text, true);
+    PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
+    BEGIN
+      INSERT INTO public.profiles (id, username) VALUES (v_user_dup_a, 'rls_insert_probe');
+    EXCEPTION WHEN insufficient_privilege THEN
+      v_raised := TRUE;
+    END;
+    IF NOT v_raised THEN
+      RAISE EXCEPTION 'Legacy profiles INSERT RLS policy still allows authenticated self-insert when INSERT is granted';
+    END IF;
+  END $$;
+ROLLBACK;
 
 -- ============================================================================
 -- TX 13: CLEANUP TEST HELPERS & FINAL SIGNAL

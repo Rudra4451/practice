@@ -7,6 +7,7 @@ on:
   push:
     paths:
       - 'supabase/migrations/**'
+      - 'supabase/reference/**'
       - 'tests/db/**'
       - 'docker-compose.db.yml'
       - '.github/workflows/ci-postgres-verification.yml'
@@ -15,6 +16,7 @@ on:
       - main
     paths:
       - 'supabase/migrations/**'
+      - 'supabase/reference/**'
       - 'tests/db/**'
       - 'docker-compose.db.yml'
       - '.github/workflows/ci-postgres-verification.yml'
@@ -45,21 +47,37 @@ jobs:
           --health-start-period=5s
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install postgresql-client
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
 
-      - name: Verify line endings on shell and SQL verification scripts
+      - name: Verify line endings and migration directory hygiene
         run: |
-          if grep -nU $'\r' tests/db/run-pg-verification.sh tests/db/supabase_shim.sql tests/db/verify_migrations.sql; then
-            echo "ERROR: Unexpected CRLF line endings detected in tests/db/*." >&2
+          if grep -nU $'\r' \
+            tests/db/run-pg-verification.sh \
+            tests/db/supabase_shim.sql \
+            tests/db/verify_migrations.sql \
+            docker-compose.db.yml \
+            .github/workflows/ci-postgres-verification.yml \
+            supabase/migrations/2026062*.sql; then
+            echo "ERROR: Unexpected CRLF line endings detected in DB verification or candidate migration files." >&2
             exit 1
           fi
+          for f in supabase/migrations/*; do
+            base=$(basename "$f")
+            case "$base" in
+              [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*.sql) ;;
+              *)
+                echo "ERROR: Invalid non-timestamped file in supabase/migrations/: $base" >&2
+                exit 1
+                ;;
+            esac
+          done
 
-      - name: Verify sequential migrations, security boundaries, and concurrency invariants on PostgreSQL 16
+      - name: Verify sequential migrations, FULL_SCHEMA upgrade, idempotency, security & concurrency on PostgreSQL 16
         id: pg_verify
         env:
           PGHOST: 127.0.0.1
@@ -88,6 +106,6 @@ jobs:
           {
             echo "### PostgreSQL 16 Migration Verification"
             echo "- Outcome: **${{ steps.pg_verify.outcome }}**"
-            echo "- Migrations verified: \`20260618\` -> \`20260619\` -> \`20260620\` -> \`20260621\` -> \`20260622\` -> \`20260623\` -> \`20260624\`"
-            echo "- Covered checks: shim identity isolation (\`anon\`, \`authenticated\`, \`service_role\`), catalog \`pg_policies\`/\`role_table_grants\`/\`column_privileges\`, \`leaderboard_view\` \`security_invoker\` behavior, DML denial across all 12 tables, deterministic 2-worker concurrent contention barrier."
+            echo "- Migrations verified: \`20260618\` -> \`20260619\` -> \`20260620\` -> \`20260621\` (consolidated hardening + atomic persistence) -> \`20260622\`"
+            echo "- Scenarios covered: Clean Bootstrap + 2-Worker Contention Barrier; \`FULL_SCHEMA.sql\` Baseline Upgrade + Historical Outlier Quarantine + Unknown Function Revocation; Index/Constraint Drift Reconciliation + Double-Rerun Idempotency."
           } >> "$GITHUB_STEP_SUMMARY"

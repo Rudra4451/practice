@@ -78,6 +78,8 @@ BEGIN
   END IF;
 END $$;
 
+-- Mirrors hosted Supabase default privileges where new postgres functions in public
+-- are granted EXECUTE to PUBLIC, anon, authenticated, and service_role unless explicitly revoked.
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
 GRANT ALL PRIVILEGES ON SCHEMA public TO service_role;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
@@ -85,4 +87,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
   GRANT ALL PRIVILEGES ON SEQUENCES TO service_role;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  GRANT ALL PRIVILEGES ON FUNCTIONS TO service_role;
+  GRANT ALL PRIVILEGES ON FUNCTIONS TO PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
+  GRANT ALL PRIVILEGES ON FUNCTIONS TO anon, authenticated, service_role;
