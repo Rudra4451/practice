@@ -51,14 +51,19 @@
 
 ## 4. GitHub Branch, Commit Graph, PR & Live CI Verification
 
-*Pending push, Pull Request creation, and live GitHub Actions workflow completion (populated immediately in the final sync commit once CI passes).*
-
-- **Integration Branch:** `release/typrox-2-integration`
-- **Pull Request (`Supersedes #2`):** *Pending creation*
-- **Commit History (`git log --oneline origin/main..HEAD`):** *Pending creation*
-- **Live CI Workflow Runs:**
-  - `PostgreSQL 16 Migration Verification` ([`ci-postgres-verification.yml`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-postgres-verification.yml)): *Pending live run*
-  - `Application Quality, Builds & E2E` ([`ci-app-quality.yml`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-app-quality.yml)): *Pending live run*
+- **Integration Branch:** `release/typrox-2-integration` (branched atop preserved `ci/postgres-16-verification` @ `19e8873fd1ae3889432f6bb82a34d6cd718324a7`, which remains open and unmodified in PR #2)
+- **Unified Pull Request (`Supersedes #2`):** `https://github.com/Rudra4451/practice/pull/3` (`OPEN`, targets `main` @ `fba1d80`)
+- **Verified Code & Integration Commit History (`origin/main..f9f3940`):**
+  - `19e8873` `ci(db): verify candidate migrations and RLS invariants on PostgreSQL 16` *(preserved PR #2 baseline)*
+  - `1f4961b` `fix(db,ci): consolidate atomic hardening migrations and 3-scenario PG16 suite`
+  - `0853229` `feat(security,api,engine): harden verification, HTTP limits, DAL, and typing engine`
+  - `3692dac` `feat(ui,ux,seo): redesign UI, Performance Lab, curriculum, daily challenge & metadata`
+  - `4aea60f` `test,chore(deps,ci): upgrade Next 16.4.6, expand Vitest/E2E suite & add App Quality CI`
+  - `8f26ef9` `docs: update README, OAuth setup, roadmap status, ADRs & release report`
+  - `f9f3940` `fix(realtime,test): guard placeholder Supabase URLs from opening failed WebSockets`
+- **Live Passing CI Workflow Runs (Executed on PR #3 @ `f9f3940`):**
+  - **`PostgreSQL 16 Migration Verification`** ([`ci-postgres-verification.yml`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-postgres-verification.yml)): **PASSED (`success` in 34s)** at `https://github.com/Rudra4451/practice/actions/runs/42905679038` *(all 3 scenarios: Clean Bootstrap + 2-Worker Contention Barrier, `FULL_SCHEMA.sql` Baseline Upgrade + Outlier Quarantine + Unknown Function Revoke, and Drift Reconciliation + Idempotent Double Rerun)*
+  - **`Application Quality, Builds & E2E`** ([`ci-app-quality.yml`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-app-quality.yml)): **PASSED (`success` in 2m52s)** at `https://github.com/Rudra4451/practice/actions/runs/42905679421` *(workflow LF check, `typecheck`, `lint`, `26` Vitest files / `132` tests, `npx next build --webpack`, `npm run build` [Turbopack], Chromium E2E `7 passed`)*
 
 ---
 
