@@ -1,557 +1,839 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
-import { useUserStore } from '@/stores/user-store';
-import { Navbar } from '@/components/navbar';
-import { createClient } from '@/lib/supabase/client';
-import { Calendar, Zap, Award, LineChart as ChartIcon, CheckCircle, Database, LogIn, Clock, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { logger } from '@/lib/logger';
-import { Button } from '@/components/ui/button';
-import { useToastStore } from '@/stores/toast-store';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { motion } from 'framer-motion';
+import { Zap, LineChart as ChartIcon, Database, LogIn, Clock, RefreshCw, BookOpen, Calendar, Sparkles } from 'lucide-react';
+import { useUserStore, type GuestResult } from '@/stores/user-store';
+import { useToastStore } from '@/stores/toast-store';
+import { useHydrated } from '@/lib/hooks/use-hydrated';
+import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
+import { isRankedMode, RANKED_MODES } from '@/lib/typing/metrics';
+import { formatUtcDate } from '@/lib/utils/format-date';
+import {
+  getHeldRejectedGuestRunsCount,
+  getInvalidDurationGuestRunsCount,
+  getSyncableGuestRunsCount,
+  syncGuestHistoryBatches,
+} from '@/lib/typing/sync-client';
+import { Navbar } from '@/components/navbar';
+import { Button } from '@/components/ui/button';
+import type { Database as DbSchema } from '@/types/database';
 
 const DashboardChart = dynamic(() => import('@/components/dashboard/dashboard-chart'), {
   ssr: false,
-  loading: () => <div className="h-[220px] flex items-center justify-center text-text-secondary uppercase tracking-widest text-xs font-bold font-mono">Loading Chart...</div>
+  loading: () => (
+    <div className="h-[220px] flex items-center justify-center text-text-secondary uppercase tracking-widest text-xs font-bold font-mono">
+      Loading Chart...
+    </div>
+  ),
 });
 
-export default function Dashboard() {
-  const { session, profile, setProfile, guestHistory, clearGuestHistory } = useUserStore();
+type DbTestResultRow = DbSchema['public']['Tables']['test_results']['Row'];
+
+interface DashboardRun {
+  id: string;
+  wpm: number;
+  raw_wpm: number;
+  accuracy: number;
+  consistency: number;
+  error_count: number;
+  backspace_count: number;
+  duration: number;
+  mode: string;
+  is_ranked?: boolean | null;
+  created_at: string;
+}
+
+function isMissingIsRankedColumnError(
+  error: { code?: string | null; message?: string | null } | null | undefined
+): boolean {
+  if (!error) return false;
+  const code = error.code ?? '';
+  const msg = (error.message ?? '').toLowerCase();
+  return (
+    code === '42703' ||
+    code === 'PGRST204' ||
+    (msg.includes('is_ranked') && (msg.includes('column') || msg.includes('schema cache')))
+  );
+}
+
+const PAGE_STEP = 50;
+
+function computeGuestStreak(history: GuestResult[]): { current: number; longest: number } {
+  if (history.length === 0) return { current: 0, longest: 0 };
+
+  const uniqueDays = Array.from(
+    new Set(
+      history
+        .map((item) => item.created_at.slice(0, 10))
+        .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+    )
+  ).sort((a, b) => (a > b ? -1 : 1));
+
+  if (uniqueDays.length === 0) return { current: 0, longest: 0 };
+
+  const dayToEpoch = (isoDate: string) => {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    return Math.floor(Date.UTC(y, m - 1, d) / 86400000);
+  };
+
+  let longest = 1;
+  let running = 1;
+  for (let i = 1; i < uniqueDays.length; i += 1) {
+    if (dayToEpoch(uniqueDays[i - 1]) - dayToEpoch(uniqueDays[i]) === 1) {
+      running += 1;
+      longest = Math.max(longest, running);
+    } else {
+      running = 1;
+    }
+  }
+
+  const todayEpoch = Math.floor(Date.now() / 86400000);
+  const latestEpoch = dayToEpoch(uniqueDays[0]);
+  if (todayEpoch - latestEpoch > 1) {
+    return { current: 0, longest };
+  }
+
+  let current = 1;
+  for (let i = 1; i < uniqueDays.length; i += 1) {
+    if (dayToEpoch(uniqueDays[i - 1]) - dayToEpoch(uniqueDays[i]) === 1) {
+      current += 1;
+    } else {
+      break;
+    }
+  }
+
+  return { current, longest: Math.max(longest, current) };
+}
+
+function formatTotalTime(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+  return `${minutes}m ${seconds % 60}s`;
+}
+
+export default function DashboardPage() {
+  const hydrated = useHydrated();
+  const {
+    session,
+    profile,
+    setProfile,
+    guestHistory,
+    removeGuestResults,
+    markGuestResultsRejected,
+    recordGuestSyncFailures,
+    retryRejectedGuestResults,
+  } = useUserStore();
   const { showToast } = useToastStore();
-  
-  const [history, setHistory] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>({
-    bestWpm: 0,
-    avgWpm: 0,
-    avgAccuracy: 0,
-    testsCompleted: 0,
-    totalTimeSecs: 0,
-  });
-  const [streak, setStreak] = useState({ current: 0, longest: 0 });
-  const [loading, setLoading] = useState(true);
+
+  const [dbHistory, setDbHistory] = useState<DashboardRun[]>([]);
+  const [dbPeakWpm, setDbPeakWpm] = useState<number | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [pageSize, setPageSize] = useState(PAGE_STEP);
+  const [dbStreak, setDbStreak] = useState({ current: 0, longest: 0 });
   const [syncing, setSyncing] = useState(false);
-  const [syncSuccess, setSyncSuccess] = useState(false);
   const [historyMode, setHistoryMode] = useState<string>('all');
   const [historyDuration, setHistoryDuration] = useState<string>('all');
   const [historySort, setHistorySort] = useState<string>('latest');
 
-  // Edit Profile and Refresh States
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [newDisplayName, setNewDisplayName] = useState('');
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [lastUpdated, setLastUpdated] = useState('');
 
-  // Format total practice time
-  const formatTotalTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    }
-    return `${minutes}m ${seconds % 60}s`;
-  };
+  const fetchDbSnapshot = useCallback(async (userId: string, limitSize: number) => {
+    const supabase = createClient();
 
-  // Load either authenticated DB history or Local Guest history
-  const loadDashboardData = useCallback(async (isSilent = false) => {
-    if (!isSilent) {
-      setRefreshing(true);
-    }
-    
-    const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
-    if (isDemo && localStorage.getItem('typrox_demo_logged_in') === 'true') {
-      const mockRuns = [
-        { id: '1', wpm: 135, raw_wpm: 139, accuracy: 99, consistency: 96, error_count: 1, backspace_count: 2, duration: 30, mode: 'words', created_at: new Date().toISOString() },
-        { id: '2', wpm: 129, raw_wpm: 132, accuracy: 98, consistency: 95, error_count: 2, backspace_count: 3, duration: 30, mode: 'words', created_at: new Date(Date.now() - 86400000).toISOString() },
-        { id: '3', wpm: 123, raw_wpm: 128, accuracy: 97, consistency: 96, error_count: 2, backspace_count: 2, duration: 60, mode: 'quotes', created_at: new Date(Date.now() - 172800000).toISOString() },
-        { id: '4', wpm: 118, raw_wpm: 120, accuracy: 99, consistency: 98, error_count: 1, backspace_count: 1, duration: 15, mode: 'code', created_at: new Date(Date.now() - 259200000).toISOString() },
-        { id: '5', wpm: 115, raw_wpm: 122, accuracy: 96, consistency: 94, error_count: 3, backspace_count: 4, duration: 30, mode: 'punctuation', created_at: new Date(Date.now() - 345600000).toISOString() }
-      ];
-      
-      // Generate pre-populated 15 runs trending upwards
-      const fullHistory = [...mockRuns];
-      for (let i = 6; i <= 15; i++) {
-        fullHistory.push({
-          id: String(i),
-          wpm: Math.max(40, 115 - (i - 5) * 4 + Math.round(Math.random() * 6)),
-          raw_wpm: Math.max(45, 120 - (i - 5) * 4),
-          accuracy: 94 + Math.round(Math.random() * 4),
-          consistency: 89 + Math.round(Math.random() * 5),
-          error_count: Math.round(Math.random() * 3),
-          backspace_count: Math.round(Math.random() * 4),
-          duration: 30,
-          mode: 'words',
-          created_at: new Date(Date.now() - i * 86400000).toISOString()
-        });
-      }
-      setHistory(fullHistory);
-      setStreak({ current: 18, longest: 25 });
-      setLastUpdated(new Date().toLocaleTimeString());
-      setLoading(false);
-      setRefreshing(false);
-      return;
+    let supportsIsRanked = true;
+    const primaryRes = await supabase
+      .from('test_results')
+      .select(
+        'id, wpm, raw_wpm, accuracy, consistency, error_count, backspace_count, duration, mode, is_ranked, created_at'
+      )
+      .eq('user_id', userId)
+      .eq('is_invalidated', false)
+      .order('created_at', { ascending: false })
+      .limit(limitSize + 1);
+
+    let dbResults = primaryRes.data as
+      | Pick<
+          DbTestResultRow,
+          | 'id'
+          | 'wpm'
+          | 'raw_wpm'
+          | 'accuracy'
+          | 'consistency'
+          | 'error_count'
+          | 'backspace_count'
+          | 'duration'
+          | 'mode'
+          | 'is_ranked'
+          | 'created_at'
+        >[]
+      | null;
+    let error = primaryRes.error;
+
+    if (error && isMissingIsRankedColumnError(error)) {
+      supportsIsRanked = false;
+      const legacyRes = await supabase
+        .from('test_results')
+        .select(
+          'id, wpm, raw_wpm, accuracy, consistency, error_count, backspace_count, duration, mode, created_at'
+        )
+        .eq('user_id', userId)
+        .eq('is_invalidated', false)
+        .order('created_at', { ascending: false })
+        .limit(limitSize + 1);
+      dbResults = legacyRes.data as typeof dbResults;
+      error = legacyRes.error;
     }
 
-    if (session?.user) {
-      try {
-        const supabase = createClient();
-        
-        // 1. Fetch DB results
-        const { data: dbResults, error } = await supabase
+    const rows = !error && dbResults ? dbResults : null;
+    const slicedRows = rows ? rows.slice(0, limitSize) : null;
+    const nextHasMore = rows ? rows.length > limitSize : false;
+
+    let lifetimePeakWpm: number | null = null;
+    if (nextHasMore && slicedRows) {
+      if (supportsIsRanked) {
+        const peakRes = await supabase
           .from('test_results')
-          .select('*')
-          .eq('user_id', session.user.id)
+          .select('wpm, mode')
+          .eq('user_id', userId)
           .eq('is_invalidated', false)
-          .order('created_at', { ascending: false });
-
-        if (!error && dbResults) {
-          setHistory(dbResults);
+          .eq('is_ranked', true)
+          .order('wpm', { ascending: false })
+          .limit(1);
+        const topRow = peakRes.data?.[0];
+        if (!peakRes.error && topRow && isRankedMode(topRow.mode)) {
+          lifetimePeakWpm = topRow.wpm;
         }
-
-        // 2. Fetch Streaks
-        const { data: streakData } = await supabase
-          .from('streaks')
-          .select('current_streak, longest_streak')
-          .eq('user_id', session.user.id)
-          .single();
-        if (streakData) {
-          setStreak({
-            current: streakData.current_streak,
-            longest: streakData.longest_streak,
-          });
+      } else {
+        const peakRes = await supabase
+          .from('test_results')
+          .select('wpm, mode')
+          .eq('user_id', userId)
+          .eq('is_invalidated', false)
+          .in('mode', [...RANKED_MODES])
+          .order('wpm', { ascending: false })
+          .limit(1);
+        const topRow = peakRes.data?.[0];
+        if (!peakRes.error && topRow) {
+          lifetimePeakWpm = topRow.wpm;
         }
-      } catch (err) {
-        logger.error('Failed to load user streak', { category: 'supabase', error: err });
       }
-    } else {
-      // Fallback to local guest history
-      setHistory(
-        guestHistory.map((h) => ({
-          id: h.id,
-          wpm: h.wpm,
-          raw_wpm: h.raw_wpm,
-          accuracy: h.accuracy,
-          consistency: h.consistency,
-          error_count: h.error_count,
-          backspace_count: h.backspace_count,
-          duration: h.duration,
-          mode: h.mode,
-          created_at: h.created_at,
-        }))
-      );
-      
-      // Mock guest streak
-      setStreak({
-        current: guestHistory.length > 0 ? 1 : 0,
-        longest: guestHistory.length > 0 ? 1 : 0,
-      });
     }
-    
-    setLastUpdated(new Date().toLocaleTimeString());
-    setLoading(false);
-    setRefreshing(false);
-  }, [session, guestHistory]);
 
-  // Load initial data
-  useEffect(() => {
-    loadDashboardData();
-  }, [loadDashboardData]);
+    const { data: streakData } = await supabase
+      .from('streaks')
+      .select('current_streak, longest_streak')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-  // Supabase Realtime subscription
-  useEffect(() => {
+    return {
+      rows: slicedRows,
+      hasMore: nextHasMore,
+      peakWpm: lifetimePeakWpm,
+      streak: streakData
+        ? { current: streakData.current_streak, longest: streakData.longest_streak }
+        : null,
+    };
+  }, []);
+
+  const loadDbDashboardData = useCallback(async () => {
     if (!session?.user) return;
+    setRefreshing(true);
+    try {
+      const snapshot = await fetchDbSnapshot(session.user.id, pageSize);
+      if (snapshot.rows) {
+        setDbHistory(snapshot.rows);
+        setHasMore(snapshot.hasMore);
+        setDbPeakWpm(snapshot.peakWpm);
+      }
+      if (snapshot.streak) {
+        setDbStreak(snapshot.streak);
+      }
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (err) {
+      logger.error('Failed to load dashboard data', { category: 'supabase', error: err });
+    } finally {
+      setRefreshing(false);
+    }
+  }, [session, pageSize, fetchDbSnapshot]);
 
-    let channel: any = null;
-    let supabaseInstance: any = null;
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    let cancelled = false;
+    fetchDbSnapshot(userId, pageSize)
+      .then((snapshot) => {
+        if (cancelled) return;
+        if (snapshot.rows) {
+          setDbHistory(snapshot.rows);
+          setHasMore(snapshot.hasMore);
+          setDbPeakWpm(snapshot.peakWpm);
+        }
+        if (snapshot.streak) {
+          setDbStreak(snapshot.streak);
+        }
+        setLastUpdated(new Date().toLocaleTimeString());
+      })
+      .catch((err) => {
+        logger.error('Failed to load dashboard data', { category: 'supabase', error: err });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id, pageSize, fetchDbSnapshot]);
+
+  // Scoped Realtime subscription for authenticated user results
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    let channel: RealtimeChannel | null = null;
+    const supabase = createClient();
 
     try {
-      supabaseInstance = createClient();
-      channel = supabaseInstance
-        .channel(`dashboard-test-results-${session.user.id}`)
+      channel = supabase
+        .channel(`dashboard-test-results-${userId}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
             table: 'test_results',
-            filter: `user_id=eq.${session.user.id}`,
+            filter: `user_id=eq.${userId}`,
           },
           () => {
-            loadDashboardData(true);
+            void fetchDbSnapshot(userId, pageSize).then((snapshot) => {
+              if (snapshot.rows) {
+                setDbHistory(snapshot.rows);
+                setHasMore(snapshot.hasMore);
+                setDbPeakWpm(snapshot.peakWpm);
+              }
+              if (snapshot.streak) {
+                setDbStreak(snapshot.streak);
+              }
+              setLastUpdated(new Date().toLocaleTimeString());
+            });
           }
         )
         .subscribe();
     } catch (err) {
-      console.error("Failed to subscribe to dashboard realtime changes:", err);
+      logger.error('Failed to subscribe to dashboard realtime channel', { category: 'supabase', error: err });
     }
 
     return () => {
-      if (supabaseInstance && channel) {
+      if (channel) {
         try {
-          supabaseInstance.removeChannel(channel);
-        } catch (err) {
-          console.error("Error removing realtime channel:", err);
+          supabase.removeChannel(channel);
+        } catch {
+          // Ignore cleanup errors during unmount
         }
       }
     };
-  }, [session, loadDashboardData]);
+  }, [session?.user?.id, pageSize, fetchDbSnapshot]);
 
-  // Set default display name when profile loads
-  useEffect(() => {
-    if (profile?.display_name) {
-      setNewDisplayName(profile.display_name);
-    } else if (profile?.username) {
-      setNewDisplayName(profile.username);
+  const effectiveGuestHistory = useMemo(
+    () => (hydrated ? guestHistory : []),
+    [hydrated, guestHistory]
+  );
+
+  const guestRuns = useMemo<DashboardRun[]>(
+    () =>
+      effectiveGuestHistory.map((h) => ({
+        id: h.id,
+        wpm: h.wpm,
+        raw_wpm: h.raw_wpm,
+        accuracy: h.accuracy,
+        consistency: h.consistency,
+        error_count: h.error_count,
+        backspace_count: h.backspace_count,
+        duration: h.duration,
+        mode: h.mode,
+        is_ranked: h.isRanked !== false,
+        created_at: h.created_at,
+      })),
+    [effectiveGuestHistory]
+  );
+
+  const history = session?.user ? dbHistory : guestRuns;
+  const streak = useMemo(
+    () => (session?.user ? dbStreak : computeGuestStreak(effectiveGuestHistory)),
+    [session, dbStreak, effectiveGuestHistory]
+  );
+
+  const stats = useMemo(() => {
+    if (history.length === 0) {
+      return {
+        bestWpm: 0,
+        avgWpm: 0,
+        avgAccuracy: 0,
+        testsCompleted: 0,
+        totalTimeSecs: 0,
+      };
     }
-  }, [profile]);
 
-  // Handle display name update
+    const rankedRuns = history.filter(
+      (h) => h.is_ranked !== false && isRankedMode(h.mode)
+    );
+    const localBestWpm =
+      rankedRuns.length > 0 ? Math.max(...rankedRuns.map((h) => h.wpm)) : 0;
+    const bestWpm =
+      session?.user && dbPeakWpm !== null
+        ? Math.max(localBestWpm, dbPeakWpm)
+        : localBestWpm;
+    const avgWpm = Math.round(history.reduce((sum, h) => sum + h.wpm, 0) / history.length);
+    const avgAccuracy = Math.round(
+      history.reduce((sum, h) => sum + h.accuracy, 0) / history.length
+    );
+    const totalTimeSecs = history.reduce((sum, h) => sum + h.duration, 0);
+
+    return {
+      bestWpm,
+      avgWpm,
+      avgAccuracy,
+      testsCompleted: history.length,
+      totalTimeSecs,
+    };
+  }, [history, session?.user, dbPeakWpm]);
+
+  const handleToggleEdit = () => {
+    if (!isEditingProfile) {
+      setNewDisplayName(profile?.display_name || profile?.username || '');
+    }
+    setIsEditingProfile((prev) => !prev);
+  };
+
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session || !newDisplayName.trim()) return;
     setUpdatingProfile(true);
 
-    const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
-    if (isDemo && profile) {
-      setProfile({
-        id: profile.id,
-        username: profile.username,
-        display_name: newDisplayName.trim(),
-        avatar_url: profile.avatar_url,
-        theme: profile.theme,
-        font_family: profile.font_family,
-        created_at: profile.created_at,
-      });
-      showToast('Profile updated successfully! (Demo Mode)');
-      setIsEditingProfile(false);
-      setUpdatingProfile(false);
-      return;
-    }
-
     try {
       const res = await fetch('/api/profile', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName: newDisplayName.trim() }),
       });
 
-      const json = await res.json();
+      const json = (await res.json()) as {
+        success?: boolean;
+        error?: string;
+        profile?: { display_name: string | null };
+      };
       if (!res.ok) {
         throw new Error(json.error || 'Failed to update profile');
       }
 
       if (json.success && json.profile && profile) {
         setProfile({
-          id: profile.id,
-          username: profile.username,
+          ...profile,
           display_name: json.profile.display_name,
-          avatar_url: profile.avatar_url,
-          theme: profile.theme,
-          font_family: profile.font_family,
-          created_at: profile.created_at,
         });
-        showToast('Profile updated successfully!');
+        showToast('Profile updated successfully.');
         setIsEditingProfile(false);
       }
-    } catch (err: any) {
-      showToast(err.message || 'An error occurred while updating profile.');
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'An error occurred while updating profile.');
       logger.error('Profile update failed', { category: 'api', error: err });
     } finally {
       setUpdatingProfile(false);
     }
   };
 
-  // Aggregate statistics calculations
-  useEffect(() => {
-    if (history.length === 0) {
-      setStats({
-        bestWpm: 0,
-        avgWpm: 0,
-        avgAccuracy: 0,
-        testsCompleted: 0,
-        totalTimeSecs: 0,
-      });
-      return;
-    }
-
-    const wpmList = history.map((h) => h.wpm);
-    const bestWpm = Math.max(...wpmList);
-    const avgWpm = Math.round(wpmList.reduce((a, b) => a + b, 0) / history.length);
-    const avgAccuracy = Math.round(history.map((h) => h.accuracy).reduce((a, b) => a + b, 0) / history.length);
-    const totalTimeSecs = history.reduce((a, b) => a + b.duration, 0);
-
-    setStats({
-      bestWpm,
-      avgWpm,
-      avgAccuracy,
-      testsCompleted: history.length,
-      totalTimeSecs,
-    });
-  }, [history]);
-
-  // Sync guest history to authenticated database post-login
   const handleSyncHistory = async () => {
     if (!session || guestHistory.length === 0) return;
     setSyncing(true);
 
-    const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
-    if (isDemo) {
-      clearGuestHistory();
-      setSyncSuccess(true);
-      showToast('Guest history synced successfully! (Demo Mode)');
-      setSyncing(false);
-      return;
-    }
-    
     try {
-      const supabase = createClient();
-      
-      const payload = guestHistory.map((g) => ({
-        user_id: session.user.id,
-        wpm: g.wpm,
-        raw_wpm: g.raw_wpm,
-        accuracy: g.accuracy,
-        consistency: g.consistency,
-        error_count: g.error_count,
-        backspace_count: g.backspace_count,
-        mode: g.mode,
-        duration: g.duration,
-        seed: g.seed,
-        created_at: g.created_at,
-      }));
+      const summary = await syncGuestHistoryBatches(guestHistory, {
+        removePersistedIds: removeGuestResults,
+        markRejectedIds: markGuestResultsRejected,
+        recordTransientFailureIds: recordGuestSyncFailures,
+      });
 
-      const { error } = await supabase.from('test_results').insert(payload);
-      if (error) throw error;
-      
-      clearGuestHistory();
-      setSyncSuccess(true);
-      
-      // Reload page data
-      const { data: dbResults } = await supabase
-        .from('test_results')
-        .select('*')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false });
-      if (dbResults) setHistory(dbResults);
+      const persistedTotal = summary.syncedCount + summary.duplicateCount;
+      const localRetained =
+        summary.skippedLegacyCount +
+        summary.skippedUnrankedCount +
+        summary.skippedInvalidDurationCount +
+        summary.heldRejectedCount +
+        summary.rejectedCount +
+        summary.failedCount;
 
-    } catch (err) {
+      if (summary.failureCategory === 'rate_limited') {
+        if (persistedTotal > 0) {
+          showToast(
+            `Synced ${summary.syncedCount} verified run${summary.syncedCount === 1 ? '' : 's'} (${summary.duplicateCount} duplicate${summary.duplicateCount === 1 ? '' : 's'} linked). Rate limit reached${summary.retryAfterSeconds ? ` (~${summary.retryAfterSeconds}s)` : ''} — remaining local runs kept safely.`
+          );
+        } else {
+          showToast(
+            summary.errorMessage || 'Sync rate limit reached. Remaining local runs were kept safely.'
+          );
+        }
+      } else if (summary.interrupted) {
+        if (persistedTotal > 0) {
+          showToast(
+            `Synced ${summary.syncedCount} verified run${summary.syncedCount === 1 ? '' : 's'} (${summary.duplicateCount} duplicate${summary.duplicateCount === 1 ? '' : 's'} linked). Remaining local runs kept safely.`
+          );
+        } else if (summary.rejectedCount > 0 && !summary.temporaryFailure) {
+          showToast(
+            `${summary.rejectedCount} local run${summary.rejectedCount === 1 ? '' : 's'} failed verification and ${summary.rejectedCount === 1 ? 'was' : 'were'} paused from auto-sync.`
+          );
+        } else {
+          showToast(summary.errorMessage || 'Failed to sync guest runs.');
+        }
+      } else if (summary.syncedCount > 0 && localRetained > 0) {
+        showToast(
+          `Synced ${summary.syncedCount} verified run${summary.syncedCount === 1 ? '' : 's'}. Kept ${localRetained} local-only or paused run${localRetained === 1 ? '' : 's'} safely in browser.`
+        );
+      } else if (summary.syncedCount > 0) {
+        showToast(
+          `Synced ${summary.syncedCount} verified run${summary.syncedCount === 1 ? '' : 's'}.`
+        );
+      } else if (summary.duplicateCount > 0) {
+        showToast(
+          `Verified ${summary.duplicateCount} already-synced run${summary.duplicateCount === 1 ? '' : 's'}.`
+        );
+      } else if (summary.rejectedCount > 0) {
+        showToast(
+          `${summary.rejectedCount} local run${summary.rejectedCount === 1 ? '' : 's'} failed verification and ${summary.rejectedCount === 1 ? 'was' : 'were'} paused from auto-sync.`
+        );
+      } else {
+        showToast('No syncable ranked telemetry runs found; local runs were preserved.');
+      }
+
+      if (persistedTotal > 0) {
+        await loadDbDashboardData();
+      }
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Failed to sync guest runs.');
       logger.error('Failed to sync guest data', { category: 'api', error: err });
     } finally {
       setSyncing(false);
     }
   };
 
-  const chartData = [...history]
-    .reverse()
-    .slice(-30) // Show last 30 runs in chronological order
-    .map((item, index) => ({
-      index: index + 1,
-      wpm: item.wpm,
-      accuracy: item.accuracy,
-    }));
+  const handleRetryHeldRuns = () => {
+    const heldCount = getHeldRejectedGuestRunsCount(guestHistory);
+    if (heldCount === 0) return;
+    retryRejectedGuestResults();
+    showToast(
+      `Re-queued ${heldCount} paused local run${heldCount === 1 ? '' : 's'} for verification.`
+    );
+  };
 
-  const filteredHistory = [...history]
-    .filter((run) => {
-      const matchesMode = historyMode === 'all' || run.mode === historyMode;
-      const matchesDuration = historyDuration === 'all' || run.duration === parseInt(historyDuration, 10);
-      return matchesMode && matchesDuration;
-    })
-    .sort((a, b) => {
-      if (historySort === 'latest') {
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-      }
-      if (historySort === 'oldest') {
-        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-      }
-      if (historySort === 'highest_wpm') {
-        return b.wpm - a.wpm;
-      }
-      if (historySort === 'highest_accuracy') {
-        return b.accuracy - a.accuracy;
-      }
-      return 0;
-    });
+  const chartData = useMemo(
+    () =>
+      [...history]
+        .reverse()
+        .slice(-30)
+        .map((item, index) => ({
+          index: index + 1,
+          wpm: item.wpm,
+          accuracy: item.accuracy,
+        })),
+    [history]
+  );
+
+  const filteredHistory = useMemo(
+    () =>
+      [...history]
+        .filter((run) => {
+          const matchesMode = historyMode === 'all' || run.mode === historyMode;
+          const matchesDuration =
+            historyDuration === 'all' || run.duration === parseInt(historyDuration, 10);
+          return matchesMode && matchesDuration;
+        })
+        .sort((a, b) => {
+          if (historySort === 'latest') {
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          }
+          if (historySort === 'oldest') {
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          }
+          if (historySort === 'highest_wpm') {
+            return b.wpm - a.wpm;
+          }
+          if (historySort === 'highest_accuracy') {
+            return b.accuracy - a.accuracy;
+          }
+          return 0;
+        }),
+    [history, historyMode, historyDuration, historySort]
+  );
+
+  const syncableCount = hydrated ? getSyncableGuestRunsCount(guestHistory) : 0;
+  const heldRejectedCount = hydrated ? getHeldRejectedGuestRunsCount(guestHistory) : 0;
+  const invalidDurationCount = hydrated ? getInvalidDurationGuestRunsCount(guestHistory) : 0;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 md:px-6 py-10 flex flex-col gap-8">
-        
-        {/* Sync panel indicator for logging users with local buffers */}
-        {session && guestHistory.length > 0 && (
-          <div className="p-5 bg-accent/5 border border-accent/25 text-text-primary rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
+        {session && hydrated && syncableCount > 0 && (
+          <div className="p-5 bg-accent/10 border border-accent/30 text-text-primary rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
             <div className="flex items-center gap-2.5">
-              <Database className="w-5 h-5 text-accent" />
+              <Database className="w-5 h-5 text-accent-ink" />
               <div className="flex flex-col">
                 <span className="text-xs font-bold uppercase tracking-wider">Local runs detected</span>
-                <span className="text-xs uppercase font-bold opacity-80 mt-0.5">You have {guestHistory.length} local practice tests to sync.</span>
+                <span className="text-xs font-medium text-text-secondary mt-0.5">
+                  You have {syncableCount} local ranked run
+                  {syncableCount === 1 ? '' : 's'} ready to verify and sync.
+                </span>
               </div>
             </div>
-            <Button
-              onClick={handleSyncHistory}
-              disabled={syncing}
-              variant="primary"
-              className="px-4 py-2"
-            >
+            <Button onClick={handleSyncHistory} disabled={syncing} variant="primary" className="px-4 py-2">
               {syncing ? 'Syncing...' : 'Sync History'}
             </Button>
           </div>
         )}
 
-        {/* Guest Warning Card */}
-        {!session && (
-          <div className="p-6 bg-surface border border-border flex flex-col sm:flex-row items-center justify-between gap-4 relative rounded-xl shadow-sm">
-            <div className="flex flex-col gap-1 text-center sm:text-left">
-              <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary">Guest Session Active</h2>
-              <p className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-0.5">Your runs are saved locally. Sign in to persist results, unlock leaderboards, and track long-term progress.</p>
+        {session && hydrated && (heldRejectedCount > 0 || invalidDurationCount > 0) && (
+          <div
+            role="status"
+            className="p-5 bg-surface border border-border text-text-primary rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm"
+          >
+            <div className="flex items-center gap-2.5">
+              <Database className="w-5 h-5 text-text-secondary shrink-0" />
+              <div className="flex flex-col">
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  Local-Only / Paused Runs Preserved
+                </span>
+                <span className="text-xs font-medium text-text-secondary mt-0.5">
+                  {heldRejectedCount > 0 &&
+                    `${heldRejectedCount} run${heldRejectedCount === 1 ? '' : 's'} paused locally after verification rejection or repeated retry failures. `}
+                  {invalidDurationCount > 0 &&
+                    `${invalidDurationCount} legacy run${invalidDurationCount === 1 ? '' : 's'} use non-ranked duration brackets and stay local in browser storage.`}
+                </span>
+              </div>
             </div>
-            <Button
-              href="/login"
-              variant="primary"
-              className="px-4 py-2"
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              <span>Connect Profile</span>
+            {heldRejectedCount > 0 && (
+              <Button
+                onClick={handleRetryHeldRuns}
+                disabled={syncing}
+                variant="secondary"
+                className="px-4 py-2 shrink-0"
+              >
+                Retry Held Runs
+              </Button>
+            )}
+          </div>
+        )}
+
+        {!session && (
+          <div className="p-6 bg-surface border border-border flex flex-col sm:flex-row items-center justify-between gap-4 rounded-xl shadow-sm">
+            <div className="flex flex-col gap-1 text-center sm:text-left">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-text-primary">
+                Guest Session Active
+              </h2>
+              <p className="text-xs font-medium text-text-secondary mt-0.5">
+                Runs are saved locally in your browser. Sign in to persist scores, qualify for global leaderboards, and unlock cloud history.
+              </p>
+            </div>
+            <Button href="/login" variant="primary" className="px-5 py-2.5 shrink-0">
+              <LogIn className="w-4 h-4" />
+              <span>Sign In</span>
             </Button>
           </div>
         )}
 
-        {/* Main Title Header & Profile Action */}
-        <div className="flex flex-col gap-4 border-b border-border/80 pb-6 mb-2">
+        {/* Header & Quick Training Links */}
+        <div className="flex flex-col gap-4 border-b border-border pb-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex flex-col gap-1">
-              <h1 className="text-3xl md:text-5xl font-extrabold uppercase tracking-tight text-text-primary flex items-center gap-3 font-sans">
-                <span>{session ? (profile?.display_name || profile?.username || 'Dashboard') : 'Dashboard'}</span>
-                {session && (
-                  <span className="text-[10px] md:text-xs font-mono font-bold text-text-secondary bg-surface-accent border border-border px-2 py-0.5 uppercase tracking-wider rounded-md">
-                    @{profile?.username}
+              <h1 className="text-3xl md:text-5xl font-extrabold uppercase tracking-tight text-text-primary flex flex-wrap items-center gap-3 font-display">
+                <span>
+                  {session ? profile?.display_name || profile?.username || 'Dashboard' : 'Dashboard'}
+                </span>
+                {session && profile?.username && (
+                  <span className="text-xs font-mono font-bold text-text-secondary bg-surface-accent border border-border px-2.5 py-1 uppercase tracking-wider rounded-md">
+                    @{profile.username}
                   </span>
                 )}
               </h1>
               <p className="text-xs font-bold uppercase tracking-wider text-text-secondary">
-                {session ? 'Your personal performance record' : 'Local session — sign in to sync across devices'}
+                {session
+                  ? 'Your verified performance record'
+                  : 'Local guest metrics. Sign in to sync across devices.'}
               </p>
             </div>
 
-            {session && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsEditingProfile(!isEditingProfile)}
-                  className="px-4 py-2 border border-border bg-surface hover:bg-surface-accent text-text-primary text-xs font-bold uppercase tracking-widest transition-all cursor-pointer rounded-lg shadow-xs hover:shadow-sm active:scale-[0.98]"
-                >
-                  {isEditingProfile ? 'Cancel' : 'Edit Profile'}
-                </button>
-                <button
-                  onClick={() => loadDashboardData()}
-                  className="p-2.5 border border-border bg-surface hover:bg-surface-accent text-text-primary transition-all cursor-pointer rounded-lg shadow-xs hover:shadow-sm active:scale-[0.98]"
-                  title="Refresh Data"
-                >
-                  <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                </button>
-              </div>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/learn"
+                className="px-3.5 py-2.5 min-h-[42px] border border-border bg-surface hover:bg-surface-accent text-text-primary text-xs font-bold uppercase tracking-wider rounded-lg inline-flex items-center gap-1.5 transition-colors"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-accent-ink" />
+                <span>Curriculum</span>
+              </Link>
+              <Link
+                href="/daily"
+                className="px-3.5 py-2.5 min-h-[42px] border border-border bg-surface hover:bg-surface-accent text-text-primary text-xs font-bold uppercase tracking-wider rounded-lg inline-flex items-center gap-1.5 transition-colors"
+              >
+                <Calendar className="w-3.5 h-3.5 text-accent-ink" />
+                <span>Daily</span>
+              </Link>
+              <Link
+                href="/dashboard/performance-lab"
+                className="px-3.5 py-2.5 min-h-[42px] border border-border bg-surface hover:bg-surface-accent text-text-primary text-xs font-bold uppercase tracking-wider rounded-lg inline-flex items-center gap-1.5 transition-colors"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-accent-ink" />
+                <span>Lab</span>
+              </Link>
+              {session && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleToggleEdit}
+                    className="px-4 py-2.5 min-h-[42px] border border-border bg-surface hover:bg-surface-accent text-text-primary text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer rounded-lg shadow-xs"
+                  >
+                    {isEditingProfile ? 'Cancel' : 'Edit Profile'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => loadDbDashboardData()}
+                    className="p-2.5 min-w-[42px] min-h-[42px] flex items-center justify-center border border-border bg-surface hover:bg-surface-accent text-text-primary transition-colors cursor-pointer rounded-lg shadow-xs"
+                    title="Refresh Data"
+                    aria-label="Refresh dashboard data"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Edit Profile Form */}
           {session && isEditingProfile && (
-            <form onSubmit={handleUpdateProfile} className="mt-2 p-5 bg-surface border border-border flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl rounded-xl shadow-md animate-fade-in">
+            <form
+              onSubmit={handleUpdateProfile}
+              className="mt-2 p-5 bg-surface border border-border flex flex-col sm:flex-row sm:items-end gap-4 max-w-2xl rounded-xl shadow-md animate-fade-in"
+            >
               <div className="flex-1 flex flex-col gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-text-primary">Display Name</label>
+                <label htmlFor="display-name-input" className="text-xs font-bold uppercase tracking-wider text-text-primary">
+                  Display Name
+                </label>
                 <input
+                  id="display-name-input"
                   type="text"
                   value={newDisplayName}
                   onChange={(e) => setNewDisplayName(e.target.value)}
                   placeholder="Enter display name"
-                  className="w-full bg-background text-text-primary border border-border rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wider outline-none focus:border-accent focus:ring-1 focus:ring-accent/15"
+                  className="w-full bg-background text-text-primary border border-border rounded-lg px-3 py-2.5 min-h-[44px] text-xs font-bold uppercase tracking-wider outline-none focus:border-accent"
                   maxLength={50}
                   required
                 />
               </div>
-              <div className="flex-1 flex flex-col gap-2 opacity-65">
-                <label className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5">
+              <div className="flex-1 flex flex-col gap-2 opacity-75">
+                <span className="text-xs font-bold uppercase tracking-wider text-text-primary flex items-center gap-1.5">
                   <span>Username</span>
-                  <span className="text-[10px] text-rose-500">(Locked)</span>
-                </label>
-                <div className="w-full bg-surface-accent text-text-secondary border border-border/80 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wider select-none flex items-center justify-between">
+                  <span className="text-[11px] text-error">(Locked)</span>
+                </span>
+                <div className="w-full bg-surface-accent text-text-secondary border border-border rounded-lg px-3 py-2.5 min-h-[44px] text-xs font-bold uppercase tracking-wider select-none flex items-center justify-between">
                   <span>@{profile?.username}</span>
-                  <span>🔒</span>
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={updatingProfile}
-                className="px-6 py-2.5 bg-accent border-transparent text-white hover:bg-accent/90 text-xs font-bold uppercase tracking-widest transition-all cursor-pointer rounded-lg shadow-sm shadow-accent/15 disabled:opacity-50"
+                className="px-6 py-2.5 min-h-[44px] bg-accent text-accent-foreground hover:brightness-105 text-xs font-black uppercase tracking-wider transition-all cursor-pointer rounded-lg shadow-sm disabled:opacity-50"
               >
                 {updatingProfile ? 'Saving...' : 'Save Changes'}
               </button>
             </form>
           )}
 
-          {/* Last updated timestamp indicator */}
-          <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-widest text-text-secondary/70">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-text-secondary">
             <span>Source: {session ? 'Cloud Database' : 'Local Storage'}</span>
             {lastUpdated && <span>Last Updated: {lastUpdated}</span>}
           </div>
         </div>
 
-        {/* Stats Bento Grid */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
+        {/* KPI Bento Grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, staggerChildren: 0.1 }}
+          transition={{ duration: 0.4 }}
           className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4"
         >
-          <motion.div className="col-span-2 p-6 bg-accent/10 border border-accent/20 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-sm relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-br from-accent/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <span className="text-xs font-bold uppercase tracking-widest text-accent z-10">Peak Performance</span>
-            <span className="text-4xl md:text-5xl font-black font-mono mt-2 text-text-primary z-10">{stats.bestWpm} <span className="text-lg opacity-50">WPM</span></span>
-          </motion.div>
-          <motion.div className="col-span-2 md:col-span-1 p-6 bg-surface/40 backdrop-blur-md border border-border/60 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Average Speed</span>
-            <span className="text-3xl font-black font-mono mt-2 text-text-primary">{stats.avgWpm} <span className="text-sm opacity-50">WPM</span></span>
-          </motion.div>
-          <motion.div className="col-span-2 md:col-span-1 p-6 bg-surface/40 backdrop-blur-md border border-border/60 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Accuracy</span>
-            <span className="text-3xl font-black font-mono mt-2 text-accent-secondary">{stats.avgAccuracy}%</span>
-          </motion.div>
-          <motion.div className="col-span-2 md:col-span-1 p-6 bg-surface/40 backdrop-blur-md border border-border/60 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Active Streak</span>
-            <div className="flex items-center gap-2 mt-2 text-text-primary font-mono font-black text-3xl">
-              <Zap className="w-6 h-6 text-warning fill-current drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+          <div className="col-span-2 p-6 bg-accent/10 border border-accent/25 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
+            <span className="text-xs font-bold uppercase tracking-widest text-accent-ink">
+              Peak Performance
+            </span>
+            <span className="text-4xl md:text-5xl font-black font-mono mt-2 text-text-primary tabular-nums">
+              {stats.bestWpm} <span className="text-lg text-text-secondary">WPM</span>
+            </span>
+          </div>
+
+          <div className="col-span-2 md:col-span-1 p-6 bg-surface border border-border rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
+            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+              Average Speed
+            </span>
+            <span className="text-3xl font-black font-mono mt-2 text-text-primary tabular-nums">
+              {stats.avgWpm} <span className="text-sm text-text-secondary">WPM</span>
+            </span>
+          </div>
+
+          <div className="col-span-2 md:col-span-1 p-6 bg-surface border border-border rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
+            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+              Avg Accuracy
+            </span>
+            <span className="text-3xl font-black font-mono mt-2 text-success tabular-nums">
+              {stats.avgAccuracy}%
+            </span>
+          </div>
+
+          <div className="col-span-2 md:col-span-1 p-6 bg-surface border border-border rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
+            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+              Active Streak
+            </span>
+            <div className="flex items-center gap-2 mt-2 text-text-primary font-mono font-black text-3xl tabular-nums">
+              <Zap className="w-6 h-6 text-accent-ink" />
               <span>{streak.current}</span>
             </div>
-          </motion.div>
-          <motion.div className="col-span-2 md:col-span-1 p-6 bg-surface/40 backdrop-blur-md border border-border/60 rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Time Practiced</span>
-            <div className="flex items-center gap-2 mt-2 text-text-primary font-mono font-black text-xl">
-              <Clock className="w-5 h-5 text-accent opacity-80" />
+          </div>
+
+          <div className="col-span-2 md:col-span-1 p-6 bg-surface border border-border rounded-2xl flex flex-col justify-between min-h-[140px] shadow-xs">
+            <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+              Time Practiced
+            </span>
+            <div className="flex items-center gap-2 mt-2 text-text-primary font-mono font-black text-xl tabular-nums">
+              <Clock className="w-5 h-5 text-accent-ink" />
               <span>{formatTotalTime(stats.totalTimeSecs)}</span>
             </div>
-          </motion.div>
+          </div>
         </motion.div>
 
-        {/* Recharts Progress Graph & Recent Runs (Bento Layer 2) */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-4 font-sans"
-        >
+        {/* Chart & Recent List */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 font-sans">
           <div className="lg:col-span-2 p-6 bg-surface border border-border flex flex-col min-h-[300px] rounded-xl shadow-sm">
-            <div className="flex items-center gap-2 border-b border-border/80 pb-4 mb-4">
-              <ChartIcon className="w-4 h-4 text-accent" />
-              <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Speed Trend · Last 30 Tests</span>
+            <div className="flex items-center gap-2 border-b border-border pb-4 mb-4">
+              <ChartIcon className="w-4 h-4 text-accent-ink" />
+              <span className="text-sm font-bold uppercase tracking-wider text-text-primary">
+                Speed Trend · Last 30 Runs
+              </span>
             </div>
 
             {chartData.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center">
-                <span className="text-2xl">⌨️</span>
-                <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">No data yet — complete a test to start your chart.</span>
+              <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center py-10">
+                <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                  No data yet. Complete a test to start your trend chart.
+                </span>
+                <Button href="/typing" variant="secondary" className="text-xs">
+                  Go to Typing Arena
+                </Button>
               </div>
             ) : (
               <div className="flex-1 w-full h-[220px]">
@@ -560,30 +842,39 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Recent list block */}
           <div className="p-6 bg-surface border border-border flex flex-col gap-4 rounded-xl shadow-sm">
-            <div className="flex items-center gap-2 border-b border-border/80 pb-4">
-              <Clock className="w-4 h-4 text-accent" />
-              <span className="text-sm font-bold uppercase tracking-wider text-text-primary">Recent Runs</span>
+            <div className="flex items-center gap-2 border-b border-border pb-4">
+              <Clock className="w-4 h-4 text-accent-ink" />
+              <span className="text-sm font-bold uppercase tracking-wider text-text-primary">
+                Recent Runs
+              </span>
             </div>
 
             {history.length === 0 ? (
               <div className="flex flex-col items-center gap-2 text-center py-12">
-                <span className="text-2xl">⌨️</span>
-                <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">No runs yet — head to Practice to get started.</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                  No runs yet. Head to Practice to record your baseline.
+                </span>
               </div>
             ) : (
               <div className="flex flex-col gap-3 max-h-[220px] overflow-y-auto pr-1">
-                {history.slice(0, 5).map((run, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-3.5 bg-surface-accent/40 border border-border/80 text-xs font-bold uppercase tracking-wider rounded-lg hover:border-accent/30 transition-colors duration-200">
+                {history.slice(0, 5).map((run) => (
+                  <div
+                    key={run.id}
+                    className="flex justify-between items-center p-3.5 bg-surface-accent/50 border border-border text-xs font-bold uppercase tracking-wider rounded-lg"
+                  >
                     <div className="flex flex-col">
-                      <span className="text-text-primary font-mono text-sm font-black">{run.wpm} WPM</span>
-                      <span className="text-xs text-text-secondary uppercase mt-0.5">{run.mode} ({run.duration}s)</span>
+                      <span className="text-text-primary font-mono text-sm font-black tabular-nums">
+                        {run.wpm} WPM
+                      </span>
+                      <span className="text-xs text-text-secondary uppercase mt-0.5">
+                        {run.mode} ({run.duration}s)
+                      </span>
                     </div>
                     <div className="flex flex-col text-right">
-                      <span className="text-text-primary font-mono">{run.accuracy}% Acc</span>
-                      <span className="text-xs text-text-secondary/80 mt-0.5">
-                        {new Date(run.created_at).toLocaleDateString()}
+                      <span className="text-text-primary font-mono tabular-nums">{run.accuracy}% Acc</span>
+                      <span className="text-xs text-text-secondary mt-0.5">
+                        {formatUtcDate(run.created_at)}
                       </span>
                     </div>
                   </div>
@@ -591,31 +882,32 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </motion.div>
+        </div>
 
-        {/* Complete History Log (Bento Layer 3) */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="p-6 bg-surface/40 backdrop-blur-md border border-border/60 flex flex-col gap-6 rounded-2xl shadow-sm"
-        >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/80 pb-4">
+        {/* Complete History Log with Bounded Query Pagination */}
+        <div className="p-6 bg-surface border border-border flex flex-col gap-6 rounded-2xl shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
             <div className="flex items-center gap-2.5">
-              <Database className="w-5 h-5 text-accent" />
+              <Database className="w-5 h-5 text-accent-ink" />
               <div className="flex flex-col">
-                <span className="text-sm font-black uppercase tracking-wider text-text-primary">Complete History Log</span>
-                <span className="text-xs uppercase font-bold text-text-secondary mt-0.5">{history.length} total runs recorded</span>
+                <span className="text-sm font-black uppercase tracking-wider text-text-primary">
+                  Session History Log
+                </span>
+                <span className="text-xs font-bold text-text-secondary mt-0.5">
+                  Showing {history.length} loaded run{history.length === 1 ? '' : 's'}
+                </span>
               </div>
             </div>
 
-            {/* Sort Dropdown */}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">Sort:</span>
+              <label htmlFor="history-sort" className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+                Sort:
+              </label>
               <select
+                id="history-sort"
                 value={historySort}
                 onChange={(e) => setHistorySort(e.target.value)}
-                className="bg-background text-text-primary border border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider outline-none cursor-pointer hover:bg-surface-accent transition-colors rounded-lg shadow-xs"
+                className="bg-background text-text-primary border border-border px-3 py-2 min-h-[40px] text-xs font-bold uppercase tracking-wider outline-none cursor-pointer hover:bg-surface-accent transition-colors rounded-lg"
               >
                 <option value="latest">Latest First</option>
                 <option value="oldest">Oldest First</option>
@@ -625,18 +917,17 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Filters Row */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 bg-surface-accent/30 border border-border rounded-xl">
-            {/* Mode Filters */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-3 bg-surface-accent/40 border border-border rounded-xl">
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
               <span className="text-xs font-bold uppercase tracking-widest text-text-secondary mr-1">Mode:</span>
               {['all', 'words', 'quotes', 'numbers', 'punctuation', 'code'].map((m) => (
                 <button
                   key={m}
+                  type="button"
                   onClick={() => setHistoryMode(m)}
-                  className={`px-3 py-1.5 border text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer rounded-lg ${
+                  className={`px-3 py-2 min-h-[36px] border text-xs font-bold uppercase tracking-wider transition-all cursor-pointer rounded-lg ${
                     historyMode === m
-                      ? 'bg-accent text-white border-transparent shadow-xs'
+                      ? 'bg-accent text-accent-foreground border-transparent shadow-xs'
                       : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
                   }`}
                 >
@@ -645,16 +936,18 @@ export default function Dashboard() {
               ))}
             </div>
 
-            {/* Duration Filters */}
             <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none whitespace-nowrap">
-              <span className="text-xs font-bold uppercase tracking-widest text-text-secondary mr-1">Duration:</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-text-secondary mr-1">
+                Duration:
+              </span>
               {['all', '15', '30', '60', '120'].map((d) => (
                 <button
                   key={d}
+                  type="button"
                   onClick={() => setHistoryDuration(d)}
-                  className={`px-3 py-1.5 border text-[10px] font-bold uppercase tracking-widest transition-all cursor-pointer rounded-lg ${
+                  className={`px-3 py-2 min-h-[36px] border text-xs font-bold uppercase tracking-wider transition-all cursor-pointer rounded-lg ${
                     historyDuration === d
-                      ? 'bg-accent text-white border-transparent shadow-xs'
+                      ? 'bg-accent text-accent-foreground border-transparent shadow-xs'
                       : 'text-text-secondary border-transparent hover:border-border hover:text-text-primary'
                   }`}
                 >
@@ -664,78 +957,80 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Table container */}
           {filteredHistory.length === 0 ? (
             <div className="flex flex-col items-center gap-2 text-center py-12 bg-background border border-border rounded-xl">
-              <span className="text-2xl">⌨️</span>
-              <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">No runs match the selected filters.</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                No runs match the selected filters.
+              </span>
             </div>
           ) : (
-            <div className="flex flex-col gap-1">
-              <div className="flex md:hidden items-center justify-end gap-1 text-[9px] font-black uppercase tracking-wider text-text-secondary/80 select-none pb-1 animate-pulse">
-                <span>← swipe table to see details →</span>
-              </div>
-              <div className="overflow-x-auto border border-border max-h-[350px] overflow-y-auto rounded-xl shadow-xs bg-surface">
+            <div className="flex flex-col gap-3">
+              <div className="overflow-x-auto border border-border max-h-[380px] overflow-y-auto rounded-xl bg-surface">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-border text-[10px] uppercase font-bold text-text-primary tracking-widest bg-surface-accent sticky top-0 z-10">
-                      <th className="py-2.5 px-3 w-10 text-center bg-surface-accent">#</th>
-                      <th className="py-2.5 px-4 text-right bg-surface-accent">Speed</th>
-                      <th className="py-2.5 px-4 text-right bg-surface-accent">Raw</th>
-                      <th className="py-2.5 px-4 text-right bg-surface-accent">Accuracy</th>
-                      <th className="py-2.5 px-4 text-right bg-surface-accent">Consistency</th>
-                      <th className="py-2.5 px-4 text-center bg-surface-accent">Errors</th>
-                      <th className="py-2.5 px-4 bg-surface-accent">Mode</th>
-                      <th className="py-2.5 px-4 bg-surface-accent">Duration</th>
-                      <th className="py-2.5 px-4 text-right bg-surface-accent">Date</th>
+                    <tr className="border-b border-border text-xs uppercase font-bold text-text-primary tracking-wider bg-surface-accent sticky top-0 z-10">
+                      <th className="py-3 px-3 w-10 text-center bg-surface-accent">#</th>
+                      <th className="py-3 px-4 text-right bg-surface-accent">Speed</th>
+                      <th className="py-3 px-4 text-right bg-surface-accent">Raw</th>
+                      <th className="py-3 px-4 text-right bg-surface-accent">Accuracy</th>
+                      <th className="py-3 px-4 text-right bg-surface-accent">Consistency</th>
+                      <th className="py-3 px-4 text-center bg-surface-accent">Errors</th>
+                      <th className="py-3 px-4 bg-surface-accent">Mode</th>
+                      <th className="py-3 px-4 bg-surface-accent">Duration</th>
+                      <th className="py-3 px-4 text-right bg-surface-accent">Date</th>
                     </tr>
                   </thead>
                   <tbody className="text-xs font-bold uppercase tracking-wider text-text-secondary">
-                    {filteredHistory.map((run, idx) => {
-                      const number = idx + 1;
-                      return (
-                        <tr
-                          key={run.id || idx}
-                          className="border-b border-border/40 hover:bg-surface-accent/25 text-text-secondary hover:text-text-primary transition-colors duration-200"
-                        >
-                          <td className="py-3 px-3 text-center text-text-secondary/65 font-mono font-bold text-[10px]">
-                            {number}
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono font-black text-accent">
-                            {run.wpm} WPM
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono text-text-secondary/80">
-                            {run.raw_wpm ? `${run.raw_wpm} WPM` : '—'}
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono text-text-primary">
-                            {run.accuracy}%
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono">
-                            {run.consistency ? `${run.consistency}%` : '—'}
-                          </td>
-                          <td className="py-3 px-4 text-center font-mono text-text-secondary/80 text-[10px]">
-                            {run.error_count !== undefined ? (
-                              <span>{run.error_count} <span className="text-text-secondary/40">({run.backspace_count || 0} ⌫)</span></span>
-                            ) : '—'}
-                          </td>
-                          <td className="py-3 px-4 text-text-primary text-[10px] tracking-widest font-black">
-                            {run.mode}
-                          </td>
-                          <td className="py-3 px-4 text-text-primary text-[10px] tracking-widest font-black">
-                            {run.duration}s
-                          </td>
-                          <td className="py-3 px-4 text-right font-mono text-[10px] text-text-secondary/65">
-                            {new Date(run.created_at).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {filteredHistory.map((run, idx) => (
+                      <tr
+                        key={run.id}
+                        className="border-b border-border/50 hover:bg-surface-accent/30 transition-colors"
+                      >
+                        <td className="py-3 px-3 text-center font-mono font-bold text-text-secondary">
+                          {idx + 1}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono font-black text-accent-ink tabular-nums">
+                          {run.wpm} WPM
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-text-secondary tabular-nums">
+                          {run.raw_wpm ? `${run.raw_wpm} WPM` : '--'}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono text-text-primary tabular-nums">
+                          {run.accuracy}%
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono tabular-nums">
+                          {run.consistency ? `${run.consistency}%` : '--'}
+                        </td>
+                        <td className="py-3 px-4 text-center font-mono text-text-secondary tabular-nums">
+                          <span>
+                            {run.error_count}{' '}
+                            <span className="opacity-70">({run.backspace_count} del)</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-text-primary font-black">{run.mode}</td>
+                        <td className="py-3 px-4 text-text-primary font-black">{run.duration}s</td>
+                        <td className="py-3 px-4 text-right font-mono text-text-secondary">
+                          {formatUtcDate(run.created_at)}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+
+              {session && hasMore && (
+                <div className="flex justify-center pt-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setPageSize((prev) => prev + PAGE_STEP)}
+                  >
+                    Load More Runs ({PAGE_STEP}+)
+                  </Button>
+                </div>
+              )}
             </div>
           )}
-        </motion.div>
+        </div>
       </main>
     </div>
   );

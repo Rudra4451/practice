@@ -1,47 +1,65 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useSyncExternalStore } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Trophy, Flame, ShieldAlert, BookOpen, Compass, Key } from 'lucide-react';
+import { Sparkles, Flame } from 'lucide-react';
 
-// --- Type Declarations ---
 export interface CatCompanionProps {
   wpm: number;
   accuracy: number;
   errorCount: number;
-  streakDays?: number; // Optional custom streak override
+  streakDays?: number;
 }
 
 interface CatInfo {
   id: string;
   name: string;
-  type: 'orange' | 'void' | 'white' | 'grey' | 'blue' | 'purple' | 'golden' | 'hacker' | 'samurai' | 'space' | 'cyber' | 'pirate' | 'ninja' | 'detective' | 'chef';
+  type:
+    | 'orange'
+    | 'void'
+    | 'white'
+    | 'grey'
+    | 'blue'
+    | 'purple'
+    | 'golden'
+    | 'hacker'
+    | 'samurai'
+    | 'space'
+    | 'cyber'
+    | 'pirate'
+    | 'ninja'
+    | 'detective'
+    | 'chef';
   color: string;
   accent: string;
   dialogues: {
-    perfect: string; // 100% accuracy
-    fast: string;    // 120+ WPM
-    pb: string;      // personal best
-    slow: string;    // slow typing
-    mistakes: string;// many mistakes
+    perfect: string;
+    fast: string;
+    pb: string;
+    slow: string;
+    mistakes: string;
     default: string;
   };
   desc: string;
   accessory?: 'headphones' | 'hoodie' | 'golden-auras' | 'none';
 }
 
-// --- Quotes Config (Max 8-10 words) ---
+const DEFAULT_UNLOCKED_IDS = ['orange', 'void', 'white'];
+const DEFAULT_UNLOCKED_JSON = JSON.stringify(DEFAULT_UNLOCKED_IDS);
+const UNLOCKED_STORAGE_KEY = 'typrox_cats_unlocked';
+const SELECTED_STORAGE_KEY = 'typrox_cats_selected';
+const STORAGE_CHANGE_EVENT = 'typrox-cat-storage-change';
+
 const SHORT_QUOTES = [
-  'Your fingers are cooking.',
-  'That combo was clean.',
-  'Accuracy > Speed.',
-  'Keyboard approved.',
-  'Even I’m impressed.',
-  'Touch grass… after one more run.',
-  'Another run?'
+  'Your fingers are finding flow.',
+  'Clean rhythm beats frantic recovery.',
+  'Accuracy builds lasting speed.',
+  'Steady timing across every key.',
+  'Focus on the next two words.',
+  'Every keystroke sharpens recall.',
+  'Ready for another run?',
 ];
 
-// --- 12 Collectible Cats list ---
 const CATS_DATABASE: CatInfo[] = [
   {
     id: 'orange',
@@ -56,8 +74,8 @@ const CATS_DATABASE: CatInfo[] = [
       pb: 'New high score? Time to do a victory slide on the carpet!',
       slow: 'Yawn... typing speed matches my nap pace.',
       mistakes: 'Whoops! Did a mouse run across your keyboard?',
-      default: 'Keep typing! The lasagna is baking.'
-    }
+      default: 'Keep typing! The lasagna is baking.',
+    },
   },
   {
     id: 'void',
@@ -72,8 +90,8 @@ const CATS_DATABASE: CatInfo[] = [
       pb: 'Impressive. The darkness approves.',
       slow: 'Are we typing or experiencing time dilation?',
       mistakes: 'Chaos. Let us try to hit the actual keys next time.',
-      default: 'I stare into the keyboard. It stares back.'
-    }
+      default: 'I stare into the keyboard. It stares back.',
+    },
   },
   {
     id: 'white',
@@ -88,8 +106,8 @@ const CATS_DATABASE: CatInfo[] = [
       pb: 'A new record! You are doing so amazing, keep it up!',
       slow: 'Every keystroke is progress! You are doing great.',
       mistakes: 'It is okay to make mistakes! Let us try again together.',
-      default: 'I believe in you! Let us take it one key at a time.'
-    }
+      default: 'I believe in you! Let us take it one key at a time.',
+    },
   },
   {
     id: 'grey',
@@ -101,11 +119,11 @@ const CATS_DATABASE: CatInfo[] = [
     dialogues: {
       perfect: 'Perfect execution. Form was ideal. Dismissed.',
       fast: 'High tempo. Maintain this posture for maximum efficiency.',
-      pb: 'Progress registered. Do not get complacent, soldier.',
-      slow: 'Unacceptable cadence. Double your finger posture drill.',
-      mistakes: 'Uncontrolled errors. Focus on accuracy before adding speed.',
-      default: 'Consistency is built keystroke by keystroke.'
-    }
+      pb: 'Progress registered. Do not get complacent, typist.',
+      slow: 'Unacceptable cadence. Focus on consistent rhythm.',
+      mistakes: 'Uncontrolled errors. Lock accuracy before pushing pace.',
+      default: 'Consistency is built keystroke by keystroke.',
+    },
   },
   {
     id: 'blue',
@@ -113,15 +131,15 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'blue',
     color: '#00D2D3',
     accent: '#54A0FF',
-    desc: 'Fast gaming enthusiast. Hyped, competitive, and lives for high WPM runs.',
+    desc: 'Fast gaming enthusiast. Competitive and driven by crisp splits.',
     dialogues: {
-      perfect: 'Perfect combo! That accuracy run was absolutely cracked!',
-      fast: '120+ WPM! You are cooking! Keep that high refresh rate!',
-      pb: 'A new personal best! Absolute gamer status!',
-      slow: 'Ping is too high? Let us reboot and speedrun it!',
-      mistakes: 'Choked the combo! Get back in the queue!',
-      default: 'Type fast, think faster. GG!'
-    }
+      perfect: 'Perfect combo! That accuracy run was super clean!',
+      fast: '120+ WPM! Locked in and flying across rows.',
+      pb: 'A new personal best! Great split.',
+      slow: 'Warm-up run complete. Ready to push pace.',
+      mistakes: 'Rough patch in the middle. Drill those weak bigrams.',
+      default: 'Type fast, stay steady.',
+    },
   },
   {
     id: 'purple',
@@ -129,15 +147,15 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'purple',
     color: '#9B59B6',
     accent: '#8E44AD',
-    desc: 'Magical space-glowing cat. Controls floating star particles and cosmos magic.',
+    desc: 'Space-themed companion focused on rhythmic concentration.',
     dialogues: {
-      perfect: 'The stars have aligned. A truly celestial performance.',
-      fast: 'Warp speed achieved. You transcend normal constraints.',
-      pb: 'The constellation of success glows brightly today.',
-      slow: 'A slow orbit. Take your time to gather cosmic focus.',
-      mistakes: 'Asteroids disrupted your path. Center your aura.',
-      default: 'Magic flows through every keystroke.'
-    }
+      perfect: 'Clean cadence from start to finish.',
+      fast: 'Warp speed achieved without breaking form.',
+      pb: 'New benchmark aligned cleanly.',
+      slow: 'Steady orbit. Focus on smooth transitions.',
+      mistakes: 'Pause briefly and reset finger home row.',
+      default: 'Calm focus flows through every keystroke.',
+    },
   },
   {
     id: 'golden',
@@ -145,32 +163,31 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'golden',
     color: '#F1C40F',
     accent: '#F39C12',
-    desc: 'Legendary gold cat. Brings fortune, glowing stars, and ultimate typing luck.',
+    desc: 'Unlocked by achieving a 100% accuracy run.',
     dialogues: {
-      perfect: 'A legendary flawless run! Gold particles for everyone!',
-      fast: 'Supercharged speed! Gold tier velocity achieved!',
-      pb: 'New Personal Best! The golden bell rings for you!',
-      slow: 'A slow golden hour. Relax and enjoy the glow.',
-      mistakes: 'Even gold has rough spots. Let us polishing it up!',
-      default: 'Fortune favors the focused typist.'
-    }
+      perfect: 'A flawless 100% run. Precision rewarded.',
+      fast: 'High-speed velocity with clean form.',
+      pb: 'New personal best benchmark saved.',
+      slow: 'Taking time for zero mistakes pays off.',
+      mistakes: 'Every mistake reveals an easy gain on your next set.',
+      default: 'Precision compounds over time.',
+    },
   },
-  // Unlocked specialty collection cats
   {
     id: 'hacker',
     name: 'Netrunner Cyber',
     type: 'hacker',
     color: '#10AC84',
     accent: '#1DD1A1',
-    desc: 'Hacker Cat with a glitch green matrix styling and terminal visor.',
+    desc: 'Terminal specialist unlocked during high-volume typing runs.',
     dialogues: {
-      perfect: 'Root access obtained. Key sequence fully compiled.',
-      fast: 'Overclocked CPU! Hacking the server at warp speed!',
-      pb: 'New firewall bypassed! score.log updated successfully.',
-      slow: 'Buffer underrun. System response delay detected.',
-      mistakes: 'Syntax error! Syntax error! Check your key maps.',
-      default: 'Listening on port 1337. Start typing.'
-    }
+      perfect: 'Root precision verified. Key sequence clean.',
+      fast: 'High throughput sustained across the passage.',
+      pb: 'Personal record checkpoint written cleanly.',
+      slow: 'Steady packet rate. Keep cadence smooth.',
+      mistakes: 'Check your high-error keys in the weakness breakdown.',
+      default: 'Listening cleanly to every keystroke event.',
+    },
   },
   {
     id: 'samurai',
@@ -178,15 +195,15 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'samurai',
     color: '#EE5253',
     accent: '#FF6B6B',
-    desc: 'Disciplined Samurai Cat with crossed swords and a focus headband.',
+    desc: 'Disciplined Samurai Cat focused on single-pass accuracy.',
     dialogues: {
-      perfect: 'One strike, one kill. Flawless katana movement.',
-      fast: 'Swords draw like lightning. Speed is your ally.',
-      pb: 'A legendary masterstroke. Honor to your fingers.',
-      slow: 'Patience. But do not let your blade rust in slow stance.',
-      mistakes: 'Your guard was broken. Re-center your warrior spirit.',
-      default: 'The mind is the blade. The keyboard is the sheath.'
-    }
+      perfect: 'One clean pass without wasted motion.',
+      fast: 'Rapid cadence without hesitation.',
+      pb: 'Disciplined practice forged a new best.',
+      slow: 'Controlled form comes first; speed follows.',
+      mistakes: 'Tighten precision on your recurring trouble keys.',
+      default: 'Precision first, velocity second.',
+    },
   },
   {
     id: 'space',
@@ -194,15 +211,15 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'space',
     color: '#54A0FF',
     accent: '#2E86DE',
-    desc: 'Floating Space Cat wearing a tiny glass astronaut fishbowl helmet.',
+    desc: 'Floating Space Cat tracking long endurance runs.',
     dialogues: {
-      perfect: 'Perfect oxygen levels. Zero gravity precision typing.',
-      fast: 'Rocket propulsion engaged! Leaving orbit now!',
-      pb: 'New galaxy conquered! Star mapping looks beautiful.',
-      slow: 'Floating adrift. Gravity is pulling you down.',
-      mistakes: 'Houston, we have a problem. Recalibrating coordinates.',
-      default: 'A small step for paws, a giant leap for typists.'
-    }
+      perfect: 'Zero deviation recorded across the session.',
+      fast: 'High escape velocity achieved cleanly.',
+      pb: 'New altitude reached in speed.',
+      slow: 'Slow orbit builds endurance.',
+      mistakes: 'Re-center both index fingers on F and J.',
+      default: 'One small keystroke at a time.',
+    },
   },
   {
     id: 'cyber',
@@ -210,15 +227,15 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'cyber',
     color: '#00D2D3',
     accent: '#01A3A4',
-    desc: 'Neon cybernetic cat with mechanical ears and glowing neon circuit visor.',
+    desc: 'Unlocked by clearing 120+ WPM in a verified session.',
     dialogues: {
-      perfect: 'System optimization 100%. Cyberware fully calibrated.',
-      fast: 'Neon speedlines flashing! Neural link speed maximized!',
-      pb: 'Level up! Upgrading firmware with personal best stats.',
-      slow: 'Low battery power. Recharge cells to type faster.',
-      mistakes: 'Hardware glitch! System latency on fingers.',
-      default: 'Connected to Net space. Cybernetic implants ready.'
-    }
+      perfect: 'Calibration complete: zero defects.',
+      fast: '120+ WPM benchmark cleared cleanly.',
+      pb: 'Firmware benchmark updated with new record.',
+      slow: 'Low power warm-up run.',
+      mistakes: 'Latency spikes spotted on uncorrected tokens.',
+      default: 'Mechanical switch rhythm initialized.',
+    },
   },
   {
     id: 'pirate',
@@ -226,15 +243,15 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'pirate',
     color: '#FF9F43',
     accent: '#EE5253',
-    desc: 'Pirate Captain Cat with a tiny eyepatch and golden hook.',
+    desc: 'Seafaring cat cheering consistent practice streaks.',
     dialogues: {
-      perfect: 'A chest full of gold! Flawless booty collected!',
-      fast: 'Sailing with full wind speed! Ahoy speedy fingers!',
-      pb: 'New treasure map discovered! The chest is ours!',
-      slow: 'Calm waters. Row faster, ye scurvy dog!',
-      mistakes: 'Stormy seas! We are taking on typos!',
-      default: 'Arr! Set sail for the next keyboard conquest!'
-    }
+      perfect: 'Smooth sailing with 100% precision!',
+      fast: 'Full wind behind your fingers today!',
+      pb: 'A brand-new record logged cleanly.',
+      slow: 'Calm waters keep accuracy intact.',
+      mistakes: 'Choppy passage. Queue a drill on those missed keys.',
+      default: 'Set course for another focused session.',
+    },
   },
   {
     id: 'ninja',
@@ -242,15 +259,15 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'ninja',
     color: '#2C3E50',
     accent: '#7F8C8D',
-    desc: 'Quiet and disciplined Ninja Cat. Speaks in zen focus and quick slashes.',
+    desc: 'Quiet and disciplined companion rewarding streak consistency.',
     dialogues: {
-      perfect: 'Flawless execution. Your target was struck with absolute precision.',
-      fast: 'Fast as the shadow steps. A silent, swift strike!',
-      pb: 'A legendary leap. Your training yields great power.',
-      slow: 'Slow focus. Speed will follow once the mind is calm.',
-      mistakes: 'Your steps faltered. Focus on the center of the key.',
-      default: 'The silent typist strikes without noise.'
-    }
+      perfect: 'Quiet accuracy across every word.',
+      fast: 'Swift and consistent cadence.',
+      pb: 'New personal high unlocked.',
+      slow: 'Calm breathing yields steady output.',
+      mistakes: 'Eliminate rushing on unfamiliar bigrams.',
+      default: 'Focused hands leave zero extra backspaces.',
+    },
   },
   {
     id: 'detective',
@@ -258,15 +275,15 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'detective',
     color: '#D2B48C',
     accent: '#8B5A2B',
-    desc: 'Smart detective cat. Searches for clues in your typing patterns.',
+    desc: 'Analytical cat inspecting keystroke timing patterns.',
     dialogues: {
-      perfect: 'Case closed. Not a single typo clue was left behind.',
-      fast: 'Quick deduction! You solved the layout mystery in record time.',
-      pb: 'Brilliant discovery! A new breakthrough in WPM research.',
-      slow: 'Hmm, examining the keys? Let us gather more evidence.',
-      mistakes: 'I found several mistake clues. Let us analyze the patterns.',
-      default: 'Every keystroke leaves a trace. Let us deduce the secret.'
-    }
+      perfect: 'Zero mistake clues left behind.',
+      fast: 'Fast, readable transition intervals.',
+      pb: 'Evidence confirms a new personal benchmark.',
+      slow: 'Careful key inspection keeps errors low.',
+      mistakes: 'Follow the weak-key report below to target drills.',
+      default: 'Every transition interval reveals a clue.',
+    },
   },
   {
     id: 'chef',
@@ -274,62 +291,98 @@ const CATS_DATABASE: CatInfo[] = [
     type: 'chef',
     color: '#F5F6FA',
     accent: '#B2BEC3',
-    desc: 'Culinary expert Chef Cat. Evaluates your typing speed like baking a fine souffle.',
+    desc: 'Precision-obsessed chef cat balancing speed and clean execution.',
     dialogues: {
-      perfect: 'Magnifique! A Michelin-star flawless run!',
-      fast: 'Finger-licking fast! That run was absolutely sizzling!',
-      pb: 'A brand new recipe! A delicious personal best!',
-      slow: 'A slow-cook recipe? Let us turn up the burner heat!',
-      mistakes: 'The souffle collapsed! Too many typo spices.',
-      default: 'Let us mix speed and precision for the perfect blend.'
-    }
-  }
+      perfect: 'Clean, balanced execution across every course.',
+      fast: 'Fast preparation with zero burned keys.',
+      pb: 'A sharper recipe and a higher peak WPM.',
+      slow: 'Low-and-steady warmup complete.',
+      mistakes: 'Slow slightly before speeding up to keep accuracy clean.',
+      default: 'Blend rhythm and accuracy for steady gains.',
+    },
+  },
 ];
+
+function subscribeCatStorage(callback: () => void) {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', callback);
+  window.addEventListener(STORAGE_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener(STORAGE_CHANGE_EVENT, callback);
+  };
+}
+
+function getUnlockedSnapshot(): string {
+  if (typeof window === 'undefined') return DEFAULT_UNLOCKED_JSON;
+  return localStorage.getItem(UNLOCKED_STORAGE_KEY) || DEFAULT_UNLOCKED_JSON;
+}
+
+function getSelectedSnapshot(): string {
+  if (typeof window === 'undefined') return 'orange';
+  return localStorage.getItem(SELECTED_STORAGE_KEY) || 'orange';
+}
+
+function getServerUnlockedSnapshot(): string {
+  return DEFAULT_UNLOCKED_JSON;
+}
+
+function getServerSelectedSnapshot(): string {
+  return 'orange';
+}
+
+function parseUnlockedIds(raw: string): string[] {
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.filter((id): id is string => typeof id === 'string');
+    }
+  } catch {
+    // Fall back safely on corrupted storage value
+  }
+  return DEFAULT_UNLOCKED_IDS;
+}
 
 export const CatCompanion: React.FC<CatCompanionProps> = ({
   wpm,
   accuracy,
   errorCount,
-  streakDays = 1
+  streakDays = 1,
 }) => {
-  // Read streak and unlocked cats from localStorage to maintain gaming vibe
-  const [unlockedIds, setUnlockedIds] = useState<string[]>(['orange', 'void', 'white']);
-  const [selectedCatId, setSelectedCatId] = useState<string>('orange');
+  const unlockedRaw = useSyncExternalStore(
+    subscribeCatStorage,
+    getUnlockedSnapshot,
+    getServerUnlockedSnapshot
+  );
+  const selectedCatId = useSyncExternalStore(
+    subscribeCatStorage,
+    getSelectedSnapshot,
+    getServerSelectedSnapshot
+  );
+
+  const unlockedIds = useMemo(() => parseUnlockedIds(unlockedRaw), [unlockedRaw]);
   const [showNotification, setShowNotification] = useState<string | null>(null);
   const [showCollectionDrawer, setShowCollectionDrawer] = useState(false);
+  const processedRunSignatureRef = useRef<string>('');
 
-  useEffect(() => {
-    // Sync local storage on mount
-    const localUnlocked = localStorage.getItem('typrox_cats_unlocked');
-    const localSelected = localStorage.getItem('typrox_cats_selected');
-    
-    if (localUnlocked) {
-      setUnlockedIds(JSON.parse(localUnlocked));
-    } else {
-      localStorage.setItem('typrox_cats_unlocked', JSON.stringify(['orange', 'void', 'white']));
-    }
-
-    if (localSelected) {
-      setSelectedCatId(localSelected);
-    }
-  }, []);
-
-  // Determine current rating category
-  const performanceCategory = useMemo((): 'perfect' | 'fast' | 'pb' | 'slow' | 'mistakes' | 'default' => {
+  const performanceCategory = useMemo(():
+    | 'perfect'
+    | 'fast'
+    | 'pb'
+    | 'slow'
+    | 'mistakes'
+    | 'default' => {
     if (accuracy === 100) return 'perfect';
     if (wpm >= 120) return 'fast';
-    if (wpm > 85) return 'pb'; // simulated high-tier milestone
+    if (wpm > 85) return 'pb';
     if (errorCount > 8) return 'mistakes';
     if (wpm < 30) return 'slow';
     return 'default';
   }, [wpm, accuracy, errorCount]);
 
-  // Retrieve current active cat
   const activeCat = useMemo((): CatInfo => {
     const dbCat = CATS_DATABASE.find((c) => c.id === selectedCatId) || CATS_DATABASE[0];
-    
-    // Determine Streak accessory upgrade level:
-    // Day 1: normal, Day 7: headphones, Day 30: hoodie, Day 100: golden aura
+
     let acc: 'headphones' | 'hoodie' | 'golden-auras' | 'none' = 'none';
     if (streakDays >= 100) acc = 'golden-auras';
     else if (streakDays >= 30) acc = 'hoodie';
@@ -338,56 +391,61 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
     return { ...dbCat, accessory: acc };
   }, [selectedCatId, streakDays]);
 
-  // Unlock check triggered on every new test score
+  // Deterministically unlock specialty companions without overwriting existing storage
   useEffect(() => {
-    // If accuracy is perfect, or WPM is very high, there is a chance to unlock a specialty cat!
-    const tryUnlock = () => {
-      const lockable = CATS_DATABASE.filter((c) => !unlockedIds.includes(c.id));
-      if (lockable.length === 0) return;
+    const signature = `${wpm}:${accuracy}:${errorCount}`;
+    if (processedRunSignatureRef.current === signature) return;
+    processedRunSignatureRef.current = signature;
+
+    const timerId = window.setTimeout(() => {
+      const currentIds = parseUnlockedIds(
+        localStorage.getItem(UNLOCKED_STORAGE_KEY) || DEFAULT_UNLOCKED_JSON
+      );
 
       let targetUnlock: CatInfo | null = null;
-
-      if (accuracy === 100 && !unlockedIds.includes('golden')) {
-        targetUnlock = CATS_DATABASE.find((c) => c.id === 'golden') || null;
-      } else if (wpm >= 120 && !unlockedIds.includes('cyber')) {
-        targetUnlock = CATS_DATABASE.find((c) => c.id === 'cyber') || null;
-      } else if (errorCount > 10 && !unlockedIds.includes('hacker')) {
-        // comedic unlock
-        targetUnlock = CATS_DATABASE.find((c) => c.id === 'hacker') || null;
-      } else if (Math.random() > 0.6) {
-        // random chance
-        targetUnlock = lockable[Math.floor(Math.random() * lockable.length)];
+      if (accuracy === 100 && wpm >= 30 && !currentIds.includes('golden')) {
+        targetUnlock = CATS_DATABASE.find((c) => c.id === 'golden') ?? null;
+      } else if (wpm >= 120 && !currentIds.includes('cyber')) {
+        targetUnlock = CATS_DATABASE.find((c) => c.id === 'cyber') ?? null;
+      } else if (errorCount > 10 && !currentIds.includes('hacker')) {
+        targetUnlock = CATS_DATABASE.find((c) => c.id === 'hacker') ?? null;
+      } else if (streakDays >= 7 && !currentIds.includes('ninja')) {
+        targetUnlock = CATS_DATABASE.find((c) => c.id === 'ninja') ?? null;
       }
 
       if (targetUnlock) {
-        const nextList = [...unlockedIds, targetUnlock.id];
-        setUnlockedIds(nextList);
-        localStorage.setItem('typrox_cats_unlocked', JSON.stringify(nextList));
-        setShowNotification(`🎁 You discovered a new cat: ${targetUnlock.name}!`);
-        setTimeout(() => setShowNotification(null), 4000);
+        const nextList = Array.from(new Set([...currentIds, targetUnlock.id]));
+        localStorage.setItem(UNLOCKED_STORAGE_KEY, JSON.stringify(nextList));
+        window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
+        setShowNotification(`Unlocked companion: ${targetUnlock.name}`);
       }
-    };
+    }, 50);
 
-    tryUnlock();
-  }, [wpm, accuracy, errorCount]);
+    return () => window.clearTimeout(timerId);
+  }, [wpm, accuracy, errorCount, streakDays]);
 
-  // Select a random dialogue for result feedback
+  // Auto-dismiss notification cleanly
+  useEffect(() => {
+    if (!showNotification) return;
+    const hideId = window.setTimeout(() => setShowNotification(null), 4000);
+    return () => window.clearTimeout(hideId);
+  }, [showNotification]);
+
   const catDialogue = useMemo(() => {
     return activeCat.dialogues[performanceCategory];
   }, [activeCat, performanceCategory]);
 
-  // Select random short quote
+  // Pure deterministic quote selection (no Math.random inside useMemo)
   const shortQuote = useMemo(() => {
-    return SHORT_QUOTES[Math.floor(Math.random() * SHORT_QUOTES.length)];
-  }, []);
+    const idx = Math.abs(Math.round(wpm) + errorCount) % SHORT_QUOTES.length;
+    return SHORT_QUOTES[idx];
+  }, [wpm, errorCount]);
 
-  // Handle companion swap
   const selectCompanion = (id: string) => {
-    setSelectedCatId(id);
-    localStorage.setItem('typrox_cats_selected', id);
+    localStorage.setItem(SELECTED_STORAGE_KEY, id);
+    window.dispatchEvent(new Event(STORAGE_CHANGE_EVENT));
   };
 
-  // Render fluffy cat SVG body
   const renderCatVector = (cat: CatInfo) => {
     const isGlitch = performanceCategory === 'mistakes' || cat.type === 'hacker';
     const isExcited = performanceCategory === 'fast' || performanceCategory === 'pb';
@@ -399,40 +457,44 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
         height="110"
         viewBox="0 0 64 64"
         className="w-24 h-24 preserve-3d"
-        animate={isExcited ? {
-          y: [0, -10, 0],
-          scaleY: [1, 0.9, 1.05, 1]
-        } : isSleepy ? {
-          scaleY: [0.95, 0.98, 0.95],
-          y: [0, 1.5, 0]
-        } : {
-          y: [0, -2, 0]
-        }}
-        transition={isExcited ? {
-          duration: 0.6,
-          repeat: Infinity,
-          repeatType: 'reverse'
-        } : {
-          duration: 2.2,
-          repeat: Infinity,
-          repeatType: 'reverse'
-        }}
+        animate={
+          isExcited
+            ? { y: [0, -10, 0], scaleY: [1, 0.9, 1.05, 1] }
+            : isSleepy
+              ? { scaleY: [0.95, 0.98, 0.95], y: [0, 1.5, 0] }
+              : { y: [0, -2, 0] }
+        }
+        transition={
+          isExcited
+            ? { duration: 0.6, repeat: Infinity, repeatType: 'reverse' }
+            : { duration: 2.2, repeat: Infinity, repeatType: 'reverse' }
+        }
       >
         <defs>
-          {/* Subtle gold glow filter */}
           <filter id="gold-glow" x="-20%" y="-20%" width="140%" height="140%">
             <feGaussianBlur stdDeviation="3" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
         </defs>
 
-        <g filter={cat.accessory === 'golden-auras' || cat.type === 'golden' ? 'url(#gold-glow)' : undefined}>
-          {/* Cosmic aura or particle clouds */}
+        <g
+          filter={
+            cat.accessory === 'golden-auras' || cat.type === 'golden'
+              ? 'url(#gold-glow)'
+              : undefined
+          }
+        >
           {cat.type === 'purple' && (
-            <motion.circle cx="32" cy="36" r="22" fill={`${cat.color}20`} animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }} />
+            <motion.circle
+              cx="32"
+              cy="36"
+              r="22"
+              fill={`${cat.color}20`}
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
           )}
 
-          {/* Wavy Tail */}
           <motion.path
             d="M 16 48 Q 6 52 10 40 Q 14 30 18 36"
             stroke={cat.color}
@@ -442,41 +504,55 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
             animate={{
               rotate: [-8, 12, -8],
               originX: '18px',
-              originY: '42px'
+              originY: '42px',
             }}
             transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
           />
 
-          {/* Large Round Fluffy Body */}
-          <rect x="14" y="24" width="36" height="26" rx="14" fill={cat.color} stroke="#1A1A1D" strokeWidth="2.5" />
-          
-          {/* Fluff volume checks (cheek details) */}
+          <rect
+            x="14"
+            y="24"
+            width="36"
+            height="26"
+            rx="14"
+            fill={cat.color}
+            stroke="#1A1A1D"
+            strokeWidth="2.5"
+          />
+
           <path d="M 12 36 L 8 38 L 13 40 Z" fill={cat.color} stroke="#1A1A1D" strokeWidth="1.5" />
           <path d="M 52 36 L 56 38 L 51 40 Z" fill={cat.color} stroke="#1A1A1D" strokeWidth="1.5" />
 
-          {/* Rounded Ears */}
           <polygon points="16,25 6,12 24,18" fill={cat.color} stroke="#1A1A1D" strokeWidth="2.5" />
           <polygon points="18,21 10,14 22,17" fill="#FFA5A5" />
 
           <polygon points="48,25 58,12 40,18" fill={cat.color} stroke="#1A1A1D" strokeWidth="2.5" />
           <polygon points="46,21 54,14 42,17" fill="#FFA5A5" />
 
-          {/* Large Expression Eyes */}
           <g>
             {isSleepy ? (
-              // Sleeping closed eyes
               <>
-                <path d="M 22 30 Q 25 33 28 30" stroke="#1A1A1D" strokeWidth="2.5" strokeLinecap="round" fill="none" />
-                <path d="M 36 30 Q 39 33 42 30" stroke="#1A1A1D" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                <path
+                  d="M 22 30 Q 25 33 28 30"
+                  stroke="#1A1A1D"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  fill="none"
+                />
+                <path
+                  d="M 36 30 Q 39 33 42 30"
+                  stroke="#1A1A1D"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  fill="none"
+                />
               </>
             ) : isGlitch ? (
-              // Glitched cross eyes
               <>
                 <path d="M 22 26 L 28 32 M 28 26 L 22 32" stroke="#1A1A1D" strokeWidth="2.5" />
                 <path d="M 36 26 L 42 32 M 42 26 L 36 32" stroke="#1A1A1D" strokeWidth="2.5" />
               </>
             ) : (
-              // Standard blinking eyes
               <>
                 <motion.ellipse
                   cx="25"
@@ -500,7 +576,6 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
             )}
           </g>
 
-          {/* Blush details for supportive kind cat */}
           {cat.type === 'white' && (
             <>
               <circle cx="21" cy="33" r="2.5" fill="#FF8B8B" opacity="0.6" />
@@ -508,13 +583,16 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
             </>
           )}
 
-          {/* Chibi Mouth */}
-          <path d="M 30 34 Q 32 36 34 34" stroke="#1A1A1D" strokeWidth="2" strokeLinecap="round" fill="none" />
+          <path
+            d="M 30 34 Q 32 36 34 34"
+            stroke="#1A1A1D"
+            strokeWidth="2"
+            strokeLinecap="round"
+            fill="none"
+          />
 
-          {/* 3 Accessory Streak Upgrades */}
           {cat.accessory === 'headphones' && (
             <g>
-              {/* Headphones arch */}
               <path d="M 12 24 Q 32 6 52 24" stroke="#D63031" strokeWidth="4" fill="none" />
               <rect x="8" y="22" width="6" height="10" rx="2" fill="#D63031" />
               <rect x="50" y="22" width="6" height="10" rx="2" fill="#D63031" />
@@ -523,14 +601,19 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
 
           {cat.accessory === 'hoodie' && (
             <g opacity="0.8">
-              {/* Hoodie hoodie ring */}
               <circle cx="32" cy="32" r="21" stroke="#2C3E50" strokeWidth="3" fill="none" />
             </g>
           )}
 
-          {/* Specialty Unlocked Mascots Visual Details */}
           {cat.type === 'space' && (
-            <circle cx="32" cy="32" r="23" stroke="#81ECEC" strokeWidth="1.5" fill="rgba(129,236,236,0.1)" />
+            <circle
+              cx="32"
+              cy="32"
+              r="23"
+              stroke="#81ECEC"
+              strokeWidth="1.5"
+              fill="rgba(129,236,236,0.1)"
+            />
           )}
 
           {cat.type === 'pirate' && (
@@ -547,21 +630,45 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
           {cat.type === 'ninja' && (
             <g>
               <rect x="12" y="20" width="40" height="4" fill="#2D3436" rx="1" />
-              <path d="M 12 22 L 6 27 M 12 22 L 4 19" stroke="#2D3436" strokeWidth="2.5" strokeLinecap="round" />
+              <path
+                d="M 12 22 L 6 27 M 12 22 L 4 19"
+                stroke="#2D3436"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
             </g>
           )}
 
           {cat.type === 'detective' && (
             <g>
-              <path d="M 16 23 C 16 11, 48 11, 48 23 Z" fill="#D2B48C" stroke="#1A1A1D" strokeWidth="1.5" />
+              <path
+                d="M 16 23 C 16 11, 48 11, 48 23 Z"
+                fill="#D2B48C"
+                stroke="#1A1A1D"
+                strokeWidth="1.5"
+              />
               <rect x="10" y="21" width="44" height="3" fill="#8B5A2B" rx="1" />
             </g>
           )}
 
           {cat.type === 'chef' && (
             <g>
-              <path d="M 22 23 C 20 8, 44 8, 42 23 Z" fill="#F5F6FA" stroke="#1A1A1D" strokeWidth="1.5" />
-              <rect x="20" y="20" width="24" height="4" fill="#DFE4EA" stroke="#1A1A1D" strokeWidth="1" rx="1" />
+              <path
+                d="M 22 23 C 20 8, 44 8, 42 23 Z"
+                fill="#F5F6FA"
+                stroke="#1A1A1D"
+                strokeWidth="1.5"
+              />
+              <rect
+                x="20"
+                y="20"
+                width="24"
+                height="4"
+                fill="#DFE4EA"
+                stroke="#1A1A1D"
+                strokeWidth="1"
+                rx="1"
+              />
             </g>
           )}
         </g>
@@ -570,27 +677,14 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
   };
 
   return (
-    <div className="w-full bg-surface/20 backdrop-blur-md border border-border/80 rounded-2xl p-6 relative flex flex-col items-center justify-center gap-6 overflow-hidden">
-      
-      {/* Absolute micro background effects */}
-      {performanceCategory === 'perfect' && (
-        <div className="absolute inset-0 bg-[#FF5C00]/1 blur-2xl pointer-events-none animate-pulse" />
-      )}
-      {performanceCategory === 'fast' && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
-          <div className="absolute left-4 top-0 bottom-0 w-[1px] bg-accent/20 animate-[slide_3s_infinite]" />
-          <div className="absolute right-4 top-0 bottom-0 w-[1px] bg-accent/20 animate-[slide_3s_infinite_reverse]" />
-        </div>
-      )}
-
-      {/* Collectible unlock notifications */}
+    <div className="w-full bg-surface/80 dark:bg-surface/40 backdrop-blur-md border border-border/80 rounded-2xl p-6 relative flex flex-col items-center justify-center gap-6 overflow-hidden">
       <AnimatePresence>
         {showNotification && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute top-4 px-4 py-2 bg-accent text-neutral-950 rounded-full text-[10px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 z-40"
+            className="absolute top-4 px-4 py-2 bg-accent text-[#0B0B0C] rounded-full text-xs font-black uppercase tracking-wider shadow-lg flex items-center gap-1.5 z-50"
           >
             <Sparkles className="w-3.5 h-3.5 fill-current" />
             <span>{showNotification}</span>
@@ -598,25 +692,22 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
         )}
       </AnimatePresence>
 
-      {/* Companion Presentation Row */}
       <div className="flex flex-col items-center gap-4 relative">
-        <div className="relative p-3 bg-neutral-900/40 rounded-full border border-border/50">
+        <div className="relative p-3 bg-surface-accent rounded-full border border-border">
           {renderCatVector(activeCat)}
-          {/* Accessories Badge indicator */}
           {activeCat.accessory !== 'none' && (
-            <span className="absolute bottom-1.5 right-1.5 bg-accent text-neutral-950 font-black text-[7px] uppercase px-1.5 py-0.5 rounded-full tracking-wider border border-neutral-900">
+            <span className="absolute bottom-1.5 right-1.5 bg-accent text-[#0B0B0C] font-black text-[9px] uppercase px-1.5 py-0.5 rounded-full tracking-wider border border-border">
               {activeCat.accessory}
             </span>
           )}
         </div>
 
-        {/* Dialog bubble */}
         <div className="flex flex-col items-center text-center max-w-md">
-          <span className="text-[10px] font-black uppercase tracking-widest text-accent mb-1 flex items-center gap-1">
+          <span className="text-xs font-black uppercase tracking-widest text-accent-ink mb-1 flex items-center gap-1.5">
             {activeCat.name}
-            {streakDays > 1 && (
-              <span className="text-text-secondary font-mono flex items-center gap-0.5 lowercase text-[9px] tracking-normal">
-                <Flame className="w-3 h-3 text-[#FF5C00]" />
+            {streakDays > 0 && (
+              <span className="text-text-secondary font-mono flex items-center gap-0.5 lowercase text-xs tracking-normal">
+                <Flame className="w-3.5 h-3.5 text-accent-ink" />
                 {streakDays}d streak
               </span>
             )}
@@ -624,48 +715,50 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
           <p className="text-sm font-semibold text-text-primary italic leading-relaxed">
             &ldquo;{catDialogue}&rdquo;
           </p>
-          <span className="text-[9px] font-bold text-text-tertiary mt-2.5 uppercase tracking-widest">
+          <span className="text-xs font-bold text-text-secondary mt-2.5 uppercase tracking-widest">
             {shortQuote}
           </span>
         </div>
       </div>
 
-      {/* Drawer Open Switch */}
-      <div className="flex gap-4 border-t border-border/50 pt-4 w-full justify-between items-center z-30">
-        <span className="text-[9px] font-black text-text-tertiary uppercase tracking-widest">
-          collected: {unlockedIds.length} / 15
+      <div className="flex gap-4 border-t border-border/50 pt-4 w-full justify-between items-center z-10">
+        <span className="text-xs font-black text-text-secondary uppercase tracking-widest">
+          collected: {unlockedIds.length} / {CATS_DATABASE.length}
         </span>
         <button
+          type="button"
           onClick={() => setShowCollectionDrawer(true)}
-          className="px-3 py-1.5 border border-border/80 bg-surface-accent/20 hover:bg-surface-accent/60 text-[10px] font-black uppercase tracking-wider text-text-primary rounded-xl transition-all cursor-pointer"
+          className="px-3.5 py-2 min-h-[36px] border border-border bg-surface-accent/60 hover:bg-surface-accent text-xs font-black uppercase tracking-wider text-text-primary rounded-xl transition-all cursor-pointer"
         >
           My Collection
         </button>
       </div>
 
-      {/* Drawer Overlay */}
       <AnimatePresence>
         {showCollectionDrawer && (
           <motion.div
+            data-testid="cat-collection-drawer"
+            role="region"
+            aria-label="Cat Companions Collection"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-neutral-950/80 backdrop-blur-md flex flex-col justify-between p-6 z-40"
+            className="absolute inset-0 bg-surface text-text-primary flex flex-col justify-between p-6 z-40"
           >
-            <div className="flex justify-between items-center border-b border-border/80 pb-3">
+            <div className="flex justify-between items-center border-b border-border pb-3">
               <span className="text-xs font-black uppercase tracking-wider text-text-primary flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-accent" />
+                <Sparkles className="w-3.5 h-3.5 text-accent-ink" />
                 Cat Companions
               </span>
               <button
+                type="button"
                 onClick={() => setShowCollectionDrawer(false)}
-                className="text-[10px] font-black font-mono text-text-secondary hover:text-text-primary border border-border px-2 py-1 rounded-lg"
+                className="text-xs font-black font-mono text-text-primary bg-surface-accent hover:bg-border border border-border px-2.5 py-1 rounded-lg cursor-pointer"
               >
                 close
               </button>
             </div>
 
-            {/* Grid of collected cats */}
             <div className="grid grid-cols-3 gap-2 overflow-y-auto my-4 pr-1 max-h-[220px]">
               {CATS_DATABASE.map((cat) => {
                 const isUnlocked = unlockedIds.includes(cat.id);
@@ -674,21 +767,22 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
                 return (
                   <button
                     key={cat.id}
+                    type="button"
                     disabled={!isUnlocked}
                     onClick={() => selectCompanion(cat.id)}
                     className={`p-2.5 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
-                      isSelected 
-                        ? 'border-accent bg-accent/10' 
-                        : isUnlocked 
-                          ? 'border-border bg-surface/40 hover:bg-surface/80 hover:scale-[1.02]' 
-                          : 'border-border/20 opacity-40 bg-neutral-900/40 cursor-not-allowed'
+                      isSelected
+                        ? 'border-accent bg-accent/15 text-text-primary shadow-xs cursor-pointer'
+                        : isUnlocked
+                          ? 'border-border bg-background hover:bg-surface-accent text-text-primary hover:scale-[1.02] cursor-pointer'
+                          : 'border-border/70 bg-surface-accent/80 text-text-secondary cursor-not-allowed'
                     }`}
                   >
                     <span className="text-2xl">{isUnlocked ? '😸' : '🔒'}</span>
-                    <span className="text-[9px] font-black tracking-wider uppercase text-center mt-1 truncate max-w-full">
+                    <span className="text-xs font-black tracking-wider uppercase text-center mt-1 truncate max-w-full">
                       {cat.name.split(' ')[0]}
                     </span>
-                    <span className="text-[7px] text-text-tertiary lowercase tracking-normal">
+                    <span className="text-[10px] text-text-secondary lowercase tracking-normal">
                       {cat.type}
                     </span>
                   </button>
@@ -696,13 +790,12 @@ export const CatCompanion: React.FC<CatCompanionProps> = ({
               })}
             </div>
 
-            <div className="text-[8px] text-text-tertiary leading-normal border-t border-border/50 pt-2 text-center uppercase tracking-wider font-semibold">
-              Tip: complete tests with perfect accuracy or high speeds to discover new cats!
+            <div className="text-xs text-text-secondary leading-normal border-t border-border pt-2 text-center font-semibold">
+              Tip: finish tests with 100% accuracy or 120+ WPM to unlock specialty companions.
             </div>
           </motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 };
