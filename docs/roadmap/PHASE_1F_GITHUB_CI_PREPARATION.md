@@ -1,5 +1,7 @@
 # TyProX 2.0 — Phase 1F: GitHub Actions PostgreSQL 16 CI Preparation Report
 
+> **Phase 1H Sync Notice (Supersession Summary):** This document records the initial `12`-file preparation state committed as PR #2 (`ci/postgres-16-verification` @ `19e8873`). In Phase 1H ([`PHASE_1H_REMEDIATION_REPORT.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/PHASE_1H_REMEDIATION_REPORT.md)), unapplied migrations `20260623`/`20260624` were consolidated into [`20260621000000_typrox_2_hardening.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260621000000_typrox_2_hardening.sql) (now `20260618`–`20260622`), `FULL_SCHEMA.sql` was moved from `supabase/migrations/` to [`supabase/reference/FULL_SCHEMA.sql`](file:///c:/Users/rudra/TyProX/supabase/reference/FULL_SCHEMA.sql), and the CI workflow/harness were upgraded. Do **NOT** use the stale 12-file `git add` list below directly; follow the post-1H branch diff and review checklist in `PHASE_1H_REMEDIATION_REPORT.md`.
+
 **Date:** 2026-11-11  
 **Target GitHub Repository:** `Rudra4451/practice` (`https://github.com/Rudra4451/practice.git`, `PUBLIC`, Actions enabled)  
 **Target Production Supabase Ref (Untouched):** `gbovkejymfeiqgverzfr`  

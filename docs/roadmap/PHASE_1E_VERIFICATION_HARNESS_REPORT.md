@@ -1,5 +1,7 @@
 # TyProX 2.0 — Phase 1E: PostgreSQL 16 Verification Harness Report
 
+> **Phase 1H Sync Notice (Point-in-Time Snapshot Below):** Following Phase 1E, PR #2 (`19e8873`) executed GitHub Actions PostgreSQL `16.15` CI runs [`42894187120`](https://github.com/Rudra4451/practice/actions/runs/42894187120) and [`42894175929`](https://github.com/Rudra4451/practice/actions/runs/42894175929), was audited in [`PHASE_1G_PRE_MERGE_REVIEW.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/PHASE_1G_PRE_MERGE_REVIEW.md), and was superseded in Phase 1H ([`PHASE_1H_REMEDIATION_REPORT.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/PHASE_1H_REMEDIATION_REPORT.md)): consolidated migrations (`20260618`–`20260622`), relocated [`supabase/reference/FULL_SCHEMA.sql`](file:///c:/Users/rudra/TyProX/supabase/reference/FULL_SCHEMA.sql), dynamic `pg_proc` / `profiles` `INSERT` assertions, `FULL_SCHEMA.sql` upgrade + double-rerun CI scenarios, and SHA-pinned checkout. Statements below describing `"0 runs"` or `"untracked"` reflect the pre-PR #2 Phase 1E checkpoint.
+
 **Date:** 2026-11-11  
 **Baseline Workspace State:** `main` @ `fba1d80` (`+` preserved Phase 1–5 & Phase 1C uncommitted working tree)  
 **Target Production Supabase Project:** `gbovkejymfeiqgverzfr`  
