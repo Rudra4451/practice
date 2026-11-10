@@ -1,26 +1,27 @@
 import { createBrowserClient } from '@supabase/ssr';
-import { type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
-let clientInstance: SupabaseClient | null = null;
+let clientInstance: SupabaseClient<Database> | null = null;
 
-export const createClient = (): SupabaseClient => {
+export const createClient = (): SupabaseClient<Database> => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!url || !anonKey) {
     throw new Error(
       `Supabase Client Error: Missing environment variables. ` +
-      `URL: ${url ? 'present' : 'missing'}, ` +
-      `Anon Key: ${anonKey ? 'present' : 'missing'}. ` +
-      `Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local.`
+        `URL: ${url ? 'present' : 'missing'}, ` +
+        `Anon Key: ${anonKey ? 'present' : 'missing'}. ` +
+        `Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in .env.local.`
     );
   }
 
   if (!clientInstance) {
-    clientInstance = createBrowserClient(url, anonKey);
+    clientInstance = createBrowserClient<Database>(url, anonKey);
   }
 
-  return clientInstance as SupabaseClient;
+  return clientInstance;
 };
 
 /**

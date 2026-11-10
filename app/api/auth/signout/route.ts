@@ -1,13 +1,16 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { assertSameOriginIfPresent } from '@/lib/security/http';
 import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
+  const originError = assertSameOriginIfPresent(request);
+  if (originError) return originError;
+
   try {
     const supabase = await createClient();
     await supabase.auth.signOut();
-    
-    // Force delete all supabase cookies just to be absolutely sure
+
     const cookieStore = await cookies();
     const allCookies = cookieStore.getAll();
     for (const cookie of allCookies) {
@@ -15,9 +18,9 @@ export async function POST(request: Request) {
         cookieStore.delete(cookie.name);
       }
     }
-    
+
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('Server SignOut Exception:', err);
     try {
       const cookieStore = await cookies();
@@ -27,9 +30,9 @@ export async function POST(request: Request) {
           cookieStore.delete(cookie.name);
         }
       }
-    } catch (e) {
-      // ignore
+    } catch {
+      // ignore cookie cleanup fallback errors
     }
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Sign-out failed' }, { status: 500 });
   }
 }
