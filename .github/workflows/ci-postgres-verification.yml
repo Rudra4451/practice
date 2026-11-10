@@ -1,0 +1,93 @@
+name: PostgreSQL 16 Migration Verification
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/db/**'
+      - 'docker-compose.db.yml'
+      - '.github/workflows/ci-postgres-verification.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+      - 'tests/db/**'
+      - 'docker-compose.db.yml'
+      - '.github/workflows/ci-postgres-verification.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: postgres-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-postgres-16:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: typrox_ci_pg_password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+          --health-start-period=5s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install postgresql-client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Verify line endings on shell and SQL verification scripts
+        run: |
+          if grep -nU $'\r' tests/db/run-pg-verification.sh tests/db/supabase_shim.sql tests/db/verify_migrations.sql; then
+            echo "ERROR: Unexpected CRLF line endings detected in tests/db/*." >&2
+            exit 1
+          fi
+
+      - name: Verify sequential migrations, security boundaries, and concurrency invariants on PostgreSQL 16
+        id: pg_verify
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: typrox_ci_pg_password
+        run: sh tests/db/run-pg-verification.sh
+
+      - name: Cleanup leftover ephemeral verification databases
+        if: always()
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: typrox_ci_pg_password
+        run: |
+          if command -v psql >/dev/null 2>&1 && pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres >/dev/null 2>&1; then
+            psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -q -t -A -c \
+              "SELECT 'DROP DATABASE IF EXISTS ' || quote_ident(datname) || ' WITH (FORCE);' FROM pg_database WHERE datname LIKE 'typrox_verify_%';" \
+              | psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>&1 || true
+          fi
+
+      - name: Write verification summary
+        if: always()
+        run: |
+          {
+            echo "### PostgreSQL 16 Migration Verification"
+            echo "- Outcome: **${{ steps.pg_verify.outcome }}**"
+            echo "- Migrations verified: \`20260618\` -> \`20260619\` -> \`20260620\` -> \`20260621\` -> \`20260622\` -> \`20260623\` -> \`20260624\`"
+            echo "- Covered checks: shim identity isolation (\`anon\`, \`authenticated\`, \`service_role\`), catalog \`pg_policies\`/\`role_table_grants\`/\`column_privileges\`, \`leaderboard_view\` \`security_invoker\` behavior, DML denial across all 12 tables, deterministic 2-worker concurrent contention barrier."
+          } >> "$GITHUB_STEP_SUMMARY"
