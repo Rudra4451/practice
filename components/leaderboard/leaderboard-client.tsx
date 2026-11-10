@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseRealtimeEnabled } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/ui/user-avatar';
 import { formatUtcDate } from '@/lib/utils/format-date';
@@ -155,6 +155,8 @@ export const LeaderboardClient: React.FC<LeaderboardClientProps> = ({
 
   // Realtime subscription to refresh automatically when new verified scores land
   useEffect(() => {
+    if (!isSupabaseRealtimeEnabled()) return;
+
     let supabaseInstance: ReturnType<typeof createClient> | null = null;
     let channel: ReturnType<ReturnType<typeof createClient>['channel']> | null = null;
 

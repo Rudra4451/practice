@@ -24,6 +24,29 @@ export const createClient = (): SupabaseClient<Database> => {
   return clientInstance;
 };
 
+export const isSupabaseRealtimeEnabled = (): boolean => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  if (!url || !anonKey) {
+    return false;
+  }
+
+  try {
+    const { hostname } = new URL(url);
+    if (
+      hostname === 'example.supabase.co' ||
+      hostname === 'your-project-ref.supabase.co' ||
+      hostname.endsWith('.example')
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Resets the cached Supabase browser client instance.
  * Call this after signing out so the next createClient() call

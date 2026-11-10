@@ -11,7 +11,7 @@
 
 ## 1. Executive Release Status & Production Gate Verdict
 
-- **Application Quality, Security & Dual Build Readiness:** **READY FOR REVIEW** (verified locally across `tsc`, `eslint`, `25` Vitest files / `130` tests, `npx next build --webpack`, `npm run build` [Turbopack], `7` Chromium Playwright E2E tests, and `npm audit --omit=dev` with `0` production vulnerabilities).
+- **Application Quality, Security & Dual Build Readiness:** **READY FOR REVIEW** (verified locally across `tsc`, `eslint`, `26` Vitest files / `132` tests, `npx next build --webpack`, `npm run build` [Turbopack], `7` Chromium Playwright E2E tests under both live and offline CI placeholder env, and `npm audit --omit=dev` with `0` production vulnerabilities).
 - **Production Database Approval Gate (`gbovkejymfeiqgverzfr`):** **`BLOCKED` Pending Owner Operational Execution**. Merging the integration PR into `main` MUST be coordinated with the maintenance cutover steps in Section 5 because live Supabase still runs the pre-hardening schema (no `leaderboard_view`, no `is_ranked` / `client_run_id` / `submit_verified_result(...)`), while merged `main` triggers automatic hosting builds.
 
 ---
@@ -27,7 +27,7 @@
 | **Result Sharing Race, Paste Guard & Settings Feedback** | Updated [`ResultScreen`](file:///c:/Users/rudra/TyProX/components/typing/result-screen.tsx) `handleShare` to await pending `inFlightSubmissions`, disable repeated clicks while sharing (`Creating Link...`), clean copy timeouts on unmount, and toast clipboard errors; blocked paste / `insertFromPaste` inside [`TypingContainer`](file:///c:/Users/rudra/TyProX/components/typing/typing-container.tsx) and [`LessonRunnerClient`](file:///c:/Users/rudra/TyProX/components/learn/lesson-runner-client.tsx); added error toast feedback on failed remote preference updates in [`app/profile/page.tsx`](file:///c:/Users/rudra/TyProX/app/profile/page.tsx). |
 | **SEO & Metadata Normalization** | Added [`lib/seo/site-url.ts`](file:///c:/Users/rudra/TyProX/lib/seo/site-url.ts) (`getSiteUrl()`) and wired across [`app/layout.tsx`](file:///c:/Users/rudra/TyProX/app/layout.tsx), [`app/sitemap.ts`](file:///c:/Users/rudra/TyProX/app/sitemap.ts) (expanded to `/learn`, `/daily`, and all `/learn/[slug]` modules + URL-encoded usernames), and [`app/robots.ts`](file:///c:/Users/rudra/TyProX/app/robots.ts). |
 | **Dependency & Next.js Security Upgrade** | Removed unused `vite-tsconfig-paths`; upgraded `next` and `eslint-config-next` to `16.4.6`; ran `npm audit fix` (`npm audit --omit=dev`: `0` vulnerabilities). Dev-only `minimatch` advisories (`7` moderate) remain isolated inside transitive `@typescript-eslint/typescript-estree` tooling (`eslint-config-next`). |
-| **Database Consolidation & Dual GitHub CI** | Preserved Phase 1H atomic migrations (`20260621` consolidated hardening + `submit_verified_result`, `20260622` ecosystem + expiry RLS, legacy schema moved to [`supabase/reference/FULL_SCHEMA.sql`](file:///c:/Users/rudra/TyProX/supabase/reference/FULL_SCHEMA.sql)) and 3-scenario PG16 harness ([`tests/db/run-pg-verification.sh`](file:///c:/Users/rudra/TyProX/tests/db/run-pg-verification.sh)); added [`ci-app-quality.yml`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-app-quality.yml) for automated Node 22 build/test/E2E gates. |
+| **Database Consolidation & Dual GitHub CI** | Preserved Phase 1H atomic migrations (`20260621` consolidated hardening + `submit_verified_result`, `20260622` ecosystem + expiry RLS, legacy schema moved to [`supabase/reference/FULL_SCHEMA.sql`](file:///c:/Users/rudra/TyProX/supabase/reference/FULL_SCHEMA.sql)) and 3-scenario PG16 harness ([`tests/db/run-pg-verification.sh`](file:///c:/Users/rudra/TyProX/tests/db/run-pg-verification.sh)); guarded placeholder `.example` Realtime WebSocket connections via [`isSupabaseRealtimeEnabled`](file:///c:/Users/rudra/TyProX/lib/supabase/client.ts); added [`ci-app-quality.yml`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-app-quality.yml) for automated Node 22 build/test/E2E gates. |
 
 ---
 
@@ -37,10 +37,10 @@
 |---|---|---|---|
 | TypeScript Strict Check | `npm run typecheck` | Clean `tsc --noEmit --incremental false` | `0` |
 | ESLint | `npm run lint` | Clean across repository | `0` |
-| Unit, DAL & Route Tests | `npm run test:unit` | `25 passed (25)` files, `130 passed (130)` tests | `0` |
+| Unit, DAL & Route Tests | `npm run test:unit` | `26 passed (26)` files, `132 passed (132)` tests | `0` |
 | Production Build (Webpack) | `npx next build --webpack` | Compiled cleanly (`33/33` pages + strict `.next/types` route check) | `0` |
 | Production Build (Turbopack) | `npm run build` | Compiled cleanly (`33/33` pages, `proxy.ts` verified) | `0` |
-| Playwright Chromium E2E | `npm run test:e2e` | `7 passed (49.8s)` (`1440x900` dark/light, `375x812` mobile, `/typing`, `/learn`, `/daily`, `/leaderboard`, `403` cross-origin, `/sitemap.xml`, `Hero3D`/`CatCompanion`) | `0` |
+| Playwright Chromium E2E | `npm run test:e2e` | `7 passed (1.4m)` (`1440x900` dark/light, `375x812` mobile, `/typing`, `/learn`, `/daily`, `/leaderboard`, `403` cross-origin, `/sitemap.xml`, `Hero3D`/`CatCompanion`, CI offline env) | `0` |
 | Production Dependency Audit | `npm audit --omit=dev` | `found 0 vulnerabilities` | `0` |
 | Full Dependency Audit | `npm audit` | `7 moderate` dev-only (`minimatch` under `@typescript-eslint/typescript-estree` / `eslint-config-next`) | `1` *(dev-only)* |
 | Shell & Diff Hygiene | `sh -n tests/db/run-pg-verification.sh`, `git diff --check`, LF check | `CR=0` (`LF` only) across workflows, `20260621`–`20260622`, `FULL_SCHEMA.sql`, and `tests/db/*` | `0` |
@@ -69,3 +69,4 @@ Zero live queries or writes were run against `gbovkejymfeiqgverzfr`. Before merg
 1. **Backups & Read-Only Preflight Audit:** Confirm PITR / export a full `pg_dump` backup plus live catalog snapshot (`pg_policies`, `role_table_grants`, `pg_indexes`, `pg_proc`, `supabase_migrations.schema_migrations`) via Supabase SQL Editor (`PHASE_1H_REMEDIATION_REPORT.md` Section 9B).
 2. **Hosting Secrets & OAuth Configuration:** Set `SUPABASE_SERVICE_ROLE_KEY` (server-only) and `NEXT_PUBLIC_SITE_URL` in production hosting, configure `main` GitHub branch protection requiring passing CI checks, and confirm Supabase Auth URL redirect allowlists ([`OAUTH_SETUP.md`](file:///c:/Users/rudra/TyProX/OAUTH_SETUP.md)).
 3. **Coordinated Maintenance Cutover:** Pause public traffic briefly -> apply [`supabase/migrations/20260621000000_typrox_2_hardening.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260621000000_typrox_2_hardening.sql) then [`supabase/migrations/20260622000000_learning_and_competitive_ecosystem.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260622000000_learning_and_competitive_ecosystem.sql) -> execute `NOTIFY pgrst, 'reload schema';` -> merge & deploy the unified PR bundle immediately -> smoke test login, `/leaderboard`, `/u/[username]`, and score submission.
+

@@ -9,7 +9,7 @@ import { Zap, LineChart as ChartIcon, Database, LogIn, Clock, RefreshCw, BookOpe
 import { useUserStore, type GuestResult } from '@/stores/user-store';
 import { useToastStore } from '@/stores/toast-store';
 import { useHydrated } from '@/lib/hooks/use-hydrated';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseRealtimeEnabled } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 import { isRankedMode, RANKED_MODES } from '@/lib/typing/metrics';
 import { formatUtcDate } from '@/lib/utils/format-date';
@@ -298,7 +298,7 @@ export default function DashboardPage() {
   // Scoped Realtime subscription for authenticated user results
   useEffect(() => {
     const userId = session?.user?.id;
-    if (!userId) return;
+    if (!userId || !isSupabaseRealtimeEnabled()) return;
 
     let channel: RealtimeChannel | null = null;
     const supabase = createClient();

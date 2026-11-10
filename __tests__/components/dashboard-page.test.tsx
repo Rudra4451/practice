@@ -28,6 +28,7 @@ vi.mock('@/lib/hooks/use-hydrated', () => ({
 }));
 
 vi.mock('@/lib/supabase/client', () => ({
+  isSupabaseRealtimeEnabled: () => true,
   createClient: () => ({
     from: () => ({
       select: () => ({
