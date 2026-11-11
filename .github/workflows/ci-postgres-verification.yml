@@ -14,12 +14,6 @@ on:
   pull_request:
     branches:
       - main
-    paths:
-      - 'supabase/migrations/**'
-      - 'supabase/reference/**'
-      - 'tests/db/**'
-      - 'docker-compose.db.yml'
-      - '.github/workflows/ci-postgres-verification.yml'
   workflow_dispatch:
 
 concurrency:

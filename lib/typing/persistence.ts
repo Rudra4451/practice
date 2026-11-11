@@ -785,7 +785,7 @@ export async function persistVerifiedResult(
   const effectiveClientRunId = options?.clientRunId ?? verified.clientRunId;
   const isPrivilegedClient = Boolean(options?.isPrivilegedClient);
 
-  // Prefer single-transaction Postgres RPC when privileged service_role client + 20260623/20260624 RPC are available
+  // Prefer single-transaction Postgres RPC when privileged service_role client + 20260621 consolidated RPC are available
   if (isPrivilegedClient && typeof supabase.rpc === 'function') {
     const { data: rpcData, error: rpcError } = await supabase.rpc(
       'submit_verified_result',
