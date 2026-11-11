@@ -7,6 +7,7 @@
 - [OAuth Setup Guide](../OAUTH_SETUP.md) — Google & GitHub OAuth configuration with Supabase redirect allowlists
 - [Security & Ownership Audit Report](./security/SECURITY_AND_OWNERSHIP.md) — Secrets/history scan, RLS & RPC lockdown, API protections, `npm audit`, and GitHub repository settings
 - [Final Repository Cleanup Report](./roadmap/FINAL_REPOSITORY_CLEANUP_REPORT.md) — Complete repository inventory classification, cleanup delta, and release verification baseline
+- [Product Showcase Video](./media/typrox-launch.mp4) & [Poster Still](./media/typrox-launch.jpg) — 1080p launch showcase MP4 and hero poster image referenced by `README.md` (`CC BY 4.0` music & `CC0` SFX attributions in `COPYRIGHT.md`)
 
 ## Database & Verification Infrastructure
 

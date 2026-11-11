@@ -40,9 +40,11 @@ Verified directly against application source code:
 
 ## 3. Product Preview & Visual Assets
 
-- Static image screenshots are intentionally not checked into the repository.
-- Custom vector achievement badge icons (`default.svg`, `speed_{50,75,80,100,120,140,150}.svg`, `streak_{3,7,14,30}.svg`) live in [`public/achievements/`](./public/achievements/).
-- Interactive screens (including the 3D CSS hero keyboard, typing workspace, replay player, and Performance Lab heatmaps) can be previewed live by running the local server via `npm run dev`.
+[![TyProX Product Showcase Video — 1080p MP4 Preview](./docs/media/typrox-launch.jpg)](./docs/media/typrox-launch.mp4)
+
+- **Showcase Video & Poster Still:** [`docs/media/typrox-launch.mp4`](./docs/media/typrox-launch.mp4) (`1920x1080`, `30fps`, `20.5s`, H.264/AAC with sound) and frame-0 poster [`docs/media/typrox-launch.jpg`](./docs/media/typrox-launch.jpg) — download or play the MP4 locally to preview the interactive ANSI 60% hero keyboard, live typing arena, Performance Lab heatmaps, 12-lesson curriculum, daily UTC challenge, and replay-verified leaderboards.
+- **Achievement Badges:** Custom SVG icons (`default.svg`, `speed_{50,75,80,100,120,140,150}.svg`, `streak_{3,7,14,30}.svg`) live in [`public/achievements/`](./public/achievements/).
+- **Live Interactive App:** Run `npm run dev` to interact directly with the 3D hero keyboard, typing workspace, replay player, and Performance Lab charts at `http://localhost:3000`.
 
 ---
 
@@ -92,7 +94,7 @@ Verified directly against application source code:
 │   ├── db/                      # PostgreSQL 16 Docker migration & RLS verification harness
 │   └── e2e/                     # Playwright Chromium E2E test suite
 ├── public/achievements/         # 12 SVG badge icons
-├── docs/                        # Documentation index, security audit, roadmaps, and baseline audits
+├── docs/                        # Launch video/poster media (media/), documentation index, security audit, roadmaps, and baseline audits
 ├── COPYRIGHT.md                 # Proprietary notice, visibility status & third-party license list
 └── OAUTH_SETUP.md               # Step-by-step Google/GitHub OAuth + Supabase callback configuration
 ```
@@ -241,7 +243,7 @@ This is a proprietary personal software project with all rights reserved. Extern
 
 - **Repository License:** None (proprietary — intentionally no MIT, Apache, GPL, BSD, or other permissive license).
 - Absent an open-source license, no permission to copy, modify, redistribute, or create derivative works is granted, subject to applicable law and third-party dependency licenses.
-- See [`COPYRIGHT.md`](./COPYRIGHT.md) for the formal notice, owner-approval gate (`[Copyright Owner]`), public-vs-private GitHub visibility considerations, and full third-party open-source attribution list (`MIT`, `ISC`, `Apache-2.0`, optional `@img/sharp*` `LGPL-3.0-or-later`, `CC-BY-4.0`, `MPL-2.0`, and open fonts).
+- See [`COPYRIGHT.md`](./COPYRIGHT.md) for the formal notice, owner-approval gate (`[Copyright Owner]`), public-vs-private GitHub visibility considerations, and third-party dependency & showcase media attributions (`MIT`, `ISC`, `Apache-2.0`, optional `@img/sharp*` `LGPL-3.0-or-later`, `CC-BY-4.0` including showcase background music, `CC0-1.0` SFX, `MPL-2.0`, and open fonts).
 
 ---
 

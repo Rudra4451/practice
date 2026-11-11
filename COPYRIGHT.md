@@ -28,7 +28,7 @@ from the copyright owner, subject to applicable law and third-party licences.
 
 ## 2. Third-Party Code, Packages, Icons & Fonts
 
-The copyright claim above covers **only** original TyProX source code, UI compositions, custom SVG badges (`public/achievements/*.svg`), database migrations/harness scripts, and project documentation authored for this repository. TyProX incorporates third-party open-source packages, icons, and fonts whose respective licenses apply and remain intact.
+The copyright claim above covers **only** original TyProX source code, UI compositions, original showcase video/poster visual scenes ([`docs/media/typrox-launch.jpg`](./docs/media/typrox-launch.jpg) and visual UI scenes in [`docs/media/typrox-launch.mp4`](./docs/media/typrox-launch.mp4)), custom SVG badges (`public/achievements/*.svg`), database migrations/harness scripts, and project documentation authored for this repository. TyProX incorporates third-party open-source packages, icons, fonts, and showcase audio tracks whose respective licenses apply and remain intact.
 
 ### 2.1 Direct Runtime Dependencies (`package.json`)
 
@@ -79,4 +79,12 @@ While the vast majority of transitive packages are licensed under MIT, ISC, Apac
 ### 2.4 Fonts (`next/font/google`)
 
 Typography loaded in [`app/layout.tsx`](./app/layout.tsx) via `next/font/google` uses open font families (`Inter`, `Space Grotesk`, `JetBrains Mono`, `IBM Plex Mono`, and `Geist Mono`), served under their respective upstream open font licenses (such as SIL Open Font License 1.1). No ownership is claimed over those typefaces.
+
+### 2.5 Showcase Video Audio & Embedded Typefaces (`docs/media/`)
+
+The product showcase media ([`docs/media/typrox-launch.mp4`](./docs/media/typrox-launch.mp4) and [`docs/media/typrox-launch.jpg`](./docs/media/typrox-launch.jpg)) uses the following third-party audio and font assets alongside original TyProX UI visuals (none of these third-party tracks or fonts are claimed as proprietary):
+
+- **Background Music:** *"Happy Beats / Business Moves Vol. 12"* by **Sascha Ende** (`ende.app`), licensed under **CC BY 4.0** (`https://ende.app/en/standard-license`) — required attribution: **`Music: Sascha Ende, ende.app (CC BY 4.0)`**.
+- **Sound Effects (SFX):** UI, impact, and card transition SFX from **Kenney.nl**, and typing keystroke SFX from *Keyboard Soundpack #1* (`unicae_games`), licensed under **CC0 1.0** (Public Domain Dedication).
+- **Embedded Video Typefaces:** `Space Grotesk`, `Inter`, and `JetBrains Mono` rendered in the video frames are licensed under the **SIL Open Font License 1.1**.
 
