@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { useUserStore } from '@/stores/user-store';
 import { useHydrated } from '@/lib/hooks/use-hydrated';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, isSupabaseRealtimeEnabled } from '@/lib/supabase/client';
 import { logger } from '@/lib/logger';
 import { Navbar } from '@/components/navbar';
 import { Button } from '@/components/ui/button';
@@ -123,7 +123,7 @@ export default function PerformanceLabPage() {
   // Scoped Realtime subscription watching the authenticated user's test_results inserts
   useEffect(() => {
     const userId = session?.user?.id;
-    if (!userId) return;
+    if (!userId || !isSupabaseRealtimeEnabled()) return;
 
     let channel: RealtimeChannel | null = null;
     const supabase = createClient();
