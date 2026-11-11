@@ -1,25 +1,39 @@
 import { MetadataRoute } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import { CURRICULUM_LESSONS } from '@/constants/curriculum';
+import { getSiteUrl } from '@/lib/seo/site-url';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://typrox.vercel.app';
+  const baseUrl = getSiteUrl();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  const routes = [
+  const now = new Date();
+  const coreRoutes = [
     '',
     '/typing',
+    '/learn',
+    '/daily',
     '/leaderboard',
     '/login',
   ].map((route) => ({
     url: `${baseUrl}${route}`,
-    lastModified: new Date(),
+    lastModified: now,
     changeFrequency: 'daily' as const,
     priority: route === '' ? 1.0 : 0.8,
   }));
 
+  const lessonRoutes = CURRICULUM_LESSONS.map((lesson) => ({
+    url: `${baseUrl}/learn/${lesson.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.7,
+  }));
+
+  const routes = [...coreRoutes, ...lessonRoutes];
+
   if (!supabaseUrl || !supabaseKey) {
-    console.warn('Supabase URL or Key missing in sitemap generation. Returning basic routes.');
+    console.warn('Supabase URL or Key missing in sitemap generation. Returning static routes.');
     return routes;
   }
 
@@ -32,7 +46,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     if (profiles) {
       const profileRoutes = profiles.map((p) => ({
-        url: `${baseUrl}/u/${p.username}`,
+        url: `${baseUrl}/u/${encodeURIComponent(p.username)}`,
         lastModified: new Date(p.updated_at || Date.now()),
         changeFrequency: 'weekly' as const,
         priority: 0.5,

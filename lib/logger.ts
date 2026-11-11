@@ -2,7 +2,7 @@ type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 interface LogContext {
   category?: 'dom' | 'supabase' | 'api' | 'auth' | 'general';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   error?: Error | unknown;
 }
 
@@ -23,23 +23,23 @@ class Logger {
     console.info(
       `%c${this.formatMessage('info', message, context)}`,
       'color: #757575; font-weight: bold;',
-      context?.metadata || ''
+      context?.metadata ?? ''
     );
   }
 
   warn(message: string, context?: LogContext) {
     console.warn(
       this.formatMessage('warn', message, context),
-      context?.metadata || '',
-      context?.error || ''
+      context?.metadata ?? '',
+      context?.error ?? ''
     );
   }
 
   error(message: string, context?: LogContext) {
     console.error(
       this.formatMessage('error', message, context),
-      context?.metadata || '',
-      context?.error || ''
+      context?.metadata ?? '',
+      context?.error ?? ''
     );
   }
 
@@ -49,7 +49,7 @@ class Logger {
     console.debug(
       `%c${this.formatMessage('debug', message, context)}`,
       'color: #757575; font-style: italic;',
-      context?.metadata || ''
+      context?.metadata ?? ''
     );
   }
 }

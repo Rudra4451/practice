@@ -1,0 +1,85 @@
+name: PostgreSQL 16 Migration Verification
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/reference/**'
+      - 'tests/db/**'
+      - 'docker-compose.db.yml'
+      - '.github/workflows/ci-postgres-verification.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/reference/**'
+      - 'tests/db/**'
+      - 'docker-compose.db.yml'
+      - '.github/workflows/ci-postgres-verification.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: postgres-verification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-postgres-16:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Verify line endings and migration directory hygiene
+        run: |
+          if grep -nU $'\r' \
+            tests/db/run-pg-verification.sh \
+            tests/db/supabase_shim.sql \
+            tests/db/verify_migrations.sql \
+            docker-compose.db.yml \
+            .github/workflows/ci-postgres-verification.yml \
+            supabase/migrations/2026062*.sql; then
+            echo "ERROR: Unexpected CRLF line endings detected in DB verification or candidate migration files." >&2
+            exit 1
+          fi
+          for f in supabase/migrations/*; do
+            base=$(basename "$f")
+            case "$base" in
+              [0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]_*.sql) ;;
+              *)
+                echo "ERROR: Invalid non-timestamped file in supabase/migrations/: $base" >&2
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Verify sequential migrations, FULL_SCHEMA upgrade, idempotency, security & concurrency on PostgreSQL 16
+        id: pg_verify
+        env:
+          PGPASSWORD: typrox_ci_pg_password
+        run: |
+          docker compose -f docker-compose.db.yml run --rm verify
+          docker compose -f docker-compose.db.yml down --volumes --remove-orphans
+
+      - name: Cleanup leftover ephemeral verification containers
+        if: always()
+        env:
+          PGPASSWORD: typrox_ci_pg_password
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            docker compose -f docker-compose.db.yml down --volumes --remove-orphans >/dev/null 2>&1 || true
+          fi
+
+      - name: Write verification summary
+        if: always()
+        run: |
+          {
+            echo "### PostgreSQL 16 Migration Verification"
+            echo "- Outcome: **${{ steps.pg_verify.outcome }}**"
+            echo "- Migrations verified: \`20260618\` -> \`20260619\` -> \`20260620\` -> \`20260621\` (consolidated hardening + atomic persistence) -> \`20260622\`"
+            echo "- Scenarios covered: Clean Bootstrap + 2-Worker Contention Barrier; \`FULL_SCHEMA.sql\` Baseline Upgrade + Historical Outlier Quarantine + Unknown Function Revocation; Index/Constraint Drift Reconciliation + Double-Rerun Idempotency."
+          } >> "$GITHUB_STEP_SUMMARY"

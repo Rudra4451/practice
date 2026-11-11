@@ -61,8 +61,8 @@ export default function ResultChart({ timeline }: ResultChartProps) {
           type="monotone"
           dataKey="rawWpm"
           name="Raw WPM"
-          stroke="var(--accent-secondary)"
-          strokeWidth={1.5}
+          stroke="var(--text-secondary)"
+          strokeWidth={1.75}
           strokeDasharray="4 4"
           dot={false}
         />

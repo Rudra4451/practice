@@ -1,203 +1,94 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/stores/user-store';
-import { Sun, Moon, Zap, User, Menu, X } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { resetClient } from '@/lib/supabase/client';
-import { signOut } from '@/lib/supabase/auth';
-import { Button } from '@/components/ui/button';
 import { useToastStore } from '@/stores/toast-store';
+import { createClient, resetClient } from '@/lib/supabase/client';
+import { Button } from '@/components/ui/button';
+import { UserAvatar } from '@/components/ui/user-avatar';
+import {
+  Sun,
+  Moon,
+  Menu,
+  X,
+  ChevronDown,
+  LayoutDashboard,
+  User as UserIcon,
+  Settings,
+  LogOut,
+} from 'lucide-react';
 
 export const Navbar: React.FC = () => {
-  const { preferences, updatePreferences, session, setSession, profile, setProfile } = useUserStore();
+  const { preferences, updatePreferences, session, setSession, profile, setProfile } =
+    useUserStore();
   const { showToast } = useToastStore();
-  const pathname = usePathname();
+  const pathname = usePathname() || '/';
   const router = useRouter();
 
-  const isActive = (path: string) => {
-    if (path === '/typing') return pathname === '/typing';
-    if (path === '/leaderboard') return pathname === '/leaderboard';
-    if (path === '/dashboard') return pathname === '/dashboard' || pathname.startsWith('/dashboard/');
-    return false;
-  };
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [onlineCount, setOnlineCount] = useState(429);
-  const [pulse, setPulse] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
-  // Simulated live online counter
   useEffect(() => {
-    // Seed random starting count
-    setOnlineCount(Math.floor(Math.random() * (550 - 350 + 1)) + 350);
-    
-    let timeoutId: NodeJS.Timeout;
-    const updateCounter = () => {
-      setOnlineCount(prev => {
-        const change = Math.floor(Math.random() * (18 - 3 + 1)) + 3;
-        const sign = Math.random() > 0.5 ? 1 : -1;
-        let next = prev + (sign * change);
-        // Clamp between 200 and 700
-        if (next < 200) next = 200 + change;
-        if (next > 700) next = 700 - change;
-        return next;
-      });
-      setPulse(true);
-      const pulseTimeout = setTimeout(() => setPulse(false), 500);
-      
-      const nextDelay = Math.floor(Math.random() * 4000) + 6000; // 6-10 seconds
-      timeoutId = setTimeout(updateCounter, nextDelay);
-    };
-    
-    timeoutId = setTimeout(updateCounter, Math.floor(Math.random() * 4000) + 6000);
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
-  // Monitor scroll for shadow effect
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener('scroll', handleScroll);
+    const handleScroll = () => setScrolled(window.scrollY > 16);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Listen to Auth State
+  // Close dropdown and mobile drawer on Escape or outside click
   useEffect(() => {
-    if (typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'))) {
-      localStorage.setItem('typrox_demo', 'true');
-      if (localStorage.getItem('typrox_demo_logged_in') === 'true') {
-        const mockSession = { user: { id: 'mock-user-id', email: 'rudra_practice@typrox.com' } };
-        const mockProfile = { id: 'mock-user-id', username: 'rudra_practice', display_name: 'Rudra Pratap Swain', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
-        setSession(mockSession);
-        setProfile(mockProfile);
-        return;
-      }
-    }
-
-    const supabase = createClient();
-    
-    // Helper to ensure profile exists
-    const ensureProfileExists = async (user: any) => {
-      if (!user) return null;
-      
-      try {
-        let { data: profileData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        if (!profileData) {
-          // Extract username/display name/avatar from OAuth user metadata
-          const username = user.user_metadata?.user_name || 
-                           user.user_metadata?.preferred_username || 
-                           user.user_metadata?.username || 
-                           `user_${user.id.substring(0, 8)}`;
-          
-          const displayName = user.user_metadata?.display_name || 
-                              user.user_metadata?.full_name || 
-                              username;
-          
-          const avatarUrl = user.user_metadata?.avatar_url || null;
-
-          // 1. Create Profile row
-          const { data: newProfile, error: profileErr } = await supabase
-            .from('profiles')
-            .insert({
-              id: user.id,
-              username: username.substring(0, 30), // respect varchar(30) limit
-              display_name: displayName.substring(0, 50), // respect varchar(50) limit
-              avatar_url: avatarUrl,
-              theme: 'dark',
-              font_family: 'ibm-plex-mono'
-            })
-            .select()
-            .single();
-
-          if (!profileErr && newProfile) {
-            profileData = newProfile;
-          }
-
-          // 2. Create Streak row
-          await supabase
-            .from('streaks')
-            .insert({ user_id: user.id })
-            .maybeSingle();
-        }
-
-        return profileData;
-      } catch (err) {
-        console.error('Error ensuring profile exists:', err);
-        return null;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setAccountMenuOpen(false);
+        setMobileMenuOpen(false);
       }
     };
-
-    // Get initial session
-    supabase.auth.getSession().then(async (res: any) => {
-      const activeSession = res?.data?.session || null;
-      setSession(activeSession);
-      if (activeSession?.user) {
-        const profileData = await ensureProfileExists(activeSession.user);
-        if (profileData) setProfile(profileData);
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        accountMenuRef.current &&
+        !accountMenuRef.current.contains(e.target as Node)
+      ) {
+        setAccountMenuOpen(false);
       }
-    });
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
-    // Listen for changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event: any, currentSession: any) => {
-        setSession(currentSession);
-        if (currentSession?.user) {
-          const profileData = await ensureProfileExists(currentSession.user);
-          if (profileData) setProfile(profileData);
-        } else {
-          setProfile(null);
-          // If on a protected route, redirect to home page immediately
-          const currentPath = window.location.pathname;
-          if ((currentPath.startsWith('/dashboard') || currentPath.startsWith('/profile')) && currentPath !== '/dashboard/performance-lab') {
-            router.push('/');
-            router.refresh();
-          }
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [setSession, setProfile, router]);
+  const persistThemePreference = (nextTheme: 'light' | 'dark') => {
+    updatePreferences({ theme: nextTheme });
+    if (session?.user) {
+      void fetch('/api/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: nextTheme }),
+      }).catch(() => undefined);
+    }
+  };
 
   const toggleTheme = () => {
-    const current = preferences.theme;
-    updatePreferences({ theme: current === 'dark' ? 'light' : 'dark' });
+    persistThemePreference(preferences.theme === 'dark' ? 'light' : 'dark');
   };
 
   const handleLogout = async () => {
-    // 1. Clear demo state if active
-    if (typeof window !== 'undefined' && localStorage.getItem('typrox_demo') === 'true') {
-      localStorage.removeItem('typrox_demo_logged_in');
-      localStorage.removeItem('typrox_demo');
-      document.cookie = "typrox_demo_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      setSession(null);
-      setProfile(null);
-      showToast('Successfully signed out.');
-      router.push('/');
-      router.refresh();
-      return;
-    }
+    setAccountMenuOpen(false);
+    setMobileMenuOpen(false);
 
     try {
-      // 2. Call Supabase signOut
       const supabase = createClient();
       await supabase.auth.signOut();
     } catch (error) {
       console.error('Supabase signOut error:', error);
     }
 
-    // 3. Force clean client-side tokens from localStorage and cookies
     if (typeof window !== 'undefined') {
       try {
         const keysToRemove: string[] = [];
@@ -207,91 +98,96 @@ export const Navbar: React.FC = () => {
             keysToRemove.push(key);
           }
         }
-        keysToRemove.forEach(key => localStorage.removeItem(key));
+        keysToRemove.forEach((key) => localStorage.removeItem(key));
       } catch (e) {
         console.error('Error clearing localStorage auth tokens:', e);
       }
-
-      try {
-        document.cookie.split(';').forEach(cookie => {
-          const eqPos = cookie.indexOf('=');
-          const name = eqPos > -1 ? cookie.substring(0, eqPos).trim() : cookie.trim();
-          if (name.startsWith('sb-')) {
-            document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-            document.cookie = `${name}=; path=/; domain=${window.location.hostname}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-          }
-        });
-      } catch (e) {
-        console.error('Error clearing cookies:', e);
-      }
     }
 
-    // 4. Reset the client instance cache
     resetClient();
 
-    // 5. Clear server-side tokens
     try {
       await fetch('/api/auth/signout', { method: 'POST' });
     } catch (error) {
       console.error('Server signout endpoint error:', error);
     }
 
-    // 6. Reset store states
     setSession(null);
     setProfile(null);
-
-    // 7. Notify & redirect
     showToast('Successfully signed out.');
     router.push('/');
     router.refresh();
   };
 
   const navItems = [
-    { href: '/typing', label: 'Practice', isActive: isActive('/typing') },
-    { href: '/leaderboard', label: 'Leaderboards', isActive: isActive('/leaderboard') },
-    { href: '/dashboard', label: 'Dashboard', isActive: isActive('/dashboard') && !pathname.endsWith('/performance-lab') },
-    { href: '/dashboard/performance-lab', label: 'Performance Lab', isActive: pathname === '/dashboard/performance-lab' },
+    { href: '/typing', label: 'Practice', isActive: pathname === '/typing' },
+    {
+      href: '/learn',
+      label: 'Learn',
+      isActive: pathname === '/learn' || pathname.startsWith('/learn/'),
+    },
+    { href: '/daily', label: 'Daily', isActive: pathname === '/daily' },
+    { href: '/leaderboard', label: 'Leaderboards', isActive: pathname === '/leaderboard' },
+    {
+      href: '/dashboard',
+      label: 'Dashboard',
+      isActive: pathname === '/dashboard',
+    },
+    {
+      href: '/dashboard/performance-lab',
+      label: 'Lab',
+      isActive: pathname === '/dashboard/performance-lab',
+    },
   ];
 
   return (
     <header
       className={`sticky top-0 z-50 w-full transition-all duration-300 ${
         scrolled
-          ? 'bg-background/80 backdrop-blur-xl border-b border-border shadow-sm'
-          : 'bg-background/50 backdrop-blur-md border-b border-transparent'
+          ? 'bg-background/90 backdrop-blur-xl border-b border-border shadow-sm'
+          : 'bg-background/70 backdrop-blur-md border-b border-border/40'
       }`}
     >
-      <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between">
-        
-        {/* Left: Logo & Online Counter */}
-        <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <svg className="w-6 h-6 flex-shrink-0 text-text-primary transition-transform duration-200 group-hover:scale-110" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className="font-display font-bold text-lg tracking-tight text-text-primary">
-              TyProX
-            </span>
-          </Link>
-
-          {/* Online Counter */}
-          <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium text-text-tertiary select-none">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className={`font-mono tabular-nums transition-all duration-300 ${pulse ? 'text-emerald-500' : ''}`}>
-              {onlineCount}
-            </span>
-            <span>online</span>
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto px-4 md:px-6 h-14 flex items-center justify-between gap-3">
+        {/* Left: Brand Logo */}
+        <Link href="/" className="flex items-center gap-2.5 group shrink-0">
+          <svg
+            className="w-6 h-6 flex-shrink-0 text-text-primary transition-transform duration-200 group-hover:scale-105"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M25 20L60 50L25 80"
+              stroke="currentColor"
+              strokeWidth="14"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M75 20L40 50L75 80"
+              stroke="var(--accent)"
+              strokeWidth="14"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <span className="font-display font-bold text-lg tracking-tight text-text-primary">
+            TyProX
+          </span>
+        </Link>
 
         {/* Center: Desktop Nav */}
-        <nav className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center h-9 bg-surface-accent/60 rounded-full p-0.5 gap-0.5">
+        <nav
+          aria-label="Primary Navigation"
+          className="hidden lg:flex items-center h-9 bg-surface-accent/70 border border-border/60 rounded-full p-0.5 gap-0.5"
+        >
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`relative h-full px-4 flex items-center rounded-full text-[13px] font-medium transition-colors duration-200 ${
+              className={`relative h-full px-3.5 flex items-center rounded-full text-[13px] font-medium transition-colors duration-200 whitespace-nowrap ${
                 item.isActive
                   ? 'text-text-primary'
                   : 'text-text-secondary hover:text-text-primary'
@@ -300,7 +196,7 @@ export const Navbar: React.FC = () => {
               {item.isActive && (
                 <motion.div
                   layoutId="nav-active"
-                  className="absolute inset-0 bg-surface rounded-full shadow-sm border border-border/60"
+                  className="absolute inset-0 bg-surface rounded-full shadow-xs border border-border"
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
@@ -310,77 +206,140 @@ export const Navbar: React.FC = () => {
         </nav>
 
         {/* Right: Actions */}
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2 shrink-0">
           <button
+            type="button"
             onClick={toggleTheme}
-            className="p-2 text-text-secondary hover:text-text-primary hover:bg-surface-accent rounded-xl transition-all duration-200 cursor-pointer"
-            aria-label="Toggle theme"
+            className="w-9 h-9 flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-accent rounded-xl transition-colors cursor-pointer"
+            aria-label={`Switch to ${preferences.theme === 'dark' ? 'light' : 'dark'} theme`}
+            title={`Switch to ${preferences.theme === 'dark' ? 'light' : 'dark'} mode`}
           >
-            <motion.div
-              key={preferences.theme}
-              initial={{ rotate: -90, opacity: 0 }}
-              animate={{ rotate: 0, opacity: 1 }}
-              transition={{ duration: 0.2 }}
-            >
-              {preferences.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-            </motion.div>
+            {preferences.theme === 'dark' ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
           </button>
 
+          <Link
+            href="/profile"
+            className={`w-9 h-9 flex items-center justify-center rounded-xl transition-colors ${
+              pathname === '/profile'
+                ? 'bg-surface-accent text-text-primary border border-border'
+                : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent'
+            }`}
+            aria-label="Typing Settings"
+            title="Typing & Display Settings"
+          >
+            <Settings className="w-4 h-4" />
+          </Link>
+
           {session ? (
-            <div className="flex items-center gap-2">
-              <Button
-                href="/dashboard"
-                variant="ghost"
-                className="px-3 py-1.5 text-[13px]"
-              >
-                <User className="w-3.5 h-3.5" />
-                <span>{profile?.username || 'Profile'}</span>
-              </Button>
+            <div className="relative" ref={accountMenuRef}>
               <button
-                onClick={handleLogout}
-                className="text-[13px] font-medium text-text-tertiary hover:text-error transition-colors cursor-pointer px-2 py-1"
+                type="button"
+                onClick={() => setAccountMenuOpen((prev) => !prev)}
+                aria-expanded={accountMenuOpen}
+                aria-haspopup="menu"
+                className="inline-flex items-center gap-2 px-3 py-1.5 min-h-[38px] rounded-xl bg-surface border border-border text-text-primary hover:bg-surface-accent text-[13px] font-medium transition-colors cursor-pointer"
               >
-                Sign Out
+                <UserAvatar
+                  avatarUrl={profile?.avatar_url}
+                  alt={profile?.username || 'Account avatar'}
+                  size="sm"
+                />
+                <span className="max-w-[110px] truncate">
+                  {profile?.username || 'Account'}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 text-text-secondary" />
               </button>
+
+              {accountMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-52 rounded-2xl bg-surface border border-border shadow-xl p-1.5 flex flex-col gap-0.5 z-50"
+                >
+                  <Link
+                    role="menuitem"
+                    href="/dashboard"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-text-primary hover:bg-surface-accent transition-colors"
+                  >
+                    <LayoutDashboard className="w-3.5 h-3.5 text-text-secondary" />
+                    <span>Dashboard</span>
+                  </Link>
+                  {profile?.username && (
+                    <Link
+                      role="menuitem"
+                      href={`/u/${profile.username}`}
+                      onClick={() => setAccountMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-text-primary hover:bg-surface-accent transition-colors"
+                    >
+                      <UserIcon className="w-3.5 h-3.5 text-text-secondary" />
+                      <span>Public Profile</span>
+                    </Link>
+                  )}
+                  <Link
+                    role="menuitem"
+                    href="/profile"
+                    onClick={() => setAccountMenuOpen(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-text-primary hover:bg-surface-accent transition-colors"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-text-secondary" />
+                    <span>Settings</span>
+                  </Link>
+                  <div className="h-px bg-border my-1" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={handleLogout}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-error hover:bg-surface-accent transition-colors cursor-pointer text-left w-full"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <Button
               href="/login"
               variant="primary"
-              className="px-4 py-1.5 text-[13px]"
+              className="min-h-[38px] px-4 py-1.5 text-[13px]"
             >
               Sign In
             </Button>
           )}
         </div>
 
-        {/* Mobile: Theme + Hamburger */}
-        <div className="flex items-center gap-1.5 md:hidden">
+        {/* Mobile/Tablet: Theme + Drawer Toggle (>= 44px touch targets) */}
+        <div className="flex items-center gap-1 lg:hidden">
           <button
+            type="button"
             onClick={toggleTheme}
-            className="p-2 text-text-secondary hover:text-text-primary rounded-xl transition-colors"
-            aria-label="Toggle theme"
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-surface-accent rounded-xl transition-colors cursor-pointer"
+            aria-label={`Switch to ${preferences.theme === 'dark' ? 'light' : 'dark'} theme`}
           >
-            {preferences.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            {preferences.theme === 'dark' ? (
+              <Sun className="w-4 h-4" />
+            ) : (
+              <Moon className="w-4 h-4" />
+            )}
           </button>
 
-          {/* Online - mobile */}
-          <div className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-text-tertiary">
-            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-            <span className="font-mono tabular-nums">{onlineCount}</span>
-          </div>
-
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 text-text-primary hover:bg-surface-accent rounded-xl transition-colors"
+            type="button"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-text-primary hover:bg-surface-accent rounded-xl transition-colors cursor-pointer"
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Drawer */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <motion.div
@@ -388,45 +347,58 @@ export const Navbar: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="md:hidden border-t border-border bg-background/95 backdrop-blur-xl px-4 py-5 flex flex-col gap-2"
+            className="lg:hidden border-t border-border bg-background/95 backdrop-blur-xl px-4 py-4 flex flex-col gap-1.5"
           >
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                className={`min-h-[44px] px-4 flex items-center rounded-xl text-sm font-medium transition-colors ${
                   item.isActive
-                    ? 'text-text-primary bg-surface-accent'
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent/50'
+                    ? 'text-text-primary bg-surface-accent border border-border'
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent/60'
                 }`}
               >
                 {item.label}
               </Link>
             ))}
 
+            <Link
+              href="/profile"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`min-h-[44px] px-4 flex items-center gap-2 rounded-xl text-sm font-medium transition-colors ${
+                pathname === '/profile'
+                  ? 'text-text-primary bg-surface-accent border border-border'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-accent/60'
+              }`}
+            >
+              <Settings className="w-4 h-4" />
+              <span>Settings</span>
+            </Link>
+
             <div className="h-px bg-border my-2" />
 
             {session ? (
               <div className="flex flex-col gap-2">
+                {profile?.username && (
+                  <Button
+                    href={`/u/${profile.username}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    variant="secondary"
+                    className="w-full min-h-[44px]"
+                  >
+                    <UserIcon className="w-4 h-4" />
+                    <span>Public Profile (u/{profile.username})</span>
+                  </Button>
+                )}
                 <Button
-                  href="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  variant="secondary"
-                  className="w-full justify-center"
-                >
-                  <User className="w-4 h-4" />
-                  <span>{profile?.username || 'My Dashboard'}</span>
-                </Button>
-                <Button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
+                  onClick={handleLogout}
                   variant="ghost"
-                  className="w-full justify-center text-error hover:text-error"
+                  className="w-full min-h-[44px] text-error hover:text-error"
                 >
-                  Sign Out
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
                 </Button>
               </div>
             ) : (
@@ -434,7 +406,7 @@ export const Navbar: React.FC = () => {
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
                 variant="primary"
-                className="w-full"
+                className="w-full min-h-[44px]"
               >
                 Sign In
               </Button>

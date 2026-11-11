@@ -1,36 +1,34 @@
 import { create } from 'zustand';
-import { generateText } from '@/utils/text-generator';
+import {
+  RANKED_MODES,
+  createMetricsTracker,
+  evaluateFinalSession,
+  type CompletionReason,
+  type CompressedTelemetryPoint,
+  type KeystrokeInputEvent,
+  type TimelinePoint,
+  type TypingMode,
+  type TypingSessionResult,
+} from '@/lib/typing/metrics';
+import { createSeed, generateText } from '@/lib/typing/text-generator';
 
-export interface KeystrokeTelemetry {
-  t: number; // relative time since start (ms)
-  k: string; // key character
-  y: number; // 0 = input, 1 = delete
-  i: number; // target character index
-}
+export type KeystrokeTelemetry = CompressedTelemetryPoint;
 
-export interface TestResultData {
-  wpm: number;
-  rawWpm: number;
-  accuracy: number;
-  consistency: number;
-  errorCount: number;
-  backspaceCount: number;
-  duration: number;
-  timeline: Array<{ second: number; wpm: number; rawWpm: number }>;
-  keySpeeds: Record<string, number>;
-  errorKeys: Record<string, number>;
-  bigramSpeeds: Record<string, number>;
-  telemetry: KeystrokeTelemetry[];
-}
+export type TestResultData = TypingSessionResult & {
+  timeline: TimelinePoint[];
+};
 
 interface TypingState {
   // Configs
   duration: number;
-  mode: 'words' | 'quotes' | 'numbers' | 'punctuation' | 'code';
+  mode: TypingMode;
   seed: string;
+  targets: string[];
+  clientRunId: string;
+  isRankedRun: boolean;
 
   // Game state
-  status: 'idle' | 'running' | 'completed' | 'paused';
+  status: 'idle' | 'running' | 'completed';
   targetText: string;
   userInput: string;
   currentIndex: number;
@@ -48,24 +46,48 @@ interface TypingState {
 
   // Actions
   setDuration: (duration: number) => void;
-  setMode: (mode: 'words' | 'quotes' | 'numbers' | 'punctuation' | 'code') => void;
+  setMode: (mode: TypingMode) => void;
   setSeed: (seed: string) => void;
   startTest: () => void;
-  startTestWithConfig: (config: { mode?: string; duration?: number; seed?: string }) => void;
+  startTestWithConfig: (config?: {
+    mode?: TypingMode;
+    duration?: number;
+    seed?: string;
+    targets?: string[];
+  }) => void;
   handleInput: (char: string) => void;
   handleBackspace: () => void;
   resetTest: () => void;
-  pauseTest: () => void;
-  resumeTest: () => void;
 }
 
 let workerInstance: Worker | null = null;
 let timerInterval: ReturnType<typeof setInterval> | null = null;
+let timerDeadlineMs: number | null = null;
+let isFinalizing = false;
+
+// Fallback event buffer when running without Web Worker support (e.g., jsdom tests)
+let fallbackEvents: KeystrokeInputEvent[] = [];
+let fallbackStartTime: number | null = null;
+let fallbackTracker = createMetricsTracker();
+
+function generateRunId(): string {
+  const cryptoObj = globalThis.crypto;
+  if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+    return cryptoObj.randomUUID();
+  }
+  return `00000000-0000-4000-8000-${createSeed()}`;
+}
 
 function getWorker(onMessage: (e: MessageEvent) => void): Worker | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' || typeof Worker === 'undefined') return null;
   if (!workerInstance) {
-    workerInstance = new Worker(new URL('@/workers/analytics.worker.ts', import.meta.url));
+    try {
+      workerInstance = new Worker(
+        new URL('@/workers/analytics.worker.ts', import.meta.url)
+      );
+    } catch {
+      return null;
+    }
   }
   workerInstance.onmessage = onMessage;
   return workerInstance;
@@ -76,35 +98,121 @@ function clearTimer() {
     clearInterval(timerInterval);
     timerInterval = null;
   }
+  timerDeadlineMs = null;
+}
+
+function checkIsRankedMode(mode: TypingMode): boolean {
+  return (RANKED_MODES as readonly string[]).includes(mode);
 }
 
 export const useTypingStore = create<TypingState>((set, get) => {
   const handleWorkerMessage = (e: MessageEvent) => {
-    const { type, payload } = e.data;
+    const { type, payload } = e.data as {
+      type: string;
+      payload?: unknown;
+    };
 
-    if (type === 'TICK') {
+    if (type === 'TICK' && payload && typeof payload === 'object') {
+      const tick = payload as { wpm: number; rawWpm: number; accuracy: number };
       set({
-        wpm: payload.wpm,
-        rawWpm: payload.rawWpm,
-        accuracy: payload.accuracy,
+        wpm: tick.wpm,
+        rawWpm: tick.rawWpm,
+        accuracy: tick.accuracy,
       });
-    } else if (type === 'RESULT') {
+    } else if (type === 'RESULT' && payload && typeof payload === 'object') {
+      isFinalizing = false;
       clearTimer();
+      const resPayload = payload as TestResultData;
       set({
         status: 'completed',
-        result: payload as TestResultData,
-        wpm: payload.wpm,
-        rawWpm: payload.rawWpm,
-        accuracy: payload.accuracy,
+        result: resPayload,
+        wpm: resPayload.wpm,
+        rawWpm: resPayload.rawWpm,
+        accuracy: resPayload.accuracy,
         timeLeft: 0,
+      });
+    } else if (type === 'ERROR') {
+      isFinalizing = false;
+      clearTimer();
+      const { duration } = get();
+      set({
+        status: 'idle',
+        userInput: '',
+        currentIndex: 0,
+        timeLeft: duration,
+        wpm: 0,
+        rawWpm: 0,
+        accuracy: 100,
+        combo: 0,
+        maxCombo: 0,
+        result: null,
       });
     }
   };
 
-  const initAndStart = (duration: number, mode: string, seed: string) => {
+  const finalizeSession = (reason: CompletionReason, endTime: number) => {
+    if (isFinalizing) return;
+    isFinalizing = true;
     clearTimer();
-    const text = generateText(seed, mode, duration);
 
+    const worker = getWorker(handleWorkerMessage);
+    if (worker) {
+      worker.postMessage({
+        type: 'FINALIZE',
+        payload: { reason, endTime },
+      });
+      return;
+    }
+
+    // Synchronous isomorphic fallback when Web Worker is unavailable (tests/constrained runtimes)
+    const { duration } = get();
+    const res = evaluateFinalSession(fallbackEvents, {
+      durationLimit: duration,
+      reason,
+      endTime,
+    });
+    isFinalizing = false;
+
+    if (!res) {
+      set({
+        status: 'idle',
+        userInput: '',
+        currentIndex: 0,
+        timeLeft: duration,
+        wpm: 0,
+        rawWpm: 0,
+        accuracy: 100,
+        combo: 0,
+        maxCombo: 0,
+        result: null,
+      });
+      return;
+    }
+
+    set({
+      status: 'completed',
+      result: res,
+      wpm: res.wpm,
+      rawWpm: res.rawWpm,
+      accuracy: res.accuracy,
+      timeLeft: 0,
+    });
+  };
+
+  const initAndStart = (
+    duration: number,
+    mode: TypingMode,
+    seed: string,
+    targets: string[]
+  ) => {
+    isFinalizing = false;
+    clearTimer();
+
+    fallbackEvents = [];
+    fallbackStartTime = null;
+    fallbackTracker = createMetricsTracker();
+
+    const text = generateText(seed, mode, duration, { targets });
     const worker = getWorker(handleWorkerMessage);
     if (worker) {
       worker.postMessage({
@@ -115,6 +223,11 @@ export const useTypingStore = create<TypingState>((set, get) => {
 
     set({
       seed,
+      mode,
+      duration,
+      targets,
+      clientRunId: generateRunId(),
+      isRankedRun: checkIsRankedMode(mode),
       targetText: text,
       userInput: '',
       currentIndex: 0,
@@ -130,12 +243,13 @@ export const useTypingStore = create<TypingState>((set, get) => {
   };
 
   return {
-    // Default Configs
     duration: 30,
     mode: 'words',
     seed: '',
+    targets: [],
+    clientRunId: '',
+    isRankedRun: true,
 
-    // Default Game State
     status: 'idle',
     targetText: '',
     userInput: '',
@@ -149,56 +263,58 @@ export const useTypingStore = create<TypingState>((set, get) => {
     result: null,
 
     setDuration: (duration) => set({ duration, timeLeft: duration }),
-    setMode: (mode) => set({ mode }),
+    setMode: (mode) => set({ mode, isRankedRun: checkIsRankedMode(mode) }),
     setSeed: (seed) => set({ seed }),
 
     startTest: () => {
-      const { duration, mode, seed } = get();
-      const activeSeed = seed || Math.random().toString(36).substring(7);
-      initAndStart(duration, mode, activeSeed);
+      const { duration, mode, seed, targets } = get();
+      const activeSeed = seed || createSeed();
+      initAndStart(duration, mode, activeSeed, targets);
     },
 
-    // Atomic config + start — avoids race condition when mode/duration change simultaneously
-    startTestWithConfig: ({ mode, duration, seed } = {}) => {
+    startTestWithConfig: ({ mode, duration, seed, targets } = {}) => {
       const current = get();
-      const finalMode = (mode as TypingState['mode']) ?? current.mode;
+      const finalMode = mode ?? current.mode;
       const finalDuration = duration ?? current.duration;
-      const finalSeed = seed ?? (Math.random().toString(36).substring(7));
+      const finalSeed = seed ?? createSeed();
+      const finalTargets = targets ?? current.targets;
 
-      set({ mode: finalMode, duration: finalDuration });
-      initAndStart(finalDuration, finalMode, finalSeed);
+      initAndStart(finalDuration, finalMode, finalSeed, finalTargets);
     },
 
     handleInput: (char) => {
-      const { status, targetText, currentIndex, userInput } = get();
+      const { status, targetText, currentIndex, userInput, duration } = get();
 
-      if (status === 'completed' || status === 'paused') return;
+      if (status === 'completed' || isFinalizing) return;
+      if (!targetText || currentIndex >= targetText.length) return;
 
       const now = performance.now();
       const worker = getWorker(handleWorkerMessage);
 
-      // Start timer on the very first keypress
       if (status === 'idle') {
         set({ status: 'running' });
 
         clearTimer();
+        timerDeadlineMs = now + duration * 1000;
         timerInterval = setInterval(() => {
-          const { timeLeft, status: currentStatus } = get();
-          if (currentStatus !== 'running') {
+          const { status: currentStatus, timeLeft: prevTimeLeft } = get();
+          if (currentStatus !== 'running' || timerDeadlineMs === null) {
             clearTimer();
             return;
           }
 
-          if (timeLeft <= 1) {
-            // Show 0 on the display, then finalize
+          const remainingMs = timerDeadlineMs - performance.now();
+          if (remainingMs <= 0) {
             set({ timeLeft: 0 });
-            clearTimer();
-            const w = getWorker(handleWorkerMessage);
-            if (w) w.postMessage({ type: 'FINALIZE' });
-          } else {
-            set({ timeLeft: timeLeft - 1 });
+            finalizeSession('timer', timerDeadlineMs);
+            return;
           }
-        }, 1000);
+
+          const nextSecs = Math.max(0, Math.ceil(remainingMs / 1000));
+          if (nextSecs !== prevTimeLeft) {
+            set({ timeLeft: nextSecs });
+          }
+        }, 100);
       }
 
       const expectedKey = targetText[currentIndex];
@@ -206,16 +322,28 @@ export const useTypingStore = create<TypingState>((set, get) => {
       const currentCombo = isCorrect ? get().combo + 1 : 0;
       const newMaxCombo = Math.max(currentCombo, get().maxCombo);
 
+      const eventPayload: KeystrokeInputEvent = {
+        key: char,
+        time: now,
+        index: currentIndex,
+        expectedKey,
+        type: 'input',
+      };
+
       if (worker) {
         worker.postMessage({
           type: 'KEYSTROKE',
-          payload: {
-            key: char,
-            time: now,
-            index: currentIndex,
-            expectedKey,
-            type: 'input',
-          },
+          payload: eventPayload,
+        });
+      } else {
+        if (fallbackStartTime === null) fallbackStartTime = now;
+        fallbackEvents.push(eventPayload);
+        fallbackTracker.apply(eventPayload);
+        const snap = fallbackTracker.snapshot(now - fallbackStartTime);
+        set({
+          wpm: snap.wpm,
+          rawWpm: snap.rawWpm,
+          accuracy: snap.accuracy,
         });
       }
 
@@ -229,78 +357,58 @@ export const useTypingStore = create<TypingState>((set, get) => {
         maxCombo: newMaxCombo,
       });
 
-      // Complete test if typing reached end of text
       if (nextIndex >= targetText.length) {
         set({ timeLeft: 0 });
-        clearTimer();
-        if (worker) {
-          worker.postMessage({ type: 'FINALIZE' });
-        }
+        finalizeSession('text_complete', now);
       }
     },
 
     handleBackspace: () => {
       const { status, currentIndex, userInput } = get();
-      if (status !== 'running' || currentIndex === 0) return;
+      if (status !== 'running' || currentIndex === 0 || isFinalizing) return;
 
       const now = performance.now();
+      const deleteIdx = currentIndex - 1;
       const worker = getWorker(handleWorkerMessage);
+
+      const eventPayload: KeystrokeInputEvent = {
+        key: 'Backspace',
+        time: now,
+        index: deleteIdx,
+        expectedKey: '',
+        type: 'delete',
+      };
 
       if (worker) {
         worker.postMessage({
           type: 'KEYSTROKE',
-          payload: {
-            key: 'Backspace',
-            time: now,
-            index: currentIndex - 1,
-            expectedKey: '',
-            type: 'delete',
-          },
+          payload: eventPayload,
         });
+      } else {
+        fallbackEvents.push(eventPayload);
+        fallbackTracker.apply(eventPayload);
+        if (fallbackStartTime !== null) {
+          const snap = fallbackTracker.snapshot(now - fallbackStartTime);
+          set({
+            wpm: snap.wpm,
+            rawWpm: snap.rawWpm,
+            accuracy: snap.accuracy,
+          });
+        }
       }
 
       set({
         userInput: userInput.slice(0, -1),
-        currentIndex: currentIndex - 1,
+        currentIndex: deleteIdx,
       });
     },
 
     resetTest: () => {
       clearTimer();
-      const { duration, mode } = get();
-      const newSeed = Math.random().toString(36).substring(7);
-      set({ seed: '' });
-      initAndStart(duration, mode, newSeed);
-    },
-
-    pauseTest: () => {
-      if (get().status === 'running') {
-        clearTimer();
-        set({ status: 'paused' });
-      }
-    },
-
-    resumeTest: () => {
-      const { status, timeLeft } = get();
-      if (status !== 'paused') return;
-
-      set({ status: 'running' });
-
-      const worker = getWorker(handleWorkerMessage);
-      timerInterval = setInterval(() => {
-        const { timeLeft: tl, status: s } = get();
-        if (s !== 'running') {
-          clearTimer();
-          return;
-        }
-        if (tl <= 1) {
-          set({ timeLeft: 0 });
-          clearTimer();
-          if (worker) worker.postMessage({ type: 'FINALIZE' });
-        } else {
-          set({ timeLeft: tl - 1 });
-        }
-      }, 1000);
+      isFinalizing = false;
+      const { duration, mode, targets } = get();
+      const newSeed = createSeed();
+      initAndStart(duration, mode, newSeed, targets);
     },
   };
 });

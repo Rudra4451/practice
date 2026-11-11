@@ -1,62 +1,89 @@
-import type { Metadata } from "next";
-import { Inter, Space_Grotesk, JetBrains_Mono } from "next/font/google";
-import Script from "next/script";
-import "./globals.css";
-import { ToastContainer } from "@/components/ui/toast-container";
-import { UsernameModal } from "@/components/auth/username-modal";
+import type { Metadata, Viewport } from 'next';
+import {
+  Inter,
+  Space_Grotesk,
+  JetBrains_Mono,
+  IBM_Plex_Mono,
+  Geist_Mono,
+} from 'next/font/google';
+import Script from 'next/script';
+import './globals.css';
+import { ToastContainer } from '@/components/ui/toast-container';
+import { UsernameModal } from '@/components/auth/username-modal';
+import { AuthProvider } from '@/components/providers/auth-provider';
+import { getSiteUrl } from '@/lib/seo/site-url';
 
 const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+  variable: '--font-inter',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
 });
 
 const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  variable: '--font-space-grotesk',
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+  variable: '--font-jetbrains-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
 });
 
-export const viewport = {
-  width: "device-width",
+const ibmPlexMono = IBM_Plex_Mono({
+  variable: '--font-ibm-plex-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+});
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+});
+
+const siteUrl = getSiteUrl();
+
+export const viewport: Viewport = {
+  width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
-  themeColor: "#000000",
+  themeColor: [
+    { media: '(prefers-color-scheme: dark)', color: '#0B0B0C' },
+    { media: '(prefers-color-scheme: light)', color: '#F6F6F4' },
+  ],
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: {
-    default: "TyProX — Free Typing Test, WPM Tracker & Competitive Leaderboards",
-    template: "%s · TyProX",
+    default: 'TyProX | Deliberate Typing Practice, Curriculum & Competitive Rankings',
+    template: '%s · TyProX',
   },
   description:
-    "Improve your typing speed, track WPM, analyze performance, compete on leaderboards, and master every keystroke with TyProX.",
+    'Every keystroke makes you better. Improve your typing speed and accuracy with server-verified benchmarks, structured lessons, daily challenges, and Performance Lab analytics.',
   keywords: [
-    "typing test",
-    "WPM",
-    "typing speed",
-    "typing practice",
-    "monkeytype alternative",
-    "competitive typing",
-    "developer typing",
+    'typing test',
+    'typing curriculum',
+    'WPM tracker',
+    'typing speed',
+    'deliberate practice',
+    'competitive typing',
+    'developer typing',
   ],
   openGraph: {
-    title: "TyProX — Free Typing Test, WPM Tracker & Competitive Leaderboards",
+    title: 'TyProX | Every Keystroke Makes You Better',
     description:
-      "Improve your typing speed, track WPM, analyze performance, compete on leaderboards, and master every keystroke with TyProX.",
-    type: "website",
+      'Master typing speed, rhythm, and accuracy with structured lessons, weakness drills, daily challenges, and verified global leaderboards.',
+    type: 'website',
+    siteName: 'TyProX',
   },
   twitter: {
-    card: "summary_large_image",
-    title: "TyProX — Free Typing Test, WPM Tracker & Competitive Leaderboards",
+    card: 'summary_large_image',
+    title: 'TyProX | Every Keystroke Makes You Better',
     description:
-      "Improve your typing speed, track WPM, analyze performance, compete on leaderboards, and master every keystroke with TyProX.",
+      'Master typing speed, rhythm, and accuracy with structured lessons, weakness drills, daily challenges, and verified global leaderboards.',
   },
 };
 
@@ -68,7 +95,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      data-typing-font="jetbrains-mono"
+      className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} ${ibmPlexMono.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>
@@ -78,28 +106,38 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               try {
-                const pref = localStorage.getItem('user-store');
-                if (pref) {
-                  const parsed = JSON.parse(pref);
-                  const theme = parsed.state?.preferences?.theme;
-                  if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                     document.documentElement.classList.add('dark');
-                  } else {
-                    document.documentElement.classList.remove('dark');
+                var raw = localStorage.getItem('user-store');
+                var root = document.documentElement;
+                if (raw) {
+                  var parsed = JSON.parse(raw);
+                  var prefs = parsed && parsed.state && parsed.state.preferences;
+                  var theme = prefs && prefs.theme;
+                  if (theme === 'light') {
+                    root.classList.remove('dark');
+                  } else if (theme === 'dark' || !theme) {
+                    root.classList.add('dark');
+                  }
+                  var font = prefs && prefs.font_family;
+                  if (font === 'jetbrains-mono' || font === 'ibm-plex-mono' || font === 'geist-mono') {
+                    root.dataset.typingFont = font;
                   }
                 } else {
-                  // Default to dark mode if no preference is saved
-                  document.documentElement.classList.add('dark');
+                  root.classList.add('dark');
+                  root.dataset.typingFont = 'jetbrains-mono';
                 }
-              } catch (_) {}
+              } catch (_) {
+                document.documentElement.classList.add('dark');
+              }
             `,
           }}
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-text-primary antialiased">
-        {children}
-        <ToastContainer />
-        <UsernameModal />
+        <AuthProvider>
+          {children}
+          <ToastContainer />
+          <UsernameModal />
+        </AuthProvider>
       </body>
     </html>
   );

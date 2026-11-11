@@ -258,6 +258,54 @@ export const QUOTES = [
   {
     text: "Code is like humor. When you have to explain it, it is bad.",
     source: "Cory House"
+  },
+  {
+    text: "Premature optimization is the root of all evil in programming.",
+    source: "Donald Knuth"
+  },
+  {
+    text: "Simplicity is prerequisite for reliability.",
+    source: "Edsger W. Dijkstra"
+  },
+  {
+    text: "The most damaging phrase in the language is we have always done it this way.",
+    source: "Grace Hopper"
+  },
+  {
+    text: "Controlling complexity is the essence of computer programming.",
+    source: "Brian Kernighan"
+  },
+  {
+    text: "A year from now you may wish you had started today.",
+    source: "Karen Lamb"
+  },
+  {
+    text: "Well begun is half done.",
+    source: "Aristotle"
+  },
+  {
+    text: "Discipline equals freedom.",
+    source: "Jocko Willink"
+  },
+  {
+    text: "What we know is a drop, what we do not know is an ocean.",
+    source: "Isaac Newton"
+  },
+  {
+    text: "We can only see a short distance ahead, but we can see plenty there that needs to be done.",
+    source: "Alan Turing"
+  },
+  {
+    text: "Study hard what interests you the most in the most undisciplined, irreverent and original manner possible.",
+    source: "Richard Feynman"
+  },
+  {
+    text: "Science is what we understand well enough to explain to a computer; art is everything else we do.",
+    source: "Donald Knuth"
+  },
+  {
+    text: "The speed of an algorithm matters less when its assumptions are wrong.",
+    source: "Engineering Maxim"
   }
 ];
 

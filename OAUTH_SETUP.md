@@ -1,6 +1,6 @@
 # Supabase OAuth Setup Guide
 
-This guide details the step-by-step instructions required to enable and configure **Google OAuth** and **GitHub OAuth** authentication for the TyProX application using your Supabase project (`gbovkejymfeiqgverzfr`).
+This guide details the step-by-step instructions required to enable and configure **Google OAuth** and **GitHub OAuth** authentication for the TyProX application using your Supabase project (`gbovkejymfeiqgverzfr`). Never commit provider client secrets, `.env.local`, or `SUPABASE_SERVICE_ROLE_KEY` to Git.
 
 ---
 
@@ -65,9 +65,23 @@ https://gbovkejymfeiqgverzfr.supabase.co/auth/v1/callback
 
 ---
 
-## 5. Verify the Integration
+## 5. Configure Site URL & Redirect Allowlist in Supabase & Hosting
 
-Once configured in Supabase, test the login buttons on the TyProX login page again:
+TyProX passes `${window.location.origin}/auth/callback` as the OAuth `redirectTo` target and validates `?next=` paths strictly on the server via `sanitizeRedirectPath()` (`lib/security/redirect.ts`) to block open redirects.
+
+1. In Supabase **Authentication** -> **URL Configuration**:
+   - Set **Site URL** to your primary production origin (matching `NEXT_PUBLIC_SITE_URL`).
+   - Under **Redirect URLs**, explicitly allow each application origin callback:
+     - `http://localhost:3000/auth/callback`
+     - Your production deployment URL + `/auth/callback`
+     - Any Vercel preview URL pattern you intentionally permit
+2. In hosting (and `.env.local` locally), set `NEXT_PUBLIC_SITE_URL` to the exact canonical origin (`https://your-domain.example` in production, `http://localhost:3000` locally) so canonical metadata, `sitemap.xml`, `robots.txt`, and same-origin request validation stay aligned.
+
+---
+
+## 6. Verify the Integration
+
+Once configured in Supabase, test the login buttons on the TyProX login page:
 1. Run `npm run dev` and navigate to `http://localhost:3000/login`.
 2. Click **GitHub** or **Google**.
-3. You should be redirected to the provider's sign-in screen, and then redirected back to the TyProX Dashboard.
+3. Confirm the provider redirects cleanly back through `/auth/callback` to `/dashboard` (and onboarding handle selection prompts cleanly on new accounts).

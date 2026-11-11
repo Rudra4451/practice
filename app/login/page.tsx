@@ -2,79 +2,58 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useUserStore } from '@/stores/user-store';
 import { Navbar } from '@/components/navbar';
 import { Mail, Zap, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 import { signInWithGoogle, signInWithGithub } from '@/lib/supabase/auth';
 import { Button } from '@/components/ui/button';
+import { sanitizeRedirectPath } from '@/lib/security/redirect';
 
 function LoginCard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { session } = useUserStore();
-  
+  const nextPath = sanitizeRedirectPath(searchParams.get('next'), '/dashboard');
+
+  const urlError =
+    searchParams.get('error') === 'auth-failed'
+      ? 'Authentication failed. Please check your link or try again.'
+      : '';
+
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [formError, setFormError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (session) {
-      router.push('/dashboard');
+      router.push(nextPath);
     }
-  }, [session, router]);
-
-  // Load URL errors
-  useEffect(() => {
-    const err = searchParams.get('error');
-    if (err === 'auth-failed') {
-      setErrorMsg('Authentication failed. Please check your link or try again.');
-    }
-  }, [searchParams]);
+  }, [session, router, nextPath]);
 
   const handleMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
 
     setLoading(true);
-    setErrorMsg('');
+    setFormError('');
     setSuccessMsg('');
-
-    const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
-    if (isDemo) {
-      setTimeout(() => {
-        setSuccessMsg('Check your inbox — the magic link is on its way.');
-        localStorage.setItem('typrox_demo', 'true');
-        localStorage.setItem('typrox_demo_logged_in', 'true');
-        document.cookie = "typrox_demo_logged_in=true; path=/; max-age=86400";
-        const mockSession = { user: { id: 'mock-user-id', email: 'rudra_practice@typrox.com' } };
-        const mockProfile = { id: 'mock-user-id', username: 'rudra_practice', display_name: 'Rudra Pratap Swain', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
-        useUserStore.getState().setSession(mockSession);
-        useUserStore.getState().setProfile(mockProfile);
-        setTimeout(() => {
-          router.push('/dashboard?demo=true');
-        }, 1000);
-      }, 1000);
-      return;
-    }
 
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`,
         },
       });
 
       if (error) throw error;
-      setSuccessMsg('Check your inbox — the magic link is on its way.');
+      setSuccessMsg('Check your inbox. Your magic sign-in link is on its way.');
       setEmail('');
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during authentication.');
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : 'An error occurred during authentication.');
     } finally {
       setLoading(false);
     }
@@ -82,22 +61,7 @@ function LoginCard() {
 
   const handleOAuth = async (provider: 'google' | 'github') => {
     setLoading(true);
-    setErrorMsg('');
-
-    const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
-    if (isDemo) {
-      setTimeout(() => {
-        localStorage.setItem('typrox_demo', 'true');
-        localStorage.setItem('typrox_demo_logged_in', 'true');
-        document.cookie = "typrox_demo_logged_in=true; path=/; max-age=86400";
-        const mockSession = { user: { id: 'mock-user-id', email: `${provider}_user@typrox.com` } };
-        const mockProfile = { id: 'mock-user-id', username: 'rudra_practice', display_name: 'Rudra Pratap Swain', avatar_url: null, theme: 'dark', font_family: 'ibm-plex-mono', created_at: new Date().toISOString() };
-        useUserStore.getState().setSession(mockSession);
-        useUserStore.getState().setProfile(mockProfile);
-        router.push('/dashboard?demo=true');
-      }, 1000);
-      return;
-    }
+    setFormError('');
 
     try {
       if (provider === 'google') {
@@ -105,56 +69,61 @@ function LoginCard() {
       } else {
         await signInWithGithub();
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during provider authentication.');
+    } catch (err: unknown) {
+      setFormError(
+        err instanceof Error ? err.message : 'An error occurred during provider authentication.'
+      );
       setLoading(false);
     }
   };
 
+  const displayedError = formError || urlError;
+
   return (
-    <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 bg-surface/30 backdrop-blur-md border border-border/60 rounded-2xl relative shadow-xl overflow-hidden">
-      {/* Background ambient lighting */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-32 -left-32 w-64 h-64 bg-accent/20 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-warning/20 rounded-full blur-[100px]" />
+    <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 bg-surface border border-border rounded-2xl relative shadow-lg overflow-hidden">
+      <div className="hidden dark:block absolute inset-0 pointer-events-none">
+        <div className="absolute -top-32 -left-32 w-64 h-64 bg-accent/15 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-32 -right-32 w-64 h-64 bg-accent/10 rounded-full blur-[100px]" />
       </div>
 
       {/* Left Column: Login Form */}
-      <div className="p-10 border-b border-border/60 md:border-b-0 md:border-r flex flex-col justify-center gap-6 font-sans relative z-10">
-        {/* Brand Header */}
-        <div className="flex flex-col items-center gap-3 text-center border-b border-border/60 pb-6">
-          <svg className="w-10 h-10 flex-shrink-0 text-text-primary drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" />
-            <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="square" strokeLinejoin="miter" className="drop-shadow-[0_0_15px_rgba(99,102,241,0.5)]" />
+      <div className="p-8 sm:p-10 border-b border-border md:border-b-0 md:border-r flex flex-col justify-center gap-6 font-sans relative z-10">
+        <div className="flex flex-col items-center gap-3 text-center border-b border-border pb-6">
+          <svg
+            className="w-10 h-10 flex-shrink-0 text-text-primary"
+            viewBox="0 0 100 100"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M25 20L60 50L25 80" stroke="currentColor" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M75 20L40 50L75 80" stroke="var(--accent)" strokeWidth="14" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <h1 className="text-3xl font-black uppercase tracking-tight text-text-primary">Join TYPROX</h1>
-          <div className="text-xs font-bold uppercase tracking-wider text-text-secondary flex flex-wrap justify-center gap-1.5 max-w-xs leading-normal">
+          <h1 className="text-3xl font-black uppercase tracking-tight text-text-primary font-display">
+            Sign in to TyProX
+          </h1>
+          <div className="text-xs font-semibold uppercase tracking-wider text-text-secondary flex flex-wrap justify-center gap-1.5 max-w-xs leading-normal">
             <span>Save records</span>
-            <span className="opacity-80">·</span>
+            <span>·</span>
             <span>Build streaks</span>
-            <span className="opacity-80">·</span>
-            <span>Track progress</span>
-            <span className="opacity-80">·</span>
+            <span>·</span>
             <span>Compete globally</span>
           </div>
         </div>
 
-        {/* Messages */}
-        {errorMsg && (
-          <div className="p-3 bg-error/15 border-2 border-error text-error text-xs font-bold uppercase tracking-wide flex items-center gap-2">
+        {displayedError && (
+          <div className="p-3.5 bg-error/10 border border-error text-error rounded-xl text-xs font-bold uppercase tracking-wide flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <span>{errorMsg}</span>
+            <span>{displayedError}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 bg-emerald-500/10 border-2 border-emerald-500 text-emerald-600 dark:text-emerald-400 text-xs font-bold uppercase tracking-wide flex items-center gap-2">
+          <div className="p-3.5 bg-success/10 border border-success text-success rounded-xl text-xs font-bold uppercase tracking-wide flex items-center gap-2">
             <CheckCircle className="w-4 h-4 flex-shrink-0" />
             <span>{successMsg}</span>
           </div>
         )}
 
-        {/* Magic Link Form */}
         <form onSubmit={handleMagicLink} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <label htmlFor="email" className="text-xs font-bold text-text-secondary uppercase tracking-widest">
@@ -170,7 +139,7 @@ function LoginCard() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={loading}
-                className="w-full pl-10 pr-4 py-3 bg-surface/50 border border-border/80 focus:border-accent text-sm font-bold transition-all focus:ring-1 focus:ring-accent/20 focus:shadow-[0_0_15px_rgba(99,102,241,0.15)] outline-none text-text-primary rounded-xl"
+                className="w-full pl-10 pr-4 py-3 min-h-[44px] bg-background border border-border focus:border-accent text-sm font-medium transition-colors outline-none text-text-primary rounded-xl"
               />
             </div>
           </div>
@@ -186,39 +155,35 @@ function LoginCard() {
           </Button>
         </form>
 
-        {/* Divider */}
         <div className="relative flex items-center justify-center py-2">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-border/60" />
+            <div className="w-full border-t border-border" />
           </div>
-          <span className="relative px-3 bg-transparent backdrop-blur-md text-xs font-bold text-text-secondary uppercase tracking-widest">
+          <span className="relative px-3 bg-surface text-xs font-bold text-text-secondary uppercase tracking-widest">
             Or Continue With
           </span>
         </div>
 
-        {/* OAuth Buttons */}
-        <div className="flex gap-4">
-          {/* GitHub */}
+        <div className="flex gap-3">
           <Button
             onClick={() => handleOAuth('github')}
             disabled={loading}
             variant="secondary"
             className="flex-1"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
               <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
             </svg>
             <span>GitHub</span>
           </Button>
 
-          {/* Google */}
           <Button
             onClick={() => handleOAuth('google')}
             disabled={loading}
             variant="secondary"
             className="flex-1"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" aria-hidden="true">
               <path
                 fill="currentColor"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -241,57 +206,56 @@ function LoginCard() {
         </div>
       </div>
 
-      {/* Right Column: Premium Value Panel */}
-      <div className="p-10 bg-surface-accent/20 flex flex-col justify-between gap-8 font-sans relative z-10 border-l border-border/40">
+      {/* Right Column: Value Panel */}
+      <div className="p-8 sm:p-10 bg-surface-accent/50 flex flex-col justify-between gap-8 font-sans relative z-10 border-l border-border">
         <div className="flex flex-col gap-6">
           <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-accent fill-current drop-shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
-            <span className="text-xs font-black uppercase tracking-widest text-text-primary">Join the Community</span>
+            <Zap className="w-5 h-5 text-accent-ink" />
+            <span className="text-xs font-black uppercase tracking-widest text-text-primary">
+              Account Benefits
+            </span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-text-primary leading-tight text-left">
+          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-text-primary leading-tight text-left font-display">
             Save Your Records.
           </h2>
-          <p className="text-sm text-text-secondary font-semibold leading-relaxed text-left">
-            Become a part of the TyProX typing community to build your stats, test your skills, and see where you rank globally.
+          <p className="text-sm text-text-secondary font-medium leading-relaxed text-left">
+            Connect your profile to persist replays across devices, unlock official achievements, and climb verified global leaderboards.
           </p>
 
-          {/* Value checkmarks */}
           <div className="flex flex-col gap-3.5 text-xs font-bold uppercase tracking-wider text-text-primary text-left">
             {[
-              { title: 'Save your records', desc: 'Maintain a complete historical record of every test run' },
-              { title: 'Build typing streaks', desc: 'Practice consistently and lock in your daily habit' },
-              { title: 'Track your progress', desc: 'Analyze accuracy, key speeds, and progression trends' },
-              { title: 'Compete globally', desc: 'Submit verified scores to the official rankings' }
-            ].map((item, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <div className="w-5 h-5 bg-accent/20 border border-accent/40 rounded-full flex items-center justify-center text-[10px] text-accent flex-shrink-0 mt-0.5 shadow-[0_0_10px_rgba(99,102,241,0.2)]">✔</div>
+              { title: 'Save your records', desc: 'Maintain a searchable history of every verified test run' },
+              { title: 'Build typing streaks', desc: 'Practice daily and lock in your UTC streak history' },
+              { title: 'Unlock Performance Lab', desc: 'Analyze per-key accuracy and keystroke delays over time' },
+              { title: 'Compete globally', desc: 'Submit replay-verified scores to mode and duration brackets' },
+            ].map((item) => (
+              <div key={item.title} className="flex items-start gap-3">
+                <div className="w-5 h-5 bg-accent/15 border border-accent/35 rounded-full flex items-center justify-center text-[10px] text-accent-ink flex-shrink-0 mt-0.5">
+                  ✓
+                </div>
                 <div className="flex flex-col">
                   <span className="leading-none text-text-primary">{item.title}</span>
-                  <span className="text-xs text-text-secondary mt-1 font-semibold normal-case">{item.desc}</span>
+                  <span className="text-xs text-text-secondary mt-1 font-medium normal-case">{item.desc}</span>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Mini Mock Stats Grid */}
-        <div className="p-5 bg-surface/50 border border-border/60 rounded-xl flex flex-col gap-3 text-left shadow-sm">
-          <div className="flex justify-between items-center border-b border-border/40 pb-2">
-            <span className="text-xs font-black uppercase tracking-widest text-text-primary">Simulated Profile</span>
-            <span className="text-xs font-bold text-accent uppercase tracking-widest flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-              Active
-            </span>
+        <div className="p-5 bg-surface border border-border rounded-xl flex flex-col gap-3 text-left shadow-xs">
+          <div className="flex justify-between items-center border-b border-border pb-2">
+            <span className="text-xs font-black uppercase tracking-widest text-text-primary">Synced Per Session</span>
+            <span className="text-xs font-bold text-accent-ink uppercase tracking-widest">Verified</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'Best Speed', value: '142 WPM' },
-              { label: 'Active Streak', value: '18 Days' },
-              { label: 'Rank', value: '#48' },
-              { label: 'Tests', value: '1,428' }
-            ].map((stat, idx) => (
-              <div key={idx} className="flex flex-col gap-0.5">
-                <span className="text-xs font-bold text-text-secondary uppercase tracking-widest">{stat.label}</span>
+              { label: 'Net & Raw WPM', value: 'Server Computed' },
+              { label: 'Keystroke Log', value: 'Full Telemetry' },
+              { label: 'Guest Runs', value: 'One-Click Import' },
+              { label: 'Consistency', value: 'Per-Sec Variance' },
+            ].map((stat) => (
+              <div key={stat.label} className="flex flex-col gap-0.5">
+                <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">{stat.label}</span>
                 <span className="text-sm font-black font-mono text-text-primary">{stat.value}</span>
               </div>
             ))}
@@ -306,10 +270,8 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
-      <main className="flex-1 flex items-center justify-center p-6 bg-background">
-        <Suspense fallback={
-          <div className="w-8 h-8 bg-accent animate-spin" />
-        }>
+      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 bg-background">
+        <Suspense fallback={<div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />}>
           <LoginCard />
         </Suspense>
       </main>

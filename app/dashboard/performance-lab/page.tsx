@@ -1,432 +1,517 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import {
+  Keyboard,
+  Sparkles,
+  BarChart2,
+  Zap,
+  ShieldAlert,
+  Target,
+  Activity,
+  LogIn,
+} from 'lucide-react';
 import { useUserStore } from '@/stores/user-store';
+import { useHydrated } from '@/lib/hooks/use-hydrated';
+import { createClient, isSupabaseRealtimeEnabled } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import { Navbar } from '@/components/navbar';
-import { createClient } from '@/lib/supabase/client';
-import { Lock, Zap, Keyboard, Sparkles, BarChart2, CheckCircle, ShieldAlert, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  KEYBOARD_ROWS,
+  analyzeReplaySessions,
+  type ReplaySessionInput,
+} from '@/lib/typing/replay-analyzer';
+import type { CompressedTelemetryPoint } from '@/lib/typing/metrics';
 
-// Keyboard Layout Mapping for Heatmap render
-const KEYBOARD_ROWS = [
-  ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-  ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', ';'],
-  ['z', 'x', 'c', 'v', 'b', 'n', 'm', ',', '.', '/'],
-];
+interface FetchedResultMeta {
+  id: string;
+  mode: string;
+  duration: number;
+  seed: string;
+}
 
-// Finger Mapping
-const FINGER_MAP: Record<string, string> = {
-  q: 'Left Pinky', a: 'Left Pinky', z: 'Left Pinky',
-  w: 'Left Ring', s: 'Left Ring', x: 'Left Ring',
-  e: 'Left Middle', d: 'Left Middle', c: 'Left Middle',
-  r: 'Left Index', f: 'Left Index', v: 'Left Index',
-  t: 'Left Index', g: 'Left Index', b: 'Left Index',
-  ' ': 'Space (Thumb)',
-  y: 'Right Index', h: 'Right Index', n: 'Right Index',
-  u: 'Right Index', j: 'Right Index', m: 'Right Index',
-  i: 'Right Middle', k: 'Right Middle', ',': 'Right Middle',
-  o: 'Right Ring', l: 'Right Ring', '.': 'Right Ring',
-  p: 'Right Pinky', ';': 'Right Pinky', '/': 'Right Pinky',
-};
+interface FetchedReplayRow {
+  test_result_id: string;
+  telemetry: unknown;
+}
+
+async function fetchCloudTelemetrySessions(userId: string): Promise<ReplaySessionInput[]> {
+  const supabase = createClient();
+
+  const { data: results, error: resultsErr } = await supabase
+    .from('test_results')
+    .select('id, mode, duration, seed')
+    .eq('user_id', userId)
+    .eq('is_invalidated', false)
+    .order('created_at', { ascending: false })
+    .limit(15);
+
+  if (resultsErr || !results || results.length === 0) {
+    return [];
+  }
+
+  const typedResults = results as FetchedResultMeta[];
+  const metaById = new Map<string, FetchedResultMeta>();
+  for (const item of typedResults) {
+    metaById.set(item.id, item);
+  }
+
+  const testIds = typedResults.map((r) => r.id);
+  const { data: replays, error: replaysErr } = await supabase
+    .from('replays')
+    .select('test_result_id, telemetry')
+    .in('test_result_id', testIds);
+
+  if (replaysErr || !replays || replays.length === 0) {
+    return [];
+  }
+
+  const typedReplays = replays as FetchedReplayRow[];
+  return typedReplays.map((rep) => {
+    const meta = metaById.get(rep.test_result_id);
+    return {
+      telemetry: Array.isArray(rep.telemetry)
+        ? (rep.telemetry as CompressedTelemetryPoint[])
+        : [],
+      mode: meta?.mode ?? null,
+      duration: meta?.duration ?? null,
+      seed: meta?.seed ?? null,
+    };
+  });
+}
 
 export default function PerformanceLabPage() {
-  const { session, profile } = useUserStore();
-  const [loading, setLoading] = useState(true);
-  const [hasData, setHasData] = useState(false);
+  const hydrated = useHydrated();
+  const { session, guestHistory } = useUserStore();
+  const [cloudState, setCloudState] = useState<{
+    loadedUserId: string | null;
+    sessions: ReplaySessionInput[];
+  }>({
+    loadedUserId: null,
+    sessions: [],
+  });
 
-  // Performance Telemetry Aggregates
-  const [heatmap, setHeatmap] = useState<Record<string, number>>({});
-  const [fingerLoads, setFingerLoads] = useState<Record<string, number>>({});
-  const [handDistribution, setHandDistribution] = useState({ left: 50, right: 50 });
-  const [slowBigrams, setSlowBigrams] = useState<Array<{ bigram: string; speed: number }>>([]);
-  const [weakKeys, setWeakKeys] = useState<Array<{ key: string; count: number }>>([]);
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
 
-  // Aggregate user replay data client-side wrapped in useCallback
-  const loadTelemetry = useCallback(async () => {
-    if (!session?.user) {
-      setLoading(false);
-      return;
-    }
-
-    const isDemo = typeof window !== 'undefined' && (localStorage.getItem('typrox_demo') === 'true' || window.location.search.includes('demo=true'));
-    if (isDemo) {
-      setHeatmap({
-        q: 12, w: 25, e: 84, r: 56, t: 44, y: 31, u: 48, i: 62, o: 53, p: 18,
-        a: 42, s: 61, d: 73, f: 58, g: 35, h: 29, j: 38, k: 44, l: 51, ';': 8,
-        z: 5, x: 9, c: 32, v: 28, b: 22, n: 41, m: 36, ',': 14, '.': 19, '/': 3,
-        ' ': 154
-      });
-      setHandDistribution({ left: 53, right: 47 });
-      setSlowBigrams([
-        { bigram: 'wa', speed: 284 },
-        { bigram: 'lo', speed: 261 },
-        { bigram: 'br', speed: 245 },
-        { bigram: 'pl', speed: 238 },
-        { bigram: 'fe', speed: 219 }
-      ]);
-      setWeakKeys([
-        { key: 'q', count: 9 },
-        { key: 'z', count: 7 },
-        { key: 'p', count: 6 },
-        { key: 'x', count: 5 },
-        { key: ';', count: 4 }
-      ]);
-      setHasData(true);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const supabase = createClient();
-      
-      // Fetch last 15 user tests with replays
-      const { data: results } = await supabase
-        .from('test_results')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .order('created_at', { ascending: false })
-        .limit(15);
-
-      if (!results || results.length === 0) {
-        setHasData(false);
-        setLoading(false);
-        return;
-      }
-
-      const testIds = results.map((r: { id: string }) => r.id);
-      const { data: replays } = await supabase
-        .from('replays')
-        .select('telemetry')
-        .in('test_result_id', testIds);
-
-      if (!replays || replays.length === 0) {
-        setHasData(false);
-        setLoading(false);
-        return;
-      }
-
-      // Compile metrics
-      const keyUsage: Record<string, number> = {};
-      const fingerHits: Record<string, number> = {};
-      const bigramSpeeds: Record<string, number[]> = {};
-      const errorsList: Record<string, number> = {};
-
-      replays.forEach((rep: any) => {
-        const telemetry = rep.telemetry as any[];
-        
-        for (let i = 1; i < telemetry.length; i++) {
-          const prev = telemetry[i - 1];
-          const curr = telemetry[i];
-
-          if (curr.y === 0) { // input event
-            const char = curr.k.toLowerCase();
-            
-            // Heatmap tracking
-            keyUsage[char] = (keyUsage[char] || 0) + 1;
-
-            // Finger load mapping
-            const finger = FINGER_MAP[char] || 'Other';
-            fingerHits[finger] = (fingerHits[finger] || 0) + 1;
-
-            // Bigram transitions speed
-            if (prev.y === 0) {
-              const bigram = (prev.k + curr.k).toLowerCase();
-              if (bigram.length === 2 && /^[a-z]{2}$/.test(bigram)) {
-                const delta = curr.t - prev.t;
-                if (delta > 0 && delta < 1500) {
-                  if (!bigramSpeeds[bigram]) bigramSpeeds[bigram] = [];
-                  bigramSpeeds[bigram].push(delta);
-                }
-              }
-            }
-          } else if (curr.y === 1) { // delete event
-            // Trace key that was deleted to label as error
-            const errorChar = prev.k.toLowerCase();
-            if (errorChar.length === 1) {
-              errorsList[errorChar] = (errorsList[errorChar] || 0) + 1;
-            }
-          }
+    let cancelled = false;
+    fetchCloudTelemetrySessions(userId)
+      .then((sessions) => {
+        if (!cancelled) {
+          setCloudState({ loadedUserId: userId, sessions });
+        }
+      })
+      .catch((err) => {
+        logger.error('Failed to compile Performance Lab telemetry', {
+          category: 'supabase',
+          error: err,
+        });
+        if (!cancelled) {
+          setCloudState({ loadedUserId: userId, sessions: [] });
         }
       });
 
-      // Resolve bigram averages
-      const averageBigrams = Object.entries(bigramSpeeds)
-        .map(([bigram, times]) => ({
-          bigram,
-          speed: Math.round(times.reduce((a, b) => a + b, 0) / times.length),
-        }))
-        .sort((a, b) => b.speed - a.speed) // Slowest transitions first
-        .slice(0, 5);
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
-      // Resolve weak keys
-      const sortedWeakKeys = Object.entries(errorsList)
-        .map(([key, count]) => ({ key, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 5);
-
-      // Left vs Right hand calculation
-      let leftHits = 0;
-      let rightHits = 0;
-      Object.entries(fingerHits).forEach(([finger, count]) => {
-        if (finger.startsWith('Left')) leftHits += count;
-        if (finger.startsWith('Right')) rightHits += count;
-      });
-      const totalHits = leftHits + rightHits || 1;
-
-      setHeatmap(keyUsage);
-      setFingerLoads(fingerHits);
-      setHandDistribution({
-        left: Math.round((leftHits / totalHits) * 100),
-        right: Math.round((rightHits / totalHits) * 100),
-      });
-      setSlowBigrams(averageBigrams);
-      setWeakKeys(sortedWeakKeys);
-      setHasData(true);
-
-    } catch (err) {
-      console.error('Failed to compile telemetry analytics:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [session]);
-
-  // Load telemetry data on mount/session changes
+  // Scoped Realtime subscription watching the authenticated user's test_results inserts
   useEffect(() => {
-    loadTelemetry();
-  }, [loadTelemetry]);
+    const userId = session?.user?.id;
+    if (!userId || !isSupabaseRealtimeEnabled()) return;
 
-  // Realtime subscription for Supabase replays table
-  useEffect(() => {
-    if (!session?.user) return;
-
-    let channel: any = null;
-    let supabaseInstance: any = null;
+    let channel: RealtimeChannel | null = null;
+    const supabase = createClient();
 
     try {
-      supabaseInstance = createClient();
-      channel = supabaseInstance
-        .channel(`lab-replays-${session.user.id}`)
+      channel = supabase
+        .channel(`lab-results-${userId}`)
         .on(
           'postgres_changes',
           {
             event: 'INSERT',
             schema: 'public',
-            table: 'replays',
+            table: 'test_results',
+            filter: `user_id=eq.${userId}`,
           },
           () => {
-            loadTelemetry();
+            void fetchCloudTelemetrySessions(userId).then((sessions) => {
+              setCloudState({ loadedUserId: userId, sessions });
+            });
           }
         )
         .subscribe();
     } catch (err) {
-      console.error("Failed to subscribe to lab replays:", err);
+      logger.error('Failed to subscribe to lab realtime updates', {
+        category: 'supabase',
+        error: err,
+      });
     }
 
     return () => {
-      if (supabaseInstance && channel) {
+      if (channel) {
         try {
-          supabaseInstance.removeChannel(channel);
-        } catch (err) {
-          console.error("Error removing realtime channel:", err);
+          supabase.removeChannel(channel);
+        } catch {
+          // Ignore unmount cleanup failures
         }
       }
     };
-  }, [session, loadTelemetry]);
+  }, [session?.user?.id]);
 
-  if (loading) {
-    return (
-      <div className="flex flex-col min-h-screen bg-background">
-        <Navbar />
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-3 border-accent border-t-transparent animate-spin" />
-        </div>
-      </div>
-    );
-  }
+  const guestSessions = useMemo<ReplaySessionInput[]>(
+    () =>
+      (hydrated ? guestHistory : [])
+        .filter((run) => Array.isArray(run.telemetry) && run.telemetry.length > 0)
+        .slice(0, 15)
+        .map((run) => ({
+          telemetry: run.telemetry ?? [],
+          mode: run.mode,
+          duration: run.duration,
+          seed: run.seed,
+        })),
+    [hydrated, guestHistory]
+  );
+
+  const activeSessions = session?.user ? cloudState.sessions : guestSessions;
+  const analysis = useMemo(() => analyzeReplaySessions(activeSessions), [activeSessions]);
+
+  const drillTargetsQuery = useMemo(() => {
+    return analysis.weakKeys
+      .map((item) => item.key.trim().toLowerCase())
+      .filter((k) => k.length === 1 && /[a-z0-9]/.test(k))
+      .slice(0, 5)
+      .join(',');
+  }, [analysis.weakKeys]);
+
+  const drillHref = drillTargetsQuery
+    ? `/typing?mode=drill&duration=30&targets=${encodeURIComponent(drillTargetsQuery)}`
+    : '/typing?mode=drill&duration=30';
+
+  const maxHeatmapHits = useMemo(() => {
+    const vals = Object.values(analysis.heatmap);
+    return vals.length > 0 ? Math.max(...vals) : 1;
+  }, [analysis.heatmap]);
+
+  const maxFingerHits = useMemo(() => {
+    const vals = analysis.fingerLoads.map((f) => f.hits);
+    return vals.length > 0 ? Math.max(1, ...vals) : 1;
+  }, [analysis.fingerLoads]);
+
+  const isLoading = Boolean(session?.user && cloudState.loadedUserId !== session.user.id);
+  const hasData = analysis.totalSessions > 0 && analysis.totalKeystrokes > 0;
 
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Navbar />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 md:px-6 py-10 flex flex-col gap-8">
-        {/* Header */}
-        <div className="flex flex-col gap-2 border-b-3 border-border pb-4 mb-2">
-          <div className="flex items-center gap-2.5 text-accent">
-            <Sparkles className="w-6 h-6 fill-current" />
-            <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-text-primary">Performance Lab</h1>
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-border pb-6">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2.5 text-accent-ink">
+              <Sparkles className="w-6 h-6" />
+              <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-text-primary font-display">
+                Performance Lab
+              </h1>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+              Seed-aligned keystroke error diagnostics, finger workload balance, and slow bigrams
+            </p>
           </div>
-          <p className="text-xs font-bold uppercase tracking-wider text-text-secondary">Signature keyheatmap and finger loading analysis vectors</p>
+
+          {hasData && (
+            <Link
+              href={drillHref}
+              className="px-4 py-2.5 min-h-[44px] bg-accent text-accent-foreground rounded-xl text-xs font-black uppercase tracking-wider inline-flex items-center justify-center gap-2 hover:brightness-105 transition-all shadow-sm shrink-0"
+            >
+              <Target className="w-4 h-4" />
+              <span>Practice Weak Keys</span>
+            </Link>
+          )}
         </div>
 
-        {/* LOCKED GATING VIEW FOR FREE TIER */}
-        {!session?.user ? (
-          <div className="relative p-8 border-3 border-border bg-surface overflow-hidden min-h-[400px] flex items-center justify-center">
-            {/* Blurred Mockup Graphics in background */}
-            <div className="absolute inset-0 opacity-20 filter blur-sm select-none pointer-events-none flex flex-col justify-around p-8">
-              <div className="h-10 bg-border w-1/3" />
-              <div className="h-44 bg-border w-full" />
-              <div className="h-20 bg-border w-1/2" />
+        {!session?.user && (
+          <div className="p-4 bg-surface border border-border rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-2.5 text-xs text-text-secondary font-medium">
+              <Activity className="w-4 h-4 text-accent-ink shrink-0" />
+              <span>
+                {hasData
+                  ? `Analyzing ${analysis.totalSessions} recent local guest session${analysis.totalSessions === 1 ? '' : 's'}. Sign in to sync replay diagnostics across devices.`
+                  : 'Complete a typing test as a guest or sign in to analyze synced keystroke replays.'}
+              </span>
             </div>
+            <Link
+              href="/login"
+              className="text-xs font-bold uppercase tracking-wider text-accent-ink hover:underline inline-flex items-center gap-1.5 shrink-0"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>Sign In</span>
+            </Link>
+          </div>
+        )}
 
-            {/* Lock Modal Card overlay */}
-            <div className="relative z-10 p-8 bg-surface/90 border-3 border-border shadow-2xl max-w-md text-center flex flex-col items-center gap-6">
-              <div className="w-12 h-12 bg-accent/10 border-2 border-border flex items-center justify-center text-accent">
-                <Lock className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col gap-2">
-                <h2 className="text-lg font-bold text-text-primary">Sign In Required</h2>
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  Sign in to unlock your custom keystroke heatmaps, finger balance ratios, transition speeds, and weak key lists.
-                </p>
-              </div>
-
-              <Button
-                href="/login"
-                variant="primary"
-              >
-                Sign In to Unlock
-              </Button>
+        {isLoading ? (
+          <div className="min-h-[320px] flex items-center justify-center border border-border rounded-2xl bg-surface">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+              <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">
+                Reconstructing keystroke telemetry...
+              </span>
             </div>
           </div>
         ) : !hasData ? (
-          /* EMPTY STATE CTA FOR SIGNED IN USERS WITH NO REPLAYS */
-          <div className="p-8 border-3 border-border bg-surface-accent flex flex-col items-center justify-center text-center gap-6 min-h-[350px]">
-            <div className="w-12 h-12 bg-bauhaus-red/10 border-2 border-border flex items-center justify-center text-bauhaus-red">
-              <ShieldAlert className="w-6 h-6" />
+          <div className="p-8 border border-border rounded-2xl bg-surface flex flex-col items-center justify-center text-center gap-6 min-h-[340px] shadow-sm">
+            <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/25 flex items-center justify-center text-accent-ink">
+              <Keyboard className="w-6 h-6" />
             </div>
             <div className="flex flex-col gap-2 max-w-md">
-              <h2 className="text-lg font-black uppercase tracking-wider text-text-primary">No Replay Data Detected</h2>
-              <p className="text-xs font-bold uppercase tracking-wider text-text-secondary leading-relaxed">
-                You haven't completed any typing tests in this account yet, or your tests don't have replay logs. Head over to the practice arena to register your first keystroke profile!
+              <h2 className="text-lg font-black uppercase tracking-wider text-text-primary font-display">
+                No Replay Telemetry Yet
+              </h2>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                Complete at least one typing test to unlock keystroke heatmaps, finger workload distribution, slow bigram timing, and weak-key drills.
               </p>
             </div>
-            <Button
-              href="/typing"
-              variant="primary"
-            >
-              Start Typing Test
-            </Button>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button href="/typing" variant="primary">
+                Start Typing Test
+              </Button>
+              <Button href="/learn" variant="secondary">
+                Browse Curriculum
+              </Button>
+            </div>
           </div>
         ) : (
-          /* FULLY FUNCTIONAL LAB VISUALS */
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {/* Left: Keyboard Heatmap Grid */}
-            <div className="md:col-span-2 p-6 bg-surface border-3 border-border flex flex-col shadow-xs gap-6">
-              <div className="flex items-center gap-2 border-b-2 border-border pb-4">
-                <Keyboard className="w-4 h-4 text-accent" />
-                <span className="text-xs font-black uppercase tracking-widest text-text-primary font-mono">Keystroke usage Map</span>
+          <div className="flex flex-col gap-6">
+            {/* Top Diagnostic Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Keyboard Heatmap */}
+              <div className="lg:col-span-2 p-6 bg-surface border border-border rounded-2xl flex flex-col shadow-xs gap-6">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
+                  <div className="flex items-center gap-2">
+                    <Keyboard className="w-4 h-4 text-accent-ink" />
+                    <span className="text-xs font-black uppercase tracking-widest text-text-primary">
+                      Keystroke Frequency Map
+                    </span>
+                  </div>
+                  <span className="text-xs font-mono text-text-secondary">
+                    {analysis.totalSessions} session{analysis.totalSessions === 1 ? '' : 's'} ·{' '}
+                    {analysis.totalKeystrokes.toLocaleString('en-US')} keys
+                  </span>
+                </div>
+
+                <div className="flex flex-col gap-2 max-w-xl mx-auto w-full py-2">
+                  {KEYBOARD_ROWS.map((row, rowIdx) => (
+                    <div key={rowIdx} className="flex justify-center gap-1 sm:gap-1.5">
+                      {row.map((key) => {
+                        const count = analysis.heatmap[key] || 0;
+                        const ratio = count / maxHeatmapHits;
+                        let heatClass = 'bg-background text-text-secondary border-border';
+                        if (ratio >= 0.65 && count > 0) {
+                          heatClass = 'bg-accent text-accent-foreground border-accent';
+                        } else if (ratio >= 0.35 && count > 0) {
+                          heatClass = 'bg-accent/40 text-text-primary border-accent/60';
+                        } else if (count > 0) {
+                          heatClass = 'bg-accent/15 text-text-primary border-accent/30';
+                        }
+
+                        return (
+                          <div
+                            key={key}
+                            className={`flex-1 max-w-[44px] h-10 sm:h-11 rounded-lg border flex flex-col items-center justify-center font-mono font-bold select-none text-[11px] sm:text-xs ${heatClass}`}
+                          >
+                            <span>{key.toUpperCase()}</span>
+                            {count > 0 && (
+                              <span className="text-[9px] font-normal opacity-80 leading-none mt-0.5 tabular-nums">
+                                {count}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                  {/* Spacebar row */}
+                  <div className="flex justify-center pt-1">
+                    <div className="w-48 sm:w-64 h-9 rounded-lg border border-border bg-surface-accent/60 flex items-center justify-center font-mono text-xs font-semibold text-text-secondary">
+                      SPACE ({analysis.heatmap[' '] || 0})
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-2.5 max-w-xl mx-auto w-full">
-                {KEYBOARD_ROWS.map((row, rowIdx) => (
-                  <div key={rowIdx} className="flex justify-center gap-1.5">
-                    {row.map((key) => {
-                      const count = heatmap[key] || 0;
-                      // Color scale matching counts
-                      let heatClass = 'bg-background text-text-secondary border-border/30';
-                      if (count > 80) heatClass = 'bg-accent text-black border-accent';
-                      else if (count > 40) heatClass = 'bg-accent/60 text-black border-accent/70';
-                      else if (count > 15) heatClass = 'bg-accent/30 text-text-primary border-accent/40';
-                      else if (count > 0) heatClass = 'bg-accent/10 text-text-primary border-accent/20';
-
-                      return (
-                        <div
-                          key={key}
-                          className={`w-8 h-8 md:w-11 md:h-11 border border-border/40 flex flex-col items-center justify-center font-mono font-bold select-none text-[10px] md:text-xs ${heatClass}`}
-                        >
-                          <span>{key.toUpperCase()}</span>
-                          {count > 0 && <span className="text-[9px] font-normal opacity-85">{count}</span>}
-                        </div>
-                      );
-                    })}
+              {/* Hand Balance & Slow Transitions */}
+              <div className="flex flex-col gap-6">
+                <div className="p-6 bg-surface border border-border rounded-2xl flex flex-col shadow-xs gap-4">
+                  <div className="flex items-center gap-2 border-b border-border pb-4">
+                    <BarChart2 className="w-4 h-4 text-accent-ink" />
+                    <span className="text-xs font-black uppercase tracking-widest text-text-primary">
+                      Hands Load Balance
+                    </span>
                   </div>
-                ))}
+
+                  <div className="flex items-center justify-around text-center py-1">
+                    <div className="flex flex-col">
+                      <span className="text-2xl font-bold font-mono text-text-primary tabular-nums">
+                        {analysis.handDistribution.left}%
+                      </span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-0.5">
+                        Left Hand
+                      </span>
+                    </div>
+                    <div className="w-px h-8 bg-border" />
+                    <div className="flex flex-col">
+                      <span className="text-2xl font-bold font-mono text-text-primary tabular-nums">
+                        {analysis.handDistribution.right}%
+                      </span>
+                      <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-0.5">
+                        Right Hand
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-2.5 bg-background border border-border rounded-full overflow-hidden flex">
+                    <div
+                      className="bg-accent h-full transition-all"
+                      style={{ width: `${analysis.handDistribution.left}%` }}
+                    />
+                    <div
+                      className="bg-text-secondary/35 h-full transition-all"
+                      style={{ width: `${analysis.handDistribution.right}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Slow Bigram Transitions */}
+                <div className="p-6 bg-surface border border-border rounded-2xl flex flex-col shadow-xs gap-4 flex-1">
+                  <div className="flex items-center gap-2 border-b border-border pb-4">
+                    <Zap className="w-4 h-4 text-accent-ink" />
+                    <span className="text-xs font-black uppercase tracking-widest text-text-primary">
+                      Slowest Key Transitions
+                    </span>
+                  </div>
+
+                  {analysis.slowBigrams.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-text-secondary font-medium">
+                      Type longer sequences to detect repeated letter transitions.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2.5">
+                      {analysis.slowBigrams.map((item) => (
+                        <div
+                          key={item.bigram}
+                          className="flex justify-between items-center p-2.5 bg-background border border-border rounded-lg font-mono text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-text-primary uppercase px-2 py-0.5 bg-surface-accent rounded">
+                              {item.bigram}
+                            </span>
+                            <span className="text-[11px] text-text-secondary">{item.count}x</span>
+                          </div>
+                          <span className="text-error font-bold tabular-nums">{item.avgMs} ms avg</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Right: Hand split & Bigrams lists */}
-            <div className="flex flex-col gap-6">
-              {/* Hand usage card */}
-              <div className="p-6 bg-surface border-3 border-border flex flex-col shadow-xs gap-4">
-                <div className="flex items-center gap-2 border-b-2 border-border pb-4">
-                  <BarChart2 className="w-4 h-4 text-accent" />
-                  <span className="text-xs font-black uppercase tracking-widest text-text-primary">Hands Load Balance</span>
-                </div>
-
-                <div className="flex items-center justify-around text-center py-2">
-                  <div className="flex flex-col">
-                    <span className="text-xl font-bold font-mono text-text-primary">{handDistribution.left}%</span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-0.5">Left Hand</span>
+            {/* Bottom Row: Finger Workload Bars + Weak Keys */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Finger Workload Distribution */}
+              <div className="p-6 bg-surface border border-border rounded-2xl flex flex-col shadow-xs gap-4">
+                <div className="flex items-center justify-between border-b border-border pb-4">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-accent-ink" />
+                    <span className="text-xs font-black uppercase tracking-widest text-text-primary">
+                      Finger Workload Distribution
+                    </span>
                   </div>
-                  <div className="w-[1px] h-8 bg-border" />
-                  <div className="flex flex-col">
-                    <span className="text-xl font-bold font-mono text-text-primary">{handDistribution.right}%</span>
-                    <span className="text-xs font-bold uppercase tracking-wider text-text-secondary mt-0.5">Right Hand</span>
-                  </div>
+                  <span className="text-xs text-text-secondary font-mono">Share (%)</span>
                 </div>
 
-                {/* Progress bar */}
-                <div className="w-full h-2 bg-background border-2 border-border overflow-hidden flex">
-                  <div className="bg-accent h-full" style={{ width: `${handDistribution.left}%` }} />
-                  <div className="bg-accent/80 h-full" style={{ width: `${handDistribution.right}%` }} />
-                </div>
-              </div>
-
-              {/* Slow transitions list */}
-              <div className="p-6 bg-surface border-3 border-border flex flex-col shadow-xs gap-4">
-                <div className="flex items-center gap-2 border-b-2 border-border pb-4">
-                  <Zap className="w-4 h-4 text-accent" />
-                  <span className="text-xs font-black uppercase tracking-widest text-text-primary">Slowest Key Transitions</span>
-                </div>
-
-                {slowBigrams.length === 0 ? (
-                  <div className="text-center py-6 text-xs text-text-secondary font-bold uppercase tracking-wider">
-                    No transition metrics resolved yet.
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    {slowBigrams.map((item, idx) => (
-                      <div key={idx} className="flex justify-between items-center p-2 bg-background/50 border-3 border-border/50 font-mono text-xs">
-                        <span className="font-bold text-text-primary">"{item.bigram.toUpperCase()}"</span>
-                        <span className="text-error">{item.speed} ms delay</span>
+                <div className="flex flex-col gap-3">
+                  {analysis.fingerLoads.map((item) => {
+                    const widthPct = Math.round((item.hits / maxFingerHits) * 100);
+                    return (
+                      <div key={item.finger} className="flex flex-col gap-1">
+                        <div className="flex justify-between text-xs font-mono">
+                          <span className="font-semibold text-text-primary">{item.finger}</span>
+                          <span className="text-text-secondary tabular-nums">
+                            {item.hits} ({item.percentage}%)
+                          </span>
+                        </div>
+                        <div className="w-full h-2.5 bg-background border border-border rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-accent rounded-full transition-all duration-300"
+                            style={{ width: `${item.hits > 0 ? Math.max(4, widthPct) : 0}%` }}
+                          />
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Weak Key Drills */}
-              <div className="p-6 bg-surface border-3 border-border flex flex-col shadow-xs gap-4">
-                <div className="flex items-center gap-2 border-b-2 border-border pb-4">
-                  <ShieldAlert className="w-4 h-4 text-accent" />
-                  <span className="text-xs font-black uppercase tracking-widest text-text-primary">Weak Key Drills</span>
-                </div>
-
-                {weakKeys.length === 0 ? (
-                  <div className="text-center py-6 text-xs text-text-secondary font-bold uppercase tracking-wider">
-                    No error logs registered yet.
+              {/* Weak Keys & One-Click Drill */}
+              <div className="p-6 bg-surface border border-border rounded-2xl flex flex-col justify-between shadow-xs gap-4">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between border-b border-border pb-4">
+                    <div className="flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-accent-ink" />
+                      <span className="text-xs font-black uppercase tracking-widest text-text-primary">
+                        Top Error Keys
+                      </span>
+                    </div>
+                    <span className="text-xs text-text-secondary font-mono">Error Rate</span>
                   </div>
-                ) : (
-                  <div className="flex flex-col gap-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary">
-                      Top error keys (Drill these characters in Custom Mode):
-                    </p>
-                    {weakKeys.map((item, idx) => {
-                      const maxCount = Math.max(...weakKeys.map(k => k.count)) || 1;
-                      const percentage = Math.round((item.count / maxCount) * 100);
-                      return (
-                        <div key={idx} className="flex flex-col gap-1.5">
-                          <div className="flex justify-between items-center text-xs font-bold uppercase tracking-wider font-mono">
-                            <span className="text-text-primary font-black">"{item.key.toUpperCase()}"</span>
-                            <span className="text-bauhaus-red">{item.count} errors</span>
+
+                  {analysis.weakKeys.length === 0 ? (
+                    <div className="text-center py-8 text-sm text-text-secondary font-medium">
+                      Zero missed characters recorded across these sessions.
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-3.5">
+                      {analysis.weakKeys.map((item) => (
+                        <div key={item.key} className="flex flex-col gap-1.5">
+                          <div className="flex justify-between items-center text-xs font-mono">
+                            <span className="font-bold text-text-primary">
+                              {item.key === ' ' ? 'SPACE' : `"${item.key.toUpperCase()}"`}
+                            </span>
+                            <span className="text-error font-bold tabular-nums">
+                              {item.errors} / {item.attempts} ({item.errorRate}%)
+                            </span>
                           </div>
-                          <div className="w-full h-2 bg-background border border-border overflow-hidden">
-                            <div className="bg-bauhaus-red h-full" style={{ width: `${percentage}%` }} />
+                          <div className="w-full h-2.5 bg-background border border-border rounded-full overflow-hidden">
+                            <div
+                              className="bg-error h-full rounded-full"
+                              style={{ width: `${Math.min(100, Math.max(8, Math.round(item.errorRate)))}%` }}
+                            />
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {analysis.weakKeys.length > 0 && (
+                  <div className="pt-4 border-t border-border flex items-center justify-between gap-4">
+                    <span className="text-xs text-text-secondary">
+                      Generate a custom 30s drill weighted toward your error keys.
+                    </span>
+                    <Link
+                      href={drillHref}
+                      className="px-4 py-2.5 min-h-[42px] bg-accent text-accent-foreground rounded-xl text-xs font-black uppercase tracking-wider inline-flex items-center gap-1.5 hover:brightness-105 transition-all shrink-0"
+                    >
+                      <Target className="w-3.5 h-3.5" />
+                      <span>Drill Now</span>
+                    </Link>
                   </div>
                 )}
               </div>
