@@ -60,7 +60,14 @@ jobs:
         run: npm run build
 
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: |
+          npx playwright install chromium
+          if node -e "const { chromium } = require('@playwright/test'); chromium.launch().then((b) => b.close()).catch((err) => { console.error(err.message); process.exit(1); });"; then
+            echo "Playwright Chromium launched with preinstalled OS libraries; skipping apt install-deps."
+          else
+            echo "Chromium launch failed; installing OS dependencies via playwright install-deps..."
+            npx playwright install-deps chromium
+          fi
 
       - name: Run Playwright end-to-end tests
         run: npm run test:e2e

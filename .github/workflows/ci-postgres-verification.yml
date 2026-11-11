@@ -30,29 +30,9 @@ jobs:
   verify-postgres-16:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: typrox_ci_pg_password
-          POSTGRES_DB: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres -d postgres"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=10
-          --health-start-period=5s
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: Install postgresql-client
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client
 
       - name: Verify line endings and migration directory hygiene
         run: |
@@ -80,24 +60,18 @@ jobs:
       - name: Verify sequential migrations, FULL_SCHEMA upgrade, idempotency, security & concurrency on PostgreSQL 16
         id: pg_verify
         env:
-          PGHOST: 127.0.0.1
-          PGPORT: "5432"
-          PGUSER: postgres
-          PGPASSWORD: typrox_ci_pg_password
-        run: sh tests/db/run-pg-verification.sh
-
-      - name: Cleanup leftover ephemeral verification databases
-        if: always()
-        env:
-          PGHOST: 127.0.0.1
-          PGPORT: "5432"
-          PGUSER: postgres
           PGPASSWORD: typrox_ci_pg_password
         run: |
-          if command -v psql >/dev/null 2>&1 && pg_isready -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres >/dev/null 2>&1; then
-            psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -q -t -A -c \
-              "SELECT 'DROP DATABASE IF EXISTS ' || quote_ident(datname) || ' WITH (FORCE);' FROM pg_database WHERE datname LIKE 'typrox_verify_%';" \
-              | psql -h "$PGHOST" -p "$PGPORT" -U "$PGUSER" -d postgres -v ON_ERROR_STOP=1 >/dev/null 2>&1 || true
+          docker compose -f docker-compose.db.yml run --rm verify
+          docker compose -f docker-compose.db.yml down --volumes --remove-orphans
+
+      - name: Cleanup leftover ephemeral verification containers
+        if: always()
+        env:
+          PGPASSWORD: typrox_ci_pg_password
+        run: |
+          if command -v docker >/dev/null 2>&1; then
+            docker compose -f docker-compose.db.yml down --volumes --remove-orphans >/dev/null 2>&1 || true
           fi
 
       - name: Write verification summary
