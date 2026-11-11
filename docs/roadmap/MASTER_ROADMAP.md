@@ -1,6 +1,6 @@
 # TyProX Master Remediation & Product Development Roadmap
 
-**Document Status:** Phases 1-4 Application Engineering & Phase 5 Verification Complete; Production SQL Migrations Prepared & Gated for Owner Approval (See [IMPLEMENTATION_STATUS.md](file:///c:/Users/rudra/TyProX/docs/roadmap/IMPLEMENTATION_STATUS.md))  
+**Document Status:** Phases 1-4 Application Engineering & Phase 5 Verification Complete; Production SQL Migrations Prepared & Gated for Owner Approval (See [IMPLEMENTATION_STATUS.md](../../docs/roadmap/IMPLEMENTATION_STATUS.md))  
 **Repository:** `c:\Users\rudra\TyProX` (`https://github.com/Rudra4451/practice`)  
 **Stack Baseline:** Next.js `16.2.9` (App Router / Turbopack), React `19.2.4`, TypeScript `5` (`strict`), Tailwind CSS `v4`, Zustand `5.0.14`, Zod `4.4.3`, Supabase SSR & JS (`@supabase/ssr`, `@supabase/supabase-js`).
 
@@ -33,11 +33,11 @@ flowchart TD
 
 | Deliverable Document | Scope & Contents |
 |---|---|
-| [SECURITY_REMEDIATION_PLAN.md](file:///c:/Users/rudra/TyProX/docs/roadmap/SECURITY_REMEDIATION_PLAN.md) | Phase 1 specs (`SEC-1.1`..`SEC-1.7`), Local vs Snapshot vs Production DB model, `SUPABASE_SERVICE_ROLE_KEY` admin architecture, full hardened RLS matrix, read-only SQL pre-flight checks |
-| [TECHNICAL_IMPLEMENTATION_PLAN.md](file:///c:/Users/rudra/TyProX/docs/roadmap/TECHNICAL_IMPLEMENTATION_PLAN.md) | Phase 2 math proofs & worked test cases (`ENG-2.1`..`2.5`) + Phase 3 ESLint/RSC/performance/repo hygiene specs (`ENG-3.1`..`3.5`) |
-| [DESIGN_SYSTEM_PLAN.md](file:///c:/Users/rudra/TyProX/docs/roadmap/DESIGN_SYSTEM_PLAN.md) | Phase 4 `#FF5C00` + Charcoal/Light editorial token system (`DES-4.1`..`4.4`), WCAG AA fixes, active typing zero-jump spec, Bauhaus/indigo cleanup, accessible ARIA dialogs |
-| [PRODUCT_FEATURE_SPECIFICATIONS.md](file:///c:/Users/rudra/TyProX/docs/roadmap/PRODUCT_FEATURE_SPECIFICATIONS.md) | Phase 5 Duolingo learning paths (`SPEC-5.1`..`5.4`), Chess.com ratings/duels (`5.5`..`5.7`), GitHub heatmap/replays/compare (`5.8`..`5.10`) |
-| [TESTING_AND_ACCEPTANCE_CRITERIA.md](file:///c:/Users/rudra/TyProX/docs/roadmap/TESTING_AND_ACCEPTANCE_CRITERIA.md) | Next.js 16 aligned Vitest & Playwright architecture, SQL RLS assertion transaction, phase exit gates |
+| [SECURITY_REMEDIATION_PLAN.md](../../docs/roadmap/SECURITY_REMEDIATION_PLAN.md) | Phase 1 specs (`SEC-1.1`..`SEC-1.7`), Local vs Snapshot vs Production DB model, `SUPABASE_SERVICE_ROLE_KEY` admin architecture, full hardened RLS matrix, read-only SQL pre-flight checks |
+| [TECHNICAL_IMPLEMENTATION_PLAN.md](../../docs/roadmap/TECHNICAL_IMPLEMENTATION_PLAN.md) | Phase 2 math proofs & worked test cases (`ENG-2.1`..`2.5`) + Phase 3 ESLint/RSC/performance/repo hygiene specs (`ENG-3.1`..`3.5`) |
+| [DESIGN_SYSTEM_PLAN.md](../../docs/roadmap/DESIGN_SYSTEM_PLAN.md) | Phase 4 `#FF5C00` + Charcoal/Light editorial token system (`DES-4.1`..`4.4`), WCAG AA fixes, active typing zero-jump spec, Bauhaus/indigo cleanup, accessible ARIA dialogs |
+| [PRODUCT_FEATURE_SPECIFICATIONS.md](../../docs/roadmap/PRODUCT_FEATURE_SPECIFICATIONS.md) | Phase 5 Duolingo learning paths (`SPEC-5.1`..`5.4`), Chess.com ratings/duels (`5.5`..`5.7`), GitHub heatmap/replays/compare (`5.8`..`5.10`) |
+| [TESTING_AND_ACCEPTANCE_CRITERIA.md](../../docs/roadmap/TESTING_AND_ACCEPTANCE_CRITERIA.md) | Next.js 16 aligned Vitest & Playwright architecture, SQL RLS assertion transaction, phase exit gates |
 
 ---
 

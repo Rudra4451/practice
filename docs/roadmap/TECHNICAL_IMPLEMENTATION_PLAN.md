@@ -3,7 +3,7 @@
 **Document Status:** Planning Only (No code edits, dependency installations, or migrations executed)  
 **Scope:** Phase 2 (Typing Engine Reliability) and Phase 3 (Engineering Quality, Performance, Architecture & Repo Hygiene)  
 **Prerequisite Gate:** Phase 1 score verification, demo bypass removal, and security infrastructure must precede competitive exposure; Phase 2 engine reliability must precede Phase 5 analytics and curriculum expansion.  
-**Primary Audit Sources:** [PROJECT_AUDIT.md](file:///c:/Users/rudra/TyProX/docs/audit/PROJECT_AUDIT.md), [FEATURE_INVENTORY.md](file:///c:/Users/rudra/TyProX/docs/audit/FEATURE_INVENTORY.md), [TECHNICAL_DEBT.md](file:///c:/Users/rudra/TyProX/docs/audit/TECHNICAL_DEBT.md)
+**Primary Audit Sources:** [PROJECT_AUDIT.md](../../docs/audit/PROJECT_AUDIT.md), [FEATURE_INVENTORY.md](../../docs/audit/FEATURE_INVENTORY.md), [TECHNICAL_DEBT.md](../../docs/audit/TECHNICAL_DEBT.md)
 
 ---
 
@@ -12,13 +12,13 @@
 ### ENG-2.1: Unified Mathematical Definitions & Isomorphic Engine Module
 - **Audit Reference:** `PA-01`, `PA-02`, `PA-04`, `SEC-01`
 - **Problem:**
-  1. [workers/analytics.worker.ts](file:///c:/Users/rudra/TyProX/workers/analytics.worker.ts#L100-L108) computes `totalElapsedMs = lastKeystrokeTime - startTime` and `elapsedMins = Math.max(0.001, totalElapsedMs / 60000)`. Typing 1 character at `t = 0` and idling until a 60s countdown finishes awards `200 WPM` (`0.2 / 0.001`), while submitting `duration: 60` from Zustand (`ResultScreen`).
+  1. [workers/analytics.worker.ts](../../workers/analytics.worker.ts#L100-L108) computes `totalElapsedMs = lastKeystrokeTime - startTime` and `elapsedMins = Math.max(0.001, totalElapsedMs / 60000)`. Typing 1 character at `t = 0` and idling until a 60s countdown finishes awards `200 WPM` (`0.2 / 0.001`), while submitting `duration: 60` from Zustand (`ResultScreen`).
   2. Backspacing errors calls `correctMap.delete(event.index)` (`line 59`), wiping corrected mistakes from both `rawInputs` and accuracy calculations. Typists who backspace 40 errors finish with misleading `100%` accuracy and artificially low `rawWpm`.
   3. Consistency uses unclipped inter-keystroke intervals of correct keys (`consistency = round(100 * (1 - stdDev / mean))`); a single 2s pause drives consistency straight to `0%`.
   4. `getRunningCounts()` loops over `correctMap` (`O(N)` per keystroke), and `FINALIZE` loops `s = 1..totalElapsedSecs` replaying all keystrokes from index `0` (`O(S * N)`).
 - **Root Cause:** Engine math lives exclusively inside a worker message switch with mutable map scans, absent shared pure functions, missing cumulative keystroke counters, and naive timestamp subtraction.
 - **Proposed Solution & Mathematical Specifications:**
-  Create pure, dependency-free TypeScript module [lib/typing/metrics.ts](file:///c:/Users/rudra/TyProX/lib/typing/metrics.ts) consumed equally by `workers/analytics.worker.ts`, server `lib/typing/verifier.ts`, and Vitest:
+  Create pure, dependency-free TypeScript module [lib/typing/metrics.ts](../../lib/typing/metrics.ts) consumed equally by `workers/analytics.worker.ts`, server `lib/typing/verifier.ts`, and Vitest:
 
   1. **Elapsed Time ($T_{\text{ms}}$ and $T_{\text{min}}$):**
      Let $t_0$ be timestamp of the first input event, $t_{\text{end}}$ be the completion timestamp, $\Delta_{\text{limit}} = \text{durationLimit} \times 1000$, and $r_{\text{reason}} \in \{\text{'timer'}, \text{'text\_complete'}\}$:
@@ -82,7 +82,7 @@
   1. Store `endAtMs` (`performance.now() + duration * 1000`) when transitioning `idle -> running`. Poll every `100ms` via `setInterval` and update store `timeLeft = Math.max(0, Math.ceil((endAtMs - performance.now()) / 1000))` only when integer second value changes. When `performance.now() >= endAtMs`, clear interval and send `{ type: 'FINALIZE', payload: { reason: 'timer', endTime: endAtMs } }`.
   2. **Pause Policy Decision:** Remove `pauseTest` and `resumeTest` from `useTypingStore` cleanly (zero UI callers exist, and pausing mid-test invalidates continuous WPM fairness on competitive leaderboards—users press `Esc` or Restart instead; re-visit only for future unranked lessons if explicitly needed).
   3. Handle `type === 'ERROR'` in `handleWorkerMessage`: cleanly reset test to `'idle'` (or surface non-blocking notice via `useToastStore`) rather than deadlocking the UI.
-  4. Validate URL query params (`?mode`, `?duration`, `?seed`) via Zod in [app/typing/page.tsx](file:///c:/Users/rudra/TyProX/app/typing/page.tsx#L15-L38) before touching `useTypingStore`, eliminate duplicate `startTest()` double-run on mount when URL params are passed, and clear `challenge` seed when leaving `/challenge/[id]`.
+  4. Validate URL query params (`?mode`, `?duration`, `?seed`) via Zod in [app/typing/page.tsx](../../app/typing/page.tsx#L15-L38) before touching `useTypingStore`, eliminate duplicate `startTest()` double-run on mount when URL params are passed, and clear `challenge` seed when leaving `/challenge/[id]`.
 - **Files/Components Affected:** `stores/typing-store.ts`, `app/typing/page.tsx`, `app/challenge/[id]/page.tsx`, `components/typing/typing-container.tsx`.
 - **Database Changes:** None.
 - **Security Implications:** Ensures wall-clock integrity on client matches timed boundaries expected by server anti-cheat.
@@ -103,8 +103,8 @@
   4. Seed generator `Math.random().toString(36).substring(7)` produces weak ~5–6 char entropy (can even return empty string `""` occasionally on round floats!).
 - **Root Cause:** Unscaled single-quote lookup, accidental `'  '` delimiter typo in `text-generator.ts:109`, conservative word multiplier, and `Math.random` `.substring(7)`.
 - **Proposed Solution:**
-  1. Move `cyrb128`, `mulberry32`, `generateText`, and `createSeed()` into shared [lib/typing/text-generator.ts](file:///c:/Users/rudra/TyProX/lib/typing/text-generator.ts) (preserving [utils/text-generator.ts](file:///c:/Users/rudra/TyProX/utils/text-generator.ts) as thin re-export if external refs remain).
-  2. **`quotes` mode:** Concatenate shuffled non-repeating quotes joined by single `' '` until total character length reaches `Math.max(120, Math.ceil(durationLimit * 18))` (~216 WPM ceiling), **or** truncate cleanly on full quote boundary after target length. Expand [constants/dictionaries.ts](file:///c:/Users/rudra/TyProX/constants/dictionaries.ts) `QUOTES` safely with additional clean public-domain literary/typing passages if needed so 120s quote runs never repeat the same quote immediately.
+  1. Move `cyrb128`, `mulberry32`, `generateText`, and `createSeed()` into shared [lib/typing/text-generator.ts](../../lib/typing/text-generator.ts) (preserving `utils/text-generator.ts` as thin re-export if external refs remain).
+  2. **`quotes` mode:** Concatenate shuffled non-repeating quotes joined by single `' '` until total character length reaches `Math.max(120, Math.ceil(durationLimit * 18))` (~216 WPM ceiling), **or** truncate cleanly on full quote boundary after target length. Expand [constants/dictionaries.ts](../../constants/dictionaries.ts) `QUOTES` safely with additional clean public-domain literary/typing passages if needed so 120s quote runs never repeat the same quote immediately.
   3. **`code` mode:** Fix `items.join('  ')` -> `items.join(' ')` and scale `snippetsCount` so total length exceeds `durationLimit * 15` chars. Ensure every code snippet contains single ASCII spaces and no embedded newlines `\n`.
   4. **`words` / `numbers` / `punctuation`:** Bump `wordCount = Math.max(65, Math.ceil(durationLimit * 4.8))` (~288 WPM safety capacity) and normalize multiple whitespace guards.
   5. **Cryptographic Seed Generation:** Replace `Math.random().toString(36).substring(7)` with `crypto.randomUUID().replace(/-/g, '').slice(0, 12)` (`createSeed()`), guaranteeing non-empty 12-hex-char deterministic seeds (`48` bits) usable server and client side.
@@ -127,7 +127,7 @@
   3. Global `window.addEventListener('keydown', handleGlobalKey)` (`line 116`) steals focus on `Space` or any printable key even when focus sits intentionally on a `<button>`, `<a href>`, `<select>`, or navigation link! Pressing `Enter` inserts `'\n'` instead of cleanly ignoring or submitting.
 - **Root Cause:** Legacy desktop-only `<textarea value="">` key-slicing trick lacking `InputEvent.inputType`, CompositionEvent guards, and interactive element focus exclusions.
 - **Proposed Solution:**
-  1. Replace brittle `value=""` + `.slice(-1)` with **sentinel-character diffing + `beforeinput` / `composition` lifecycle** inside [components/typing/typing-container.tsx](file:///c:/Users/rudra/TyProX/components/typing/typing-container.tsx):
+  1. Replace brittle `value=""` + `.slice(-1)` with **sentinel-character diffing + `beforeinput` / `composition` lifecycle** inside [components/typing/typing-container.tsx](../../components/typing/typing-container.tsx):
      - Keep an invisible sentinel value (e.g., `'\u200B'` or track `lastValueRef`) inside an uncontrolled/ref-managed `<textarea>` **or** handle `onBeforeInput` (`e.nativeEvent.inputType === 'deleteContentBackward'`) + fallback `onChange` diffing against sentinel `'\u200B'`:
        - If sentinel is deleted (`value === ''`) or `inputType === 'deleteContentBackward'`: fire `handleBackspace()` (even when Android emits `key === 'Unidentified'`!) and restore sentinel cleanly.
        - On `compositionstart`: mark `isComposingRef.current = true`; commit completed string character-by-character on `compositionend` (`for (const ch of data) handleInput(ch)`) before resetting textarea value to sentinel!
@@ -182,7 +182,7 @@
 - **Problem:** `npm run lint` fails with **111 problems (55 errors, 56 warnings)** including 26 `@typescript-eslint/no-explicit-any` errors across API routes/stores/components, 14 `react-hooks/set-state-in-effect` errors, React 19 Compiler errors (`react-hooks/immutability` in `ReplayPlayer`, `react-hooks/purity` in `CatCompanion`), 6 `react/no-unescaped-entities` in `PerformanceLabPage`, and 56 dead imports/warnings. Zero automated tests exist.
 - **Root Cause:** Rapid prototyping bypassing hook rules, using `any` instead of generated Supabase schema types, and no CI lint/test check.
 - **Proposed Solution:**
-  1. **Generate Strict Supabase Types:** Create [types/database.ts](file:///c:/Users/rudra/TyProX/types/database.ts) (`supabase gen types typescript` schema mirror) and parameterize `createClient<Database>()` across `lib/supabase/{client,server,admin,middleware}.ts`.
+  1. **Generate Strict Supabase Types:** Create [types/database.ts](../../types/database.ts) (`supabase gen types typescript` schema mirror) and parameterize `createClient<Database>()` across `lib/supabase/{client,server,admin,middleware}.ts`.
   2. **Eliminate All 26 `any` Types:** Replace `session: any` in `useUserStore` with `Session | null` from `@supabase/supabase-js`; replace `catch (err: any)` with `catch (err: unknown)` + type guards (`err instanceof Error`); define strict row/join interfaces for `LeaderboardEntry`, `ChallengeLinkRow`, `TestResultRow`, `ReplayRow`, and `DashboardStats`.
   3. **Fix All React 19 Compiler & Effect Violations (14 `set-state-in-effect` + `immutability` + `purity`):**
      - `app/dashboard/page.tsx`: Convert derived `stats` computation into `useMemo` (removing `setStats` inside `useEffect`). Load async data cleanly inside async effect callbacks (`let cancelled = false`).
@@ -204,19 +204,19 @@
 ### ENG-3.2: Repository Hygiene, Dead Files, Functional Settings (`/profile`) & `/showcase` Disposition
 - **Audit Reference:** `TD-02`, `FI-01`, `PA-09`
 - **Problem:**
-  1. Dead/conflicting files in repo: [app/page.tsx.modified](file:///c:/Users/rudra/TyProX/app/page.tsx.modified) (486-line unused Bauhaus landing backup), [lib/supabase.ts](file:///c:/Users/rudra/TyProX/lib/supabase.ts) (0 consumers), [public/robots.txt](file:///c:/Users/rudra/TyProX/public/robots.txt) (conflicts with `app/robots.ts` domain), unused starter SVGs (`public/{file,globe,next,vercel,window}.svg`).
+  1. Dead/conflicting files in repo: `app/page.tsx.modified` (486-line unused Bauhaus landing backup), `lib/supabase.ts` (0 consumers), `public/robots.txt` (conflicts with `app/robots.ts` domain), unused starter SVGs (`public/{file,globe,next,vercel,window}.svg`).
   2. Seeded achievement paths `/achievements/speed_50.svg` etc. resolve to `404` (`public/achievements/` does not exist).
-  3. [components/ui/skeleton.tsx](file:///c:/Users/rudra/TyProX/components/ui/skeleton.tsx) (`Skeleton`, `SkeletonText`, `SkeletonCard`) has `0` consumers while pages hand-roll spin loaders.
-  4. [app/profile/page.tsx](file:///c:/Users/rudra/TyProX/app/profile/page.tsx) has **zero inbound navigation links**, uses raw `<a>` instead of `<Link>`, and exposes `font_family` (`ibm-plex-mono` / `geist-mono`) and `volume` (`0..1`) controls that do **zero** runtime work (while preferences fail to persist to Supabase `profiles`).
-  5. [app/showcase/page.tsx](file:///c:/Users/rudra/TyProX/app/showcase/page.tsx) is an unlinked 1,236-line hardcoded mock tour.
-  6. [README.md](file:///c:/Users/rudra/TyProX/README.md#L42) uses local machine `file:///c:/Users/rudra/practice/OAUTH_SETUP.md` link and there is no `.env.example`.
+  3. [components/ui/skeleton.tsx](../../components/ui/skeleton.tsx) (`Skeleton`, `SkeletonText`, `SkeletonCard`) has `0` consumers while pages hand-roll spin loaders.
+  4. [app/profile/page.tsx](../../app/profile/page.tsx) has **zero inbound navigation links**, uses raw `<a>` instead of `<Link>`, and exposes `font_family` (`ibm-plex-mono` / `geist-mono`) and `volume` (`0..1`) controls that do **zero** runtime work (while preferences fail to persist to Supabase `profiles`).
+  5. `app/showcase/page.tsx` is an unlinked 1,236-line hardcoded mock tour.
+  6. [README.md](../../README.md#L42) uses local machine `file:///c:/Users/rudra/practice/OAUTH_SETUP.md` link and there is no `.env.example`.
 - **Root Cause:** Incremental refactor leftovers, unlinked settings view, and incomplete preferences implementation.
 - **Proposed Solution:**
   1. Delete orphaned files: `app/page.tsx.modified`, `lib/supabase.ts`, `public/robots.txt`, `public/{file,globe,next,vercel,window}.svg`. Add clean `.env.example` documenting `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SITE_URL`, and server-only `SUPABASE_SERVICE_ROLE_KEY`. Fix `README.md` link (`./OAUTH_SETUP.md`) and clean hardcoded project ref or mark `[your-project-ref]` in `OAUTH_SETUP.md` if appropriate.
   2. Create real SVG badge assets under `public/achievements/` (matching all 8 DB codes `speed_50.svg`..`streak_30.svg` with clean `#FF5C00`/monochrome geometry).
   3. **Settings & Preferences Completion (`/profile` + Navbar + DB Sync):**
      - Link `/profile` cleanly inside `Navbar` user menu & mobile drawer.
-     - Wire `font_family` cleanly in [app/layout.tsx](file:///c:/Users/rudra/TyProX/app/layout.tsx) & [app/globals.css](file:///c:/Users/rudra/TyProX/app/globals.css): actually load `JetBrains_Mono`, `IBM_Plex_Mono` (and/or `Geist_Mono` / `Fira_Code`) CSS variables, bind selected `--typing-font-active` to `document.documentElement` & `TextDisplay`, and set default `font_family` consistently to `'jetbrains-mono'`.
+     - Wire `font_family` cleanly in [app/layout.tsx](../../app/layout.tsx) & [app/globals.css](../../app/globals.css): actually load `JetBrains_Mono`, `IBM_Plex_Mono` (and/or `Geist_Mono` / `Fira_Code`) CSS variables, bind selected `--typing-font-active` to `document.documentElement` & `TextDisplay`, and set default `font_family` consistently to `'jetbrains-mono'`.
      - Wire `volume` cleanly using lightweight zero-dependency **Web Audio API click synthesizer** (`lib/audio/keystroke-sound.ts` — soft muted mechanical thock/click gated cleanly by `volume > 0` without shipping MP3 audio payloads!).
      - Sync updated `theme` and `font_family` via `PATCH /api/profile` when signed in (hydration loads DB preferences -> applies cleanly to DOM & Zustand store). Replace `<a href="/typing">` with Next `<Button href="/typing">`.
   4. **`/showcase` Disposition (Requires Owner Confirmation):**
@@ -263,7 +263,7 @@
 ---
 
 ### ENG-3.4: Client Performance, Bundle Size Reduction, Error Boundaries & HTTP Headers
-- **Audit Reference:** `PA-04`, `PA-09`, `TD-02`, `UX-06`, [package-bundling.md](file:///c:/Users/rudra/TyProX/node_modules/next/dist/docs/01-app/02-guides/package-bundling.md), [10-error-handling.md](file:///c:/Users/rudra/TyProX/node_modules/next/dist/docs/01-app/01-getting-started/10-error-handling.md)
+- **Audit Reference:** `PA-04`, `PA-09`, `TD-02`, `UX-06`, `package-bundling.md`, `10-error-handling.md`
 - **Problem:**
   1. `Hero3D` runs 3 unconditional intervals (`250ms` typing, `45ms` camera bob, `40ms` rainbow RGB cycling causing **25 full parent + 61 child Keycap React re-renders per second**), ignoring tab visibility, offscreen scroll state, and `prefers-reduced-motion`.
   2. `TextDisplay` mounts up to ~2,500 `<motion.span>` instances simultaneously with spring/tween scale transitions per character.
@@ -272,14 +272,14 @@
 - **Root Cause:** Continuous React state timers instead of CSS/rAF/visibility-aware animations, excessive Framer Motion wrapping on high-frequency DOM nodes, missing App Router error files, and unexamined Turbopack bundle tree.
 - **Proposed Solution:**
   1. **Bundle Baseline & Config (`next.config.ts`):** Run `npx next experimental-analyze --output` pre/post Phase 3 refactor; configure `experimental.optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion']` (verify Next 16 compatibility); wrap `canvas-confetti` in lazy `await import('canvas-confetti')` inside `ResultScreen` (saves ~10 KB initial typing chunk). Also convert Home static components cleanly to Server Components (`ENG-3.3`) so `/` drops unnecessary hydration JS.
-  2. **Throttle/Optimize `Hero3D` ([components/home/hero-3d.tsx](file:///c:/Users/rudra/TyProX/components/home/hero-3d.tsx)):**
+  2. **Throttle/Optimize `Hero3D` ([components/home/hero-3d.tsx](../../components/home/hero-3d.tsx)):**
      - Add `IntersectionObserver` (`rootMargin: '100px'`) + `document.visibilitychange` + `window.matchMedia('(prefers-reduced-motion: reduce)')` so idle simulation and bobbing **halt completely** when scrolled out of view, when tab is hidden, or when reduced motion is enabled.
      - Replace 40ms React state `setRgbHue` loop (25 re-renders/s across 61 keycaps!) with pure CSS `@keyframes` hue-rotate filter or CSS custom property transition on the chassis wrapper — zero React re-renders during RGB mode!
   3. **High-Frequency Typing DOM Optimization (`TextDisplay`):**
      - Replace `<motion.span>` per character with native lightweight `<span>` nodes using subtle CSS color transitions (`transition-colors duration-75`).
      - Optionally virtualize/window visible paragraph slices or track scroll via lightweight cached word line offsets (avoiding `offsetTop` forced synchronous reflow inside frequent renders by checking word change cleanly inside `useEffect` / `IntersectionObserver`).
   4. **Error Boundaries & Skeleton Adoption (`10-error-handling.md`):**
-     - Add [app/error.tsx](file:///c:/Users/rudra/TyProX/app/error.tsx) (`'use client'`, reset CTA + clean editorial fallback), [app/global-error.tsx](file:///c:/Users/rudra/TyProX/app/global-error.tsx), and route `loading.tsx` files (`/dashboard/loading.tsx`, `/leaderboard/loading.tsx`, `/u/[username]/loading.tsx`, `/dashboard/performance-lab/loading.tsx`) built with [components/ui/skeleton.tsx](file:///c:/Users/rudra/TyProX/components/ui/skeleton.tsx).
+     - Add [app/error.tsx](../../app/error.tsx) (`'use client'`, reset CTA + clean editorial fallback), [app/global-error.tsx](../../app/global-error.tsx), and route `loading.tsx` files (`/dashboard/loading.tsx`, `/leaderboard/loading.tsx`, `/u/[username]/loading.tsx`, `/dashboard/performance-lab/loading.tsx`) built with [components/ui/skeleton.tsx](../../components/ui/skeleton.tsx).
   5. **Safe Image / Avatar Rendering:** Create reusable `<UserAvatar src={...} name={...} size={...} />` wrapper wrapping `next/image` with clean `onError` state fallback to crisp monochrome initials avatar (eliminates `next/image` runtime exceptions on arbitrary OAuth hosts!).
 - **Files/Components Affected:** `next.config.ts`, `components/home/hero-3d.tsx`, `components/typing/text-display.tsx`, `components/typing/result-screen.tsx`, `components/ui/avatar.tsx` (new), `app/{error,global-error}.tsx` (new), route `loading.tsx` files (new).
 - **Database Changes:** None.
@@ -296,7 +296,7 @@
 - **Audit Reference:** `PA-06`, `TD-01`
 - **Problem:** Zero test runner, test script, unit tests, or E2E tests exist anywhere in the repository (`0` files).
 - **Root Cause:** Features built without automated test infrastructure.
-- **Proposed Solution:** Configure **Vitest** (Node/JSDOM for pure TS engine, verifier, anti-cheat rules, PRNG text gen, Zod schemas, Zustand stores, sync Client Components) + **Playwright** (full browser Chrome/mobile emulation for Web Worker typing runs, focus/IME, dark/light hydration, auth redirects, Leaderboard/Challenge flows) strictly following Next 16 guides (`vitest.md` and `playwright.md`). **Full configuration, devDependencies, scripts, and test specifications are detailed in [TESTING_AND_ACCEPTANCE_CRITERIA.md](file:///c:/Users/rudra/TyProX/docs/roadmap/TESTING_AND_ACCEPTANCE_CRITERIA.md).**
+- **Proposed Solution:** Configure **Vitest** (Node/JSDOM for pure TS engine, verifier, anti-cheat rules, PRNG text gen, Zod schemas, Zustand stores, sync Client Components) + **Playwright** (full browser Chrome/mobile emulation for Web Worker typing runs, focus/IME, dark/light hydration, auth redirects, Leaderboard/Challenge flows) strictly following Next 16 guides (`vitest.md` and `playwright.md`). **Full configuration, devDependencies, scripts, and test specifications are detailed in [TESTING_AND_ACCEPTANCE_CRITERIA.md](../../docs/roadmap/TESTING_AND_ACCEPTANCE_CRITERIA.md).**
 - **Files/Components Affected:** `package.json` (devDependencies + `test`, `test:unit`, `test:e2e`, `typecheck` scripts), `vitest.config.mts`, `playwright.config.ts`, `__tests__/**`, `tests/e2e/**`.
 - **Database Changes:** None (unit/API tests mock Supabase client cleanly; optional staging Supabase test suite run manually/CI secrets).
 - **Security Implications:** Enables regression gates on every anti-cheat rule, Open Redirect sanitizer, and schema validation check.

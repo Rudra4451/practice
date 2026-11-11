@@ -7,18 +7,18 @@
 - **Analytics Integrity Gate:** Personalized drills & weak-key diagnostics (`SPEC-5.1`, `SPEC-5.2`) require Phase 2 cumulative accuracy/keystroke fixes (`ENG-2.1`, `ENG-2.3`).
 - **UI Consistency Gate:** New learning/social/profile routes follow the Phase 4 editorial design tokens (`DES-4.1`–`DES-4.3`) rather than adding fourth-style bloat.
 
-**Primary Audit Sources:** [FEATURE_INVENTORY.md](file:///c:/Users/rudra/TyProX/docs/audit/FEATURE_INVENTORY.md), [PROJECT_AUDIT.md](file:///c:/Users/rudra/TyProX/docs/audit/PROJECT_AUDIT.md)
+**Primary Audit Sources:** [FEATURE_INVENTORY.md](../../docs/audit/FEATURE_INVENTORY.md), [PROJECT_AUDIT.md](../../docs/audit/PROJECT_AUDIT.md)
 
 ---
 
 ## PILLAR 1: LEARNING ECOSYSTEM (DUOLINGO-INSPIRED DELIBERATE PRACTICE)
 
 ### SPEC-5.1: Seed-Verified Weak-Key Detection & Clickable Targeted Drills
-- **Audit Reference:** `FI-06`, [app/dashboard/performance-lab/page.tsx](file:///c:/Users/rudra/TyProX/app/dashboard/performance-lab/page.tsx#L143-L149, L412-L429)
+- **Audit Reference:** `FI-06`, [app/dashboard/performance-lab/page.tsx](../../app/dashboard/performance-lab/page.tsx#L143-L149,L412-L429)
 - **Problem:** Performance Lab calculates slow bigrams and weak keys by guessing `prev.k` whenever `curr.y === 1` (`delete`), misattributing keys across multi-character typos/multi-backspaces and skipping uncorrected mistakes. Furthermore, `"Top error keys (Drill these characters in Custom Mode)"` is non-interactive dead copy (`FI-06`).
 - **Root Cause:** Replay analyzer fails to align keystrokes against reconstructed `targetText = generateText(seed, mode, duration)`, and `useTypingStore` lacks a `'drill'` practice target generator.
 - **Proposed Solution:**
-  1. Create shared pure replay analyzer [lib/typing/replay-analyzer.ts](file:///c:/Users/rudra/TyProX/lib/typing/replay-analyzer.ts) imported by Performance Lab (or computed server-side inside `lib/data/performance-lab.ts`): fetch last `15` verified runs including `{ seed, mode, duration, generator_version }`, reconstruct `targetText`, and align every `y === 0` input against expected `targetText[item.i]` to compute true per-key error rate (`errors / totalExpectedHits`) + median transition delay (`slowBigrams`, filtering pauses `> 1500ms`).
+  1. Create shared pure replay analyzer [lib/typing/replay-analyzer.ts](../../lib/typing/replay-analyzer.ts) imported by Performance Lab (or computed server-side inside `lib/data/performance-lab.ts`): fetch last `15` verified runs including `{ seed, mode, duration, generator_version }`, reconstruct `targetText`, and align every `y === 0` input against expected `targetText[item.i]` to compute true per-key error rate (`errors / totalExpectedHits`) + median transition delay (`slowBigrams`, filtering pauses `> 1500ms`).
   2. Add **Custom Drill Mode** (`mode = 'drill'` — explicitly **excluded from global public leaderboards** cleanly via `is_ranked = false`):
      - Clicking any weak key or bigram CTA on `/dashboard/performance-lab` OR `"Drill weak keys"` on `ResultScreen` launches `/typing?mode=drill&targets=q,z,wa,lo`.
      - Pure drill generator builds weighted dictionary sequences containing 70%+ high-frequency English words rich in the target letters/bigrams so the typist practices real finger transitions instead of gibberish strings.
@@ -87,7 +87,7 @@
 ---
 
 ### SPEC-5.4: Wire Up Daily Challenges (`daily_challenges` & `user_challenge_progress`)
-- **Audit Reference:** Feature Matrix (`FEATURE_INVENTORY.md:38`), [FULL_SCHEMA.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/FULL_SCHEMA.sql#L66-L74, L91-L98)
+- **Audit Reference:** Feature Matrix (`FEATURE_INVENTORY.md:38`), [FULL_SCHEMA.sql](../../supabase/reference/FULL_SCHEMA.sql#L66-L74,L91-L98)
 - **Problem:** `daily_challenges` and `user_challenge_progress` tables, RLS policies, and indexes exist cleanly in Postgres with zero backend generation, zero UI cards, and zero completion paths.
 - **Root Cause:** Unfinished beta schema artifact.
 - **Proposed Solution:**
@@ -113,7 +113,7 @@
 ## PILLAR 2: COMPETITIVE ECOSYSTEM (CHESS.COM-INSPIRED RANKINGS & DUELS)
 
 ### SPEC-5.5: Persistent 1v1 Challenge Match Records, Opponent Scoreboard & Rematches
-- **Audit Reference:** `FI-03`, `SEC-08`, [app/challenge/[id]/page.tsx](file:///c:/Users/rudra/TyProX/app/challenge/%5Bid%5D/page.tsx)
+- **Audit Reference:** `FI-03`, `SEC-08`, [app/challenge/[id]/page.tsx](../../app/challenge/%5Bid%5D/page.tsx)
 - **Problem:** Challenging someone via `/challenge/[id]` never submits the challenger's run to `POST /api/results`, saves zero duel outcome in Postgres, leaves the creator unaware anyone played, and omits rematch links.
 - **Root Cause:** `ChallengePage` switched to `'comparison'` view purely in local memory without server attempt persistence.
 - **Proposed Solution:**
@@ -183,7 +183,7 @@
 - **Root Cause:** Initial profile page fetched raw rows into client state with minimal visualization.
 - **Proposed Solution:**
   1. Extend `public.profiles` cleanly with optional public identity metadata (`bio VARCHAR(160)`, `keyboard_setup VARCHAR(80)` — e.g. `"HHKB Pro Hybrid · Topre 45g"`) editable via `/profile` + `PATCH /api/profile`.
-  2. Server-side aggregated DTO in [lib/data/profile.ts](file:///c:/Users/rudra/TyProX/lib/data/profile.ts) returns bounded public projection:
+  2. Server-side aggregated DTO in [lib/data/profile.ts](../../lib/data/profile.ts) returns bounded public projection:
      - **365-Day Practice Activity Heatmap:** SQL `DATE_TRUNC('day', created_at AT TIME ZONE COALESCE(profile.timezone, 'UTC'))` grouping verified `test_results` (`COUNT(*)`, `MAX(wpm)` per day over trailing 365 days -> `< 365` compact JSON points instead of 10,000 raw rows!). Rendered with clean accessible SVG grid & signal-orange (`#FF5C00`) intensity steps (`0`, `1–2`, `3–5`, `6–10`, `11+` runs/day) matching GitHub heatmap clarity!
      - **Personal Bests Matrix:** Top verified WPM + accuracy per `(words/quotes/punctuation/code/numbers)` x `(15s/30s/60s/120s)`.
      - **Season Rating & 1v1 Duel Record (`W-L-T`) + Streak + Earned Badges**.

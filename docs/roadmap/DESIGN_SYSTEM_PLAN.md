@@ -2,7 +2,7 @@
 
 **Document Status:** Planning Only (No code edits or style rewrites executed)  
 **Prerequisite Gate:** Security hardening (Phase 1) and Core Engine + Engineering stability (Phases 2–3) must stabilize before full cross-page visual unification. CSS token repairs (`UX-04`), active typing HUD visibility (`UX-01`), look-ahead blur removal (`UX-02`), and theme hydration sync (`UX-05`) can be staged cleanly alongside/immediately following Phase 2 UX stabilization!  
-**Primary Audit Sources:** [UX_REVIEW.md](file:///c:/Users/rudra/TyProX/docs/audit/UX_REVIEW.md), [PROJECT_AUDIT.md](file:///c:/Users/rudra/TyProX/docs/audit/PROJECT_AUDIT.md), [FEATURE_INVENTORY.md](file:///c:/Users/rudra/TyProX/docs/audit/FEATURE_INVENTORY.md)
+**Primary Audit Sources:** [UX_REVIEW.md](../../docs/audit/UX_REVIEW.md), [PROJECT_AUDIT.md](../../docs/audit/PROJECT_AUDIT.md), [FEATURE_INVENTORY.md](../../docs/audit/FEATURE_INVENTORY.md)
 
 ---
 
@@ -34,7 +34,7 @@
   3. Leftover `bauhaus-*` variables (`globals.css:22-27`) and `.animate-glow` indigo shadow (`line 215`) invite drift.
   4. Initial visit renders DOM `class="dark"` (`layout.tsx:92`) while `useUserStore` initializes `theme: 'light'` (`user-store.ts:52`), showing Moon icon on a dark page.
 - **Root Cause:** Incremental theme migration never cleaned old tokens, never audited AA contrast pairs, and mismatched initial SSR script vs store state.
-- **Proposed Solution ([app/globals.css](file:///c:/Users/rudra/TyProX/app/globals.css), [components/ui/button.tsx](file:///c:/Users/rudra/TyProX/components/ui/button.tsx), [app/layout.tsx](file:///c:/Users/rudra/TyProX/app/layout.tsx), [stores/user-store.ts](file:///c:/Users/rudra/TyProX/stores/user-store.ts)):**
+- **Proposed Solution ([app/globals.css](../../app/globals.css), [components/ui/button.tsx](../../components/ui/button.tsx), [app/layout.tsx](../../app/layout.tsx), [stores/user-store.ts](../../stores/user-store.ts)):**
 
   | Token | Light (`:root`) | Dark (`.dark`) | Purpose & AA Check |
   |---|---|---|---|
@@ -57,7 +57,7 @@
   - **Typography Floor & Hierarchy:**
     - Establish clean minimum legible font size `12px` (`text-xs`) for all interactive labels, micro-stats, and captions (eliminate `text-[6px]`, `text-[7px]`, `text-[8px]`, `text-[9px]`, and `text-[10px]` except true single-keycap hardware sub-legends if ≥ `10px`).
     - Restrict uppercase wide tracking (`tracking-[0.08em]` max) strictly to concise table headers / stat eyebrows; render descriptive empty states, helper instructions, and banners in normal sentence case (`font-medium` / `font-semibold`).
-  - **Initial Theme Sync:** Set default `preferences.theme: 'dark'` in [stores/user-store.ts](file:///c:/Users/rudra/TyProX/stores/user-store.ts#L52) matching `layout.tsx` `<Script>` SSR default (`'dark'`), plus add safe hydration listener reconciling `document.documentElement.classList` on load. Verify every component in both themes (`UX-05`: replace `Hero3D` dark perimeter vignette with `var(--background)` fade and `CatCompanion` `bg-neutral-950/80` with `bg-surface`).
+  - **Initial Theme Sync:** Set default `preferences.theme: 'dark'` in [stores/user-store.ts](../../stores/user-store.ts#L52) matching `layout.tsx` `<Script>` SSR default (`'dark'`), plus add safe hydration listener reconciling `document.documentElement.classList` on load. Verify every component in both themes (`UX-05`: replace `Hero3D` dark perimeter vignette with `var(--background)` fade and `CatCompanion` `bg-neutral-950/80` with `bg-surface`).
 - **Files/Components Affected:** `app/globals.css`, `app/layout.tsx`, `stores/user-store.ts`, `components/ui/button.tsx`, `components/home/hero-3d.tsx`, `components/typing/cat-companion.tsx`, `components/typing/replay-player.tsx`, `app/leaderboard/page.tsx`, `app/dashboard/page.tsx`, `app/login/page.tsx`.
 - **Database Changes:** Update default `profiles.theme` remains `'dark'` (already matches `FULL_SCHEMA.sql:23`!).
 - **Security Implications:** None directly; guarantees readable security/validation error banners across themes.

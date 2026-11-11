@@ -114,7 +114,7 @@ export async function PATCH(request: Request) {
 
     if (parsed.data.username !== undefined) {
       // Only username transitions require privileged server authority once column grants revoke
-      // `profiles.username` from direct `authenticated` client writes (20260624 migration).
+      // `profiles.username` from direct `authenticated` client writes (20260621 consolidated hardening).
       const resolved = resolvePrivilegedWriteClient(
         supabase,
         'PATCH /api/profile (username)',
