@@ -258,20 +258,21 @@ export const Hero3D = () => {
     { id: 'rainbow', label: 'Spectrum', bg: 'bg-gradient-to-r from-orange-500 via-emerald-400 to-cyan-400' },
   ];
 
-  const rgbColorValue = useMemo(() => {
+  const rgbTone = useMemo(() => {
     switch (rgbMode) {
       case 'white':
-        return '#F5F5F3';
+        return { hex: '#F5F5F3', rgb: '245, 245, 243' };
       case 'ice':
-        return '#22D3EE';
+        return { hex: '#22D3EE', rgb: '34, 211, 238' };
       case 'amber':
-        return '#FF641F';
+        return { hex: '#FF641F', rgb: '255, 100, 31' };
       case 'rainbow':
-        return '#FF641F';
+        return { hex: '#FF641F', rgb: '255, 100, 31' };
       default:
-        return 'transparent';
+        return { hex: 'transparent', rgb: '0, 0, 0' };
     }
   }, [rgbMode]);
+  const rgbColorValue = rgbTone.hex;
 
   const springConfig = { stiffness: 50, damping: 20, mass: 1 };
   const rotateX = useSpring(0, springConfig);
@@ -460,23 +461,12 @@ export const Hero3D = () => {
     <motion.section
       ref={containerRef}
       style={{ opacity: sceneOpacity }}
-      className="relative w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center overflow-hidden bg-background py-6 md:py-10 px-4"
+      className="relative isolate w-full min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center overflow-hidden bg-background py-6 md:py-10 px-4"
     >
       <div className="hidden dark:block absolute inset-0 bg-radial-[circle_at_center,transparent_40%,rgba(11,11,12,0.9)_100%] pointer-events-none -z-20" />
 
-      {rgbMode !== 'off' && (
-        <div
-          style={{
-            background: `radial-gradient(circle, ${rgbColorValue} 0%, transparent 70%)`,
-          }}
-          className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[40vh] opacity-15 blur-[130px] pointer-events-none -z-20 transition-all duration-500 ${
-            rgbMode === 'rainbow' ? 'animate-hue-cycle' : ''
-          }`}
-        />
-      )}
-
       {/* Editorial Headline & Action Bar */}
-      <div className="w-full max-w-4xl mx-auto flex flex-col items-center text-center select-none relative z-10 mb-4">
+      <div className="w-full max-w-4xl mx-auto flex flex-col items-center text-center select-none relative z-20 mb-4">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -537,91 +527,116 @@ export const Hero3D = () => {
         }}
         className="w-full max-w-[1000px] mx-auto flex flex-col items-center justify-center z-10 lg:px-12"
       >
-        <div
-          style={{
-            perspective: '1200px',
-            transform: `translate3d(${keyboardShaking.x}px, ${keyboardShaking.y}px, 0px)`,
-          }}
-          className="relative w-full flex items-center justify-center mt-1 py-3 md:py-5 transition-transform duration-75 isolate"
-        >
-          <div
-            className="hidden sm:block absolute bottom-2 w-[72%] h-[28%] bg-black/25 dark:bg-black/55 rounded-full blur-[36px] pointer-events-none"
-          />
-
-          <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
-            <AnimatePresence>
-              {trails.map((t) => (
-                <motion.div
-                  key={t.id}
-                  initial={{ opacity: 0, scale: 0.85, left: `${50 + t.x}%`, top: `${50 + t.y}%` }}
-                  animate={{
-                    opacity: [0, 0.85, 0.85, 0],
-                    scale: [0.85, 1.04, 1.04, 0.92],
-                    top: [`${50 + t.y}%`, `${28 + t.y}%`, `${10 + t.y}%`],
-                  }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 2.2, ease: 'easeOut' }}
-                  className="absolute font-mono font-bold lowercase text-xs tracking-wider text-accent-ink"
-                >
-                  {t.text}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-
-          {/* Anodized Mechanical Keyboard Chassis */}
-          <motion.div
-            style={{
-              rotateX,
-              rotateY,
-              x: translateX,
-              y: translateY,
-              z: cameraZ,
-            }}
-            className="w-full max-w-[820px] preserve-3d"
-          >
-            <motion.div
-              data-testid="hero-3d-chassis"
-              initial={{ opacity: 0, y: 24, rotateX: prefersReducedMotion ? 0 : 18, rotateZ: prefersReducedMotion ? 0 : -2 }}
-              animate={{ opacity: 1, y: 0, rotateX: prefersReducedMotion ? 0 : 14, rotateZ: prefersReducedMotion ? 0 : -1.5 }}
-              transition={{ duration: 0.7, ease: 'easeOut' }}
-              className="w-full bg-[#161618] border-2 border-[#2C2C30] p-3 sm:p-5 rounded-[22px] sm:rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.06)] preserve-3d relative z-10"
+        <div className="relative w-full flex items-center justify-center">
+          {/* Keep hue-rotate on outer wrapper so CSS filter doesn't strip inner blur */}
+          {rgbMode !== 'off' && (
+            <div
+              className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(94vw,1060px)] h-[320px] sm:h-[460px] md:h-[520px] pointer-events-none -z-10 ${
+                rgbMode === 'rainbow' ? 'animate-hue-cycle' : ''
+              }`}
             >
-            {rgbMode !== 'off' && (
               <div
-                style={{ backgroundColor: rgbColorValue, boxShadow: `0 0 40px ${rgbColorValue}`, opacity: 0.08 }}
-                className={`absolute inset-0 rounded-[28px] blur-md pointer-events-none -z-10 transition-all duration-500 ${
-                  rgbMode === 'rainbow' ? 'animate-hue-cycle' : ''
-                }`}
+                style={{
+                  background: `radial-gradient(ellipse closest-side at center, rgba(${rgbTone.rgb}, 0.85) 0%, rgba(${rgbTone.rgb}, 0.4) 28%, rgba(${rgbTone.rgb}, 0.12) 52%, rgba(${rgbTone.rgb}, 0) 74%)`,
+                }}
+                className="w-full h-full blur-[40px] sm:blur-[52px] opacity-12 dark:opacity-25 transition-all duration-500"
               />
-            )}
-
-            <div className="flex flex-col gap-[3px] sm:gap-[4px] w-full preserve-3d">
-              {ANSI_60_LAYOUT.map((row, rIdx) => (
-                <div key={rIdx} className="flex gap-[3px] sm:gap-[4px] w-full preserve-3d">
-                  {row.map((k, cIdx) => {
-                    const isPressed = Boolean(pressedKeys[k.code]);
-                    return (
-                      <div
-                        key={`${k.code}-${rIdx}-${cIdx}`}
-                        style={{ flexGrow: k.unitWidth, flexBasis: 0 }}
-                        className="relative min-w-0 h-[24px] sm:h-[34px] md:h-[42px] preserve-3d"
-                      >
-                        <Keycap
-                          label={k.label}
-                          isPressed={isPressed}
-                          row={k.row}
-                          rgbColor={rgbColorValue}
-                          lightingMode={rgbMode}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
             </div>
+          )}
+
+          <div
+            style={{
+              perspective: '1200px',
+              transform: `translate3d(${keyboardShaking.x}px, ${keyboardShaking.y}px, 0px)`,
+            }}
+            className="relative w-full flex items-center justify-center mt-1 py-3 md:py-5 transition-transform duration-75 isolate"
+          >
+            <div
+              className="hidden sm:block absolute bottom-2 w-[72%] h-[28%] bg-black/25 dark:bg-black/55 rounded-full blur-[36px] pointer-events-none"
+            />
+
+            <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
+              <AnimatePresence>
+                {trails.map((t) => (
+                  <motion.div
+                    key={t.id}
+                    initial={{ opacity: 0, scale: 0.85, left: `${50 + t.x}%`, top: `${50 + t.y}%` }}
+                    animate={{
+                      opacity: [0, 0.85, 0.85, 0],
+                      scale: [0.85, 1.04, 1.04, 0.92],
+                      top: [`${50 + t.y}%`, `${28 + t.y}%`, `${10 + t.y}%`],
+                    }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 2.2, ease: 'easeOut' }}
+                    className="absolute font-mono font-bold lowercase text-xs tracking-wider text-accent-ink"
+                  >
+                    {t.text}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+
+            {/* Anodized Mechanical Keyboard Chassis */}
+            <motion.div
+              style={{
+                rotateX,
+                rotateY,
+                x: translateX,
+                y: translateY,
+                z: cameraZ,
+              }}
+              className="w-full max-w-[820px] preserve-3d"
+            >
+              <motion.div
+                data-testid="hero-3d-chassis"
+                initial={{ opacity: 0, y: 24, rotateX: prefersReducedMotion ? 0 : 18, rotateZ: prefersReducedMotion ? 0 : -2 }}
+                animate={{ opacity: 1, y: 0, rotateX: prefersReducedMotion ? 0 : 14, rotateZ: prefersReducedMotion ? 0 : -1.5 }}
+                transition={{ duration: 0.7, ease: 'easeOut' }}
+                className="w-full bg-[#161618] border-2 border-[#2C2C30] p-3 sm:p-5 rounded-[22px] sm:rounded-[28px] shadow-[0_24px_60px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.06)] preserve-3d relative z-10"
+              >
+              {rgbMode !== 'off' && (
+                <div
+                  className={`absolute inset-0 pointer-events-none -z-10 ${
+                    rgbMode === 'rainbow' ? 'animate-hue-cycle' : ''
+                  }`}
+                >
+                  <div
+                    style={{
+                      backgroundColor: rgbColorValue,
+                      boxShadow: `0 0 36px 2px ${rgbColorValue}, 0 0 72px 8px rgba(${rgbTone.rgb}, 0.45)`,
+                    }}
+                    className="w-full h-full rounded-[28px] blur-xl opacity-[0.07] dark:opacity-[0.09] transition-all duration-500"
+                  />
+                </div>
+              )}
+
+              <div className="flex flex-col gap-[3px] sm:gap-[4px] w-full preserve-3d">
+                {ANSI_60_LAYOUT.map((row, rIdx) => (
+                  <div key={rIdx} className="flex gap-[3px] sm:gap-[4px] w-full preserve-3d">
+                    {row.map((k, cIdx) => {
+                      const isPressed = Boolean(pressedKeys[k.code]);
+                      return (
+                        <div
+                          key={`${k.code}-${rIdx}-${cIdx}`}
+                          style={{ flexGrow: k.unitWidth, flexBasis: 0 }}
+                          className="relative min-w-0 h-[24px] sm:h-[34px] md:h-[42px] preserve-3d"
+                        >
+                          <Keycap
+                            label={k.label}
+                            isPressed={isPressed}
+                            row={k.row}
+                            rgbColor={rgbColorValue}
+                            lightingMode={rgbMode}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Non-overlapping Capability Telemetry Strip docked cleanly beneath 3D keyboard */}
