@@ -2,8 +2,8 @@
 
 **Document Status:** Planning Only (Zero packages installed, zero test files created)  
 **Target Stack:** Next.js 16.2.9 (`App Router` + Turbopack), React 19.2.4, TypeScript 5 (`strict`), Zustand 5, Supabase SSR/Postgres, Vitest, Playwright  
-**Next.js 16 Alignment:** Follows repository bundled documentation [vitest.md](file:///c:/Users/rudra/TyProX/node_modules/next/dist/docs/01-app/02-guides/testing/vitest.md) and [playwright.md](file:///c:/Users/rudra/TyProX/node_modules/next/dist/docs/01-app/02-guides/testing/playwright.md).  
-**Primary Audit Sources:** [PROJECT_AUDIT.md](file:///c:/Users/rudra/TyProX/docs/audit/PROJECT_AUDIT.md), [SECURITY_REVIEW.md](file:///c:/Users/rudra/TyProX/docs/audit/SECURITY_REVIEW.md), [TECHNICAL_DEBT.md](file:///c:/Users/rudra/TyProX/docs/audit/TECHNICAL_DEBT.md)
+**Next.js 16 Alignment:** Follows repository bundled documentation `vitest.md` and `playwright.md`.  
+**Primary Audit Sources:** [PROJECT_AUDIT.md](../../docs/audit/PROJECT_AUDIT.md), [SECURITY_REVIEW.md](../../docs/audit/SECURITY_REVIEW.md), [TECHNICAL_DEBT.md](../../docs/audit/TECHNICAL_DEBT.md)
 
 ---
 

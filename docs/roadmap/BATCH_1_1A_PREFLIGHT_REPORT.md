@@ -2,7 +2,7 @@
 
 **Audit Date:** 2026-11-10  
 **Batch:** `1.1A` (Read-Only Production & Environment Preflight)  
-**Target Environment:** Local Workspace (`c:\Users\rudra\TyProX`) & Production Supabase Project (`gbovkejymfeiqgverzfr` per [OAUTH_SETUP.md](file:///c:/Users/rudra/TyProX/OAUTH_SETUP.md))  
+**Target Environment:** Local Workspace (`c:\Users\rudra\TyProX`) & Production Supabase Project (`gbovkejymfeiqgverzfr` per [OAUTH_SETUP.md](../../OAUTH_SETUP.md))  
 **Execution Mode:** **STRICTLY READ-ONLY** — Zero SQL writes, zero migrations executed, zero historical DB rows deleted/modified, zero application files modified, zero secrets or PII printed.
 
 ---
@@ -12,7 +12,7 @@
 ### 1.1 Git Branch & Working Tree
 - **Active Branch:** `main` at `fba1d80` (`[origin/main] Merge pull request #1 from Rudra4451/feature/cat-reaction-system`).
 - **Tracked Files:** Clean — zero staged or modified tracked files.
-- **Untracked Files:** Strictly planning/audit documentation (`docs/audit/*` [5 files] and `docs/roadmap/*` [6 files prior to this report]). Local build/typecheck caches (`.next`, `tsconfig.tsbuildinfo`) exist and remain ignored by [`.gitignore`](file:///c:/Users/rudra/TyProX/.gitignore).
+- **Untracked Files:** Strictly planning/audit documentation (`docs/audit/*` [5 files] and `docs/roadmap/*` [6 files prior to this report]). Local build/typecheck caches (`.next`, `tsconfig.tsbuildinfo`) exist and remain ignored by [`.gitignore`](../../.gitignore).
 
 ### 1.2 Environment Variables & Tooling
 - **Env Files Present:** Only `.env.local` (no `.env`, no `.env.production`, no `.env.example`).
@@ -21,18 +21,18 @@
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - **Critical Missing Environment Variables:**
   - `SUPABASE_SERVICE_ROLE_KEY`: **Not configured.** Server-side privileged writes (`createAdminClient`) required for Phase 1 score/streak/achievement/challenge hardening (`SEC-1.4` / `SEC-1.5`) cannot currently run.
-  - `NEXT_PUBLIC_SITE_URL`: **Not configured.** Both [robots.ts](file:///c:/Users/rudra/TyProX/app/robots.ts#L4) and [sitemap.ts](file:///c:/Users/rudra/TyProX/app/sitemap.ts#L5) fall back to hardcoded `'https://typrox.vercel.app'`.
+  - `NEXT_PUBLIC_SITE_URL`: **Not configured.** Both [robots.ts](../../app/robots.ts#L4) and [sitemap.ts](../../app/sitemap.ts#L5) fall back to hardcoded `'https://typrox.vercel.app'`.
 - **Supabase & Hosting Config:**
   - `supabase` CLI is **not installed** in the local environment.
   - No `supabase/config.toml`, `.supabase/`, `.vercel/`, or `.github/` directories exist in the workspace.
-  - Supabase project ref `gbovkejymfeiqgverzfr` is documented externally in [OAUTH_SETUP.md](file:///c:/Users/rudra/TyProX/OAUTH_SETUP.md#L3).
+  - Supabase project ref `gbovkejymfeiqgverzfr` is documented externally in [OAUTH_SETUP.md](../../OAUTH_SETUP.md#L3).
 - **Local SQL Migrations & Snapshots (`supabase/migrations/`):**
-  1. [20260618000000_init_schema.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/20260618000000_init_schema.sql) (created `4cd8230`, amended `ee80fbc`)
-  2. [20260619000000_audit_hardening.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/20260619000000_audit_hardening.sql) (created `4cd8230`)
-  3. [20260620100000_leaderboard_view.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/20260620100000_leaderboard_view.sql) (created `f717482`)
-  4. [FULL_SCHEMA.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/FULL_SCHEMA.sql) (consolidated SQL Editor script created `587e966`, amended `ee112d9`, `f717482`, `ee80fbc`)
+  1. [20260618000000_init_schema.sql](../../supabase/migrations/20260618000000_init_schema.sql) (created `4cd8230`, amended `ee80fbc`)
+  2. [20260619000000_audit_hardening.sql](../../supabase/migrations/20260619000000_audit_hardening.sql) (created `4cd8230`)
+  3. [20260620100000_leaderboard_view.sql](../../supabase/migrations/20260620100000_leaderboard_view.sql) (created `f717482`)
+  4. [FULL_SCHEMA.sql](../../supabase/reference/FULL_SCHEMA.sql) (consolidated SQL Editor script created `587e966`, amended `ee112d9`, `f717482`, `ee80fbc`)
 - **Database Type Definitions:** **None.** Neither `types/database.ts` nor generated Supabase `Database` types exist anywhere in the repository; queries rely on manual interfaces or untyped `any`.
-- **Automated Test Tooling:** **None.** [package.json](file:///c:/Users/rudra/TyProX/package.json#L5-L34) defines only `dev`, `build`, `start`, and `lint`; no Vitest, Jest, or Playwright packages exist.
+- **Automated Test Tooling:** **None.** [package.json](../../package.json#L5-L34) defines only `dev`, `build`, `start`, and `lint`; no Vitest, Jest, or Playwright packages exist.
 
 ### 1.3 Typecheck, Build & Lint Baseline
 | Check | Command | Outcome | Key Details |
@@ -63,16 +63,16 @@
 | `public.leaderboard_view` | **MISSING (`PGRST205`)** | N/A | Query returned **`PGRST205`: `"Could not find the table 'public.leaderboard_view' in the schema cache"`**. |
 
 **Key Empirical Production Discoveries:**
-1. **Live Production Lacks `public.leaderboard_view`:** Consequently, [`GET /api/leaderboard`](file:///c:/Users/rudra/TyProX/app/api/leaderboard/route.ts#L81-L136) is **currently executing its in-memory `isRelationMissing` fallback on every production request**, pulling up to 500 `test_results` rows directly instead of querying `leaderboard_view`.
+1. **Live Production Lacks `public.leaderboard_view`:** Consequently, [`GET /api/leaderboard`](../../app/api/leaderboard/route.ts#L81-L136) is **currently executing its in-memory `isRelationMissing` fallback on every production request**, pulling up to 500 `test_results` rows directly instead of querying `leaderboard_view`.
 2. **Production `public.achievements` Differs from Both Local Migrations and `FULL_SCHEMA.sql`:**
    - Production contains custom titles/thresholds (`"Bronze Fingers"` at `50 WPM / 90%`, `"Silver Fingers"` at `80 WPM / 92%`, `"Gold Fingers"` at `100 WPM / 95%`, `"Platinum Fingers"` at `120 WPM / 96%`, `"Grandmaster Typist"` at `140 WPM / 97%`, `"Fingers of Fire"` at `150 WPM / 97%`, `"Consistency Start"` `3d`, `"Weekly Habit"` `7d`, `"Fortnight Dedication"` `14d`, `"Typing Legend"` `30d`, `"Swift Fingers"` `75 WPM / 93%`).
    - This proves the production database received **manual SQL Editor edits out-of-band** outside committed Git SQL files.
-3. **Confirmed Historical `anon` Write Execution + Failed Cleanup:** The `6` `seed = '__debug_test__'` (`user_id = NULL`, `duration = 1`) rows inserted on `2026-06-19T08:32Z`–`15:41Z` prove that [`GET /api/debug/supabase`](file:///c:/Users/rudra/TyProX/app/api/debug/supabase/route.ts#L96-L122) successfully inserted anonymous rows into `test_results`, while `.delete()` silently failed because `test_results` lacks a `DELETE` RLS policy.
+3. **Confirmed Historical `anon` Write Execution + Failed Cleanup:** The `6` `seed = '__debug_test__'` (`user_id = NULL`, `duration = 1`) rows inserted on `2026-06-19T08:32Z`–`15:41Z` prove that `GET /api/debug/supabase` successfully inserted anonymous rows into `test_results`, while `.delete()` silently failed because `test_results` lacks a `DELETE` RLS policy.
 4. **Confirmed Day-1 Streak Defect in Production Data:** `4` of the `10` active users who recorded `test_results` remain stuck at `current_streak = 0` (`streaks.last_active_date` defaults to `CURRENT_DATE` on signup, causing Day-1 `POST /api/results` `if (lastActive !== today)` to skip initialization).
 
 ### 2.2 UNVERIFIED Production Catalog & Platform Properties
 
-Because `pg_catalog` and `information_schema` cannot be queried with `anon`, the following remain **UNVERIFIED** until the owner executes the read-only inspection queries from [SECURITY_REMEDIATION_PLAN.md Section 4](file:///c:/Users/rudra/TyProX/docs/roadmap/SECURITY_REMEDIATION_PLAN.md#L250-L290) inside Supabase Dashboard SQL Editor:
+Because `pg_catalog` and `information_schema` cannot be queried with `anon`, the following remain **UNVERIFIED** until the owner executes the read-only inspection queries from [SECURITY_REMEDIATION_PLAN.md Section 4](../../docs/roadmap/SECURITY_REMEDIATION_PLAN.md#L250-L290) inside Supabase Dashboard SQL Editor:
 
 | Unverified Item | Inspection Query / Dashboard Location | Why It Matters Before Batch 1.3 |
 |---|---|---|
@@ -91,7 +91,7 @@ Because `pg_catalog` and `information_schema` cannot be queried with `anon`, the
 
 Comparison across all four schema states reveals severe drift between ordered migrations, `FULL_SCHEMA.sql`, the planned target architecture, and live production:
 
-| Object / Feature | Ordered Migrations (`20260618`–`20260620`) | Snapshot ([`FULL_SCHEMA.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/FULL_SCHEMA.sql)) | Target Hardened State ([`SECURITY_REMEDIATION_PLAN.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/SECURITY_REMEDIATION_PLAN.md)) | Observed Production DB (`gbovkejymfeiqgverzfr`) |
+| Object / Feature | Ordered Migrations (`20260618`–`20260620`) | Snapshot ([`FULL_SCHEMA.sql`](../../supabase/reference/FULL_SCHEMA.sql)) | Target Hardened State ([`SECURITY_REMEDIATION_PLAN.md`](../../docs/roadmap/SECURITY_REMEDIATION_PLAN.md)) | Observed Production DB (`gbovkejymfeiqgverzfr`) |
 |---|---|---|---|---|
 | **Base 9 Tables** | Created in `20260618` | `CREATE TABLE IF NOT EXISTS` | Base 9 + `client_run_id UUID UNIQUE`, nullable `streaks.last_active_date` | **Verified Present** (`anon` reads succeed on all 9) |
 | **`public.leaderboard_view`** | Created in `20260620` (no `security_invoker`, no `user_id IS NOT NULL`) | Section 10 (identical to `20260620`) | `WITH (security_invoker = true)` + `WHERE is_invalidated = false AND user_id IS NOT NULL` | **DOES NOT EXIST (`PGRST205`)** — `GET /api/leaderboard` uses fallback |
@@ -114,21 +114,21 @@ Comparison across all four schema states reveals severe drift between ordered mi
 1. **Production `anon` Database Exposure & Historical `NULL` Insert Proof (`SEC-02`, `SEC-06`):**
    - With only `NEXT_PUBLIC_SUPABASE_ANON_KEY`, an unauthenticated client can read all `170` `test_results` rows, all `164` full-keystroke `replays` JSONB arrays, all `16` `profiles` & `streaks` rows, and `user_achievements`.
    - The `6` `__debug_test__` rows (`user_id = NULL`) confirm `test_results` has accepted unauthenticated anonymous writes (`auth.uid() IS NULL`).
-   - Direct `GRANT ALL` and permissive self-update/insert policies (`streaks`, `user_achievements`, `challenge_links`, `test_results`) cannot be ruled out without the Section 4 catalog query, and code across [`app/dashboard/page.tsx`](file:///c:/Users/rudra/TyProX/app/dashboard/page.tsx#L327), [`components/typing/result-screen.tsx`](file:///c:/Users/rudra/TyProX/components/typing/result-screen.tsx#L116), and [`components/auth/username-modal.tsx`](file:///c:/Users/rudra/TyProX/components/auth/username-modal.tsx#L88) actively performs direct browser-SDK writes.
+   - Direct `GRANT ALL` and permissive self-update/insert policies (`streaks`, `user_achievements`, `challenge_links`, `test_results`) cannot be ruled out without the Section 4 catalog query, and code across [`app/dashboard/page.tsx`](../../app/dashboard/page.tsx#L327), [`components/typing/result-screen.tsx`](../../components/typing/result-screen.tsx#L116), and [`components/auth/username-modal.tsx`](../../components/auth/username-modal.tsx#L88) actively performs direct browser-SDK writes.
 2. **Service Role Absence (`SUPABASE_SERVICE_ROLE_KEY`):**
-   - Without `SUPABASE_SERVICE_ROLE_KEY`, the backend in [`app/api/results/route.ts`](file:///c:/Users/rudra/TyProX/app/api/results/route.ts#L77-L188) runs strictly under the caller's SSR cookie session subject to RLS — preventing immediate removal of client `INSERT`/`UPDATE` policies until `SUPABASE_SERVICE_ROLE_KEY` is provisioned.
+   - Without `SUPABASE_SERVICE_ROLE_KEY`, the backend in [`app/api/results/route.ts`](../../app/api/results/route.ts#L77-L188) runs strictly under the caller's SSR cookie session subject to RLS — preventing immediate removal of client `INSERT`/`UPDATE` policies until `SUPABASE_SERVICE_ROLE_KEY` is provisioned.
 3. **`leaderboard_view` Security & Fallback Behavior (`SEC-02`, `SEC-07`):**
    - `public.leaderboard_view` is absent in prod (`PGRST205`).
-   - Current [`app/api/leaderboard/route.ts`](file:///c:/Users/rudra/TyProX/app/api/leaderboard/route.ts#L8-L141) fallback does **not** filter `.not('user_id', 'is', null)` (instead grouping `user_id || 'anonymous'`), parses `?duration=` with unguarded `parseInt` (`NaN` -> DB error `500`), and echoes raw Postgres `viewError.message` / `fallbackError.message`.
+   - Current [`app/api/leaderboard/route.ts`](../../app/api/leaderboard/route.ts#L8-L141) fallback does **not** filter `.not('user_id', 'is', null)` (instead grouping `user_id || 'anonymous'`), parses `?duration=` with unguarded `parseInt` (`NaN` -> DB error `500`), and echoes raw Postgres `viewError.message` / `fallbackError.message`.
 4. **Unverified Score Submission Pathway (`SEC-01`, `PA-01`, `PA-07`):**
-   - [`POST /api/results`](file:///c:/Users/rudra/TyProX/app/api/results/route.ts#L25-L196) trusts client `wpm`, `rawWpm`, `accuracy`, `consistency`, `errorCount`, and `backspaceCount`; bypasses regularity checks whenever `telemetry.length <= 10`; never checks typed keys `k` against `generateText(seed, mode, duration)`; lacks `client_run_id` idempotency; and exhibits the Day-1 streak bug.
+   - [`POST /api/results`](../../app/api/results/route.ts#L25-L196) trusts client `wpm`, `rawWpm`, `accuracy`, `consistency`, `errorCount`, and `backspaceCount`; bypasses regularity checks whenever `telemetry.length <= 10`; never checks typed keys `k` against `generateText(seed, mode, duration)`; lacks `client_run_id` idempotency; and exhibits the Day-1 streak bug.
 5. **Active Debug/Test Endpoints in Production Build (`SEC-04`):**
-   - [`GET /api/debug/supabase`](file:///c:/Users/rudra/TyProX/app/api/debug/supabase/route.ts#L4-L132) and [`GET /api/test-supabase`](file:///c:/Users/rudra/TyProX/app/api/test-supabase/route.ts#L4-L55) remain compiled as active dynamic (`ƒ`) routes in `next build`, exposing environment info, table counts, user identity/email (if cookie present), error details, and an active `__debug_test__` DB write leak.
+   - `GET /api/debug/supabase` and `GET /api/test-supabase` remain compiled as active dynamic (`ƒ`) routes in `next build`, exposing environment info, table counts, user identity/email (if cookie present), error details, and an active `__debug_test__` DB write leak.
 6. **OAuth Callback Open Redirect (`SEC-03`):**
-   - [`app/auth/callback/route.ts`](file:///c:/Users/rudra/TyProX/app/auth/callback/route.ts#L7-L14) passes unvalidated `?next=` straight into `new URL(next, request.url)`, enabling off-origin redirects (e.g., `?next=https://evil.example` or `?next=//evil.example`).
+   - [`app/auth/callback/route.ts`](../../app/auth/callback/route.ts#L7-L14) passes unvalidated `?next=` straight into `new URL(next, request.url)`, enabling off-origin redirects (e.g., `?next=https://evil.example` or `?next=//evil.example`).
 7. **Demo Auth & Data Bypasses (`SEC-05`, `TD-04`):**
-   - [`lib/supabase/middleware.ts`](file:///c:/Users/rudra/TyProX/lib/supabase/middleware.ts#L48-L54) skips `/login` redirect whenever `typrox_demo_logged_in=true` cookie or `?demo=true` query param is sent.
-   - [`GET /api/leaderboard`](file:///c:/Users/rudra/TyProX/app/api/leaderboard/route.ts#L13-L54) returns fabricated rankings whenever `?demo` is present (even `?demo=false`), and demo flags remain embedded in [`Navbar`](file:///c:/Users/rudra/TyProX/components/navbar.tsx#L72-L81), [`LoginPage`](file:///c:/Users/rudra/TyProX/app/login/page.tsx#L46-L100), [`DashboardPage`](file:///c:/Users/rudra/TyProX/app/dashboard/page.tsx#L63), [`PerformanceLabPage`](file:///c:/Users/rudra/TyProX/app/dashboard/performance-lab/page.tsx#L52), [`LeaderboardPage`](file:///c:/Users/rudra/TyProX/app/leaderboard/page.tsx#L49), and [`TypingContainer`](file:///c:/Users/rudra/TyProX/components/typing/typing-container.tsx#L143-L146).
+   - [`lib/supabase/middleware.ts`](../../lib/supabase/middleware.ts#L48-L54) skips `/login` redirect whenever `typrox_demo_logged_in=true` cookie or `?demo=true` query param is sent.
+   - [`GET /api/leaderboard`](../../app/api/leaderboard/route.ts#L13-L54) returns fabricated rankings whenever `?demo` is present (even `?demo=false`), and demo flags remain embedded in [`Navbar`](../../components/navbar.tsx#L72-L81), [`LoginPage`](../../app/login/page.tsx#L46-L100), [`DashboardPage`](../../app/dashboard/page.tsx#L63), [`PerformanceLabPage`](../../app/dashboard/performance-lab/page.tsx#L52), [`LeaderboardPage`](../../app/leaderboard/page.tsx#L49), and [`TypingContainer`](../../components/typing/typing-container.tsx#L143-L146).
 
 ---
 
@@ -139,7 +139,7 @@ Comparison across all four schema states reveals severe drift between ordered mi
 Out of `170` `test_results` rows, **`34` rows triggered heuristic quality/integrity flags** and **`15` duplicate submission signatures accounted for `34` rows (`19` excess duplicate entries out of `164` non-debug runs = `11.6%` duplicate rate)**:
 
 #### Category A — Unauthenticated Diagnostic Pollution (`6` rows)
-All `6` rows have `seed = '__debug_test__'`, `user_id = NULL`, `duration = 1`, `mode = 'words'`, `wpm = 0`, `raw_wpm = 0`, `accuracy = 0`, `consistency = 0`, `is_invalidated = false`, and **no matching row in `replays`**, matching [`app/api/debug/supabase/route.ts#L96-L122`](file:///c:/Users/rudra/TyProX/app/api/debug/supabase/route.ts#L96-L122):
+All `6` rows have `seed = '__debug_test__'`, `user_id = NULL`, `duration = 1`, `mode = 'words'`, `wpm = 0`, `raw_wpm = 0`, `accuracy = 0`, `consistency = 0`, `is_invalidated = false`, and **no matching row in `replays`**, matching `app/api/debug/supabase/route.ts#L96-L122`:
 - `c8f103df-3ff0-4e1c-bffa-6e86d0ae8982` (`2026-06-19T15:41:22.538924+00:00`)
 - `a7c72688-36f8-4acd-9c45-0c4cda2d926c` (`2026-06-19T15:41:06.861942+00:00`)
 - `0544bc81-ac48-46d8-93b8-6f2f8fc3c704` (`2026-06-19T15:40:55.111499+00:00`)
@@ -206,7 +206,7 @@ Empirically confirms `PA-07` (`ResultScreen` missing idempotency key / duplicate
   - Pure Next.js application changes (e.g., Batch 1.1B) are safely reversible via `git revert` without database impact.
   - Database DDL migrations (`Batch 1.3`) and historical row cleanup (`__debug_test__` / invalidation) **cannot be safely rolled back** without first:
     1. Exporting a verified logical backup / SQL snapshot of production (`pg_dump` or Supabase Dashboard backup).
-    2. Capturing exact current `pg_policies` and `role_table_grants` definitions via the read-only catalog queries in [SECURITY_REMEDIATION_PLAN.md Section 4](file:///c:/Users/rudra/TyProX/docs/roadmap/SECURITY_REMEDIATION_PLAN.md#L254-L290) so a reverse-grant/policy restoration SQL script can be drafted before DDL execution.
+    2. Capturing exact current `pg_policies` and `role_table_grants` definitions via the read-only catalog queries in [SECURITY_REMEDIATION_PLAN.md Section 4](../../docs/roadmap/SECURITY_REMEDIATION_PLAN.md#L254-L290) so a reverse-grant/policy restoration SQL script can be drafted before DDL execution.
 
 ---
 
@@ -214,12 +214,12 @@ Empirically confirms `PA-07` (`ResultScreen` missing idempotency key / duplicate
 
 1. **Unverified Live RLS Policies, Grants, Indexes, Functions & Realtime Publication:** Executing forward RLS/grant DDL without first reading `pg_policies`, `information_schema.role_table_grants`, `pg_indexes`, `handle_new_user()`, and `pg_publication_tables` from live production risks policy-name collisions or unintentionally breaking live queries (`Navbar`, `Dashboard`, `PerformanceLabPage`).
 2. **Production `public.achievements` Divergence (`11` Rows vs Snapshot `8`):** Any migration that assumes `FULL_SCHEMA.sql`'s 8 rows will fail to sync or conflict with production's custom 11 achievement codes (`SPEED_80`, `SPEED_150`, `STREAK_14`) and `4` existing `user_achievements` records. Batch 1.3 SQL must preserve and align with the live 11-badge catalog.
-3. **Production Missing `public.leaderboard_view` (`PGRST205`):** Any refactor of [`app/api/leaderboard/route.ts`](file:///c:/Users/rudra/TyProX/app/api/leaderboard/route.ts) in Batch 1.1B that removes the `isRelationMissing` fallback before `leaderboard_view` is created in production will immediately break `/leaderboard` (`500`).
+3. **Production Missing `public.leaderboard_view` (`PGRST205`):** Any refactor of [`app/api/leaderboard/route.ts`](../../app/api/leaderboard/route.ts) in Batch 1.1B that removes the `isRelationMissing` fallback before `leaderboard_view` is created in production will immediately break `/leaderboard` (`500`).
 4. **Missing `SUPABASE_SERVICE_ROLE_KEY`:** Server-side score/streak/achievement/challenge persistence (`Batch 1.2` / `Batch 1.3`) is blocked until the owner provisions `SUPABASE_SERVICE_ROLE_KEY` in hosting secrets and `.env.local`.
 5. **Unconfirmed Backup Prior to Historical Cleanup / Migration:** Without a confirmed backup snapshot, deleting `6` `__debug_test__` rows or altering `test_results` / `streaks` constraints carries unrecoverable data-loss risk if a predicate mistakes data.
 6. **Legacy Unverified Client Pathways & Historical User State:**
    - `15/16` profiles have auto-generated `user_<hex>` usernames; `4/10` active typists still show `current_streak = 0`.
-   - [`handleSyncHistory`](file:///c:/Users/rudra/TyProX/app/dashboard/page.tsx#L327) and [`handleShare`](file:///c:/Users/rudra/TyProX/components/typing/result-screen.tsx#L116) write directly to Supabase from the browser; `localStorage` guest runs lack `telemetry`. Revoking client write RLS cleanly requires deploying server endpoints (`Batch 1.2` / `1.3`) *before* dropping policies.
+   - [`handleSyncHistory`](../../app/dashboard/page.tsx#L327) and [`handleShare`](../../components/typing/result-screen.tsx#L116) write directly to Supabase from the browser; `localStorage` guest runs lack `telemetry`. Revoking client write RLS cleanly requires deploying server endpoints (`Batch 1.2` / `1.3`) *before* dropping policies.
 7. **Baseline Lint Debt (`111` Findings):** While `tsc` and `next build` pass cleanly, `npm run lint` fails (`55` errors, `56` warnings). Batch 1.1B should keep newly added/edited files lint-clean, deferring repo-wide lint cleanup to Phase 3 (`Batch 3.1`).
 
 ---
@@ -237,7 +237,7 @@ Empirically confirms `PA-07` (`ResultScreen` missing idempotency key / duplicate
 
 #### Blocked Until Owner Gate Completes — Batch 1.2 & Batch 1.3
 Do **not** start DB schema hardening, RLS revocation, or `POST /api/results` service-role writes until the project owner completes these prerequisites:
-1. Run the **read-only catalog queries** in [SECURITY_REMEDIATION_PLAN.md Section 4](file:///c:/Users/rudra/TyProX/docs/roadmap/SECURITY_REMEDIATION_PLAN.md#L254-L290) inside Supabase Dashboard SQL Editor (`gbovkejymfeiqgverzfr`) and verify live `pg_policies`, `role_table_grants`, `pg_indexes`, `handle_new_user()`, and `supabase_realtime`.
+1. Run the **read-only catalog queries** in [SECURITY_REMEDIATION_PLAN.md Section 4](../../docs/roadmap/SECURITY_REMEDIATION_PLAN.md#L254-L290) inside Supabase Dashboard SQL Editor (`gbovkejymfeiqgverzfr`) and verify live `pg_policies`, `role_table_grants`, `pg_indexes`, `handle_new_user()`, and `supabase_realtime`.
 2. Confirm a **verified production backup / snapshot** exists (or take a manual export) before any DDL migration or historical cleanup (`__debug_test__` / invalidation / deduplication review).
 3. Confirm **`SUPABASE_SERVICE_ROLE_KEY`** provisioning in `.env.local` and hosting environment variables (never pasted into chat).
 

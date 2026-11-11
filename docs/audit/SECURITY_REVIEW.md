@@ -17,18 +17,18 @@
 
 ### SEC-01 — Complete Absence of Server-Side Score Verification & Telemetry Anti-Cheat Bypass
 - **Priority:** `Critical` (`Verified`)
-- **File Path:** [app/api/results/route.ts](file:///c:/Users/rudra/TyProX/app/api/results/route.ts#L12-L98), [app/dashboard/page.tsx](file:///c:/Users/rudra/TyProX/app/dashboard/page.tsx#L311-L328)
+- **File Path:** [app/api/results/route.ts](../../app/api/results/route.ts#L12-L98), [app/dashboard/page.tsx](../../app/dashboard/page.tsx#L311-L328)
 - **Relevant Component / Function:** `POST` in `app/api/results/route.ts`, `handleSyncHistory` in `app/dashboard/page.tsx`
 - **Evidence:**
   1. `POST /api/results` accepts `wpm` (`0..350`), `rawWpm` (`0..350`), `accuracy` (`0..100`), `consistency` (`0..100`), `errorCount`, `backspaceCount`, `mode`, `duration` (`1..300`), `seed`, and `telemetry` directly from client JSON and writes the client's numbers to `test_results` without ever re-generating text from `seed` or recomputing metrics from `telemetry`.
   2. Line 48 wraps all anti-cheat logic inside `if (telemetry.length > 0)`, and line 64 gates regularity checks on `if (deltas.length > 10)`. Sending `telemetry: []` alongside `wpm: 350, rawWpm: 350, accuracy: 100, consistency: 100, duration: 30` passes Zod and inserts directly onto the global leaderboard. Even when telemetry is supplied, adding random `>=2ms` jitter defeats `stdDev < 1.5`, and `k` is unchecked (`z.string()` unbounded) and never compared against `generateText(seed, mode, duration)`.
-  3. Worse, [app/dashboard/page.tsx](file:///c:/Users/rudra/TyProX/app/dashboard/page.tsx#L327) demonstrates that authenticated users can call `supabase.from('test_results').insert(payload)` directly from browser JS — completely bypassing `/api/results` and its anti-cheat checks!
+  3. Worse, [app/dashboard/page.tsx](../../app/dashboard/page.tsx#L327) demonstrates that authenticated users can call `supabase.from('test_results').insert(payload)` directly from browser JS — completely bypassing `/api/results` and its anti-cheat checks!
 - **Impact:** Anyone can forge #1 leaderboard scores (`350 WPM`, `100%` accuracy) with a single `curl` / browser console call, unlocking every speed achievement and corrupting competitive integrity.
 - **Recommended Solution:** Revoke client `INSERT` on `public.test_results` and `public.replays` (`anon` and `authenticated` should only write via a server endpoint using `SUPABASE_SERVICE_ROLE_KEY`, or via a Postgres `SECURITY DEFINER` RPC). Inside `POST /api/results`, enforce minimum telemetry length (`>= 10` keystrokes & duration bounds), validate `k.length <= 1` (or `'Backspace'`), reconstruct expected text deterministically from `(seed, mode, duration)`, re-compute WPM/rawWpm/accuracy/consistency/errorCount/duration server-side, reject impossible inter-key intervals (`<15ms` sustained / zero variance / inhuman bursts), and migrate `handleSyncHistory` to route through the same verified API.
 
 ### SEC-02 — Permissive SQL Privileges (`GRANT ALL`) & Self-Tamperable RLS Policies
 - **Priority:** `Critical` (`Verified`)
-- **File Path:** [supabase/migrations/FULL_SCHEMA.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/FULL_SCHEMA.sql#L157-L229, L292-L295, L320-L335), [supabase/migrations/20260619000000_audit_hardening.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/20260619000000_audit_hardening.sql#L4-L31)
+- **File Path:** [supabase/migrations/FULL_SCHEMA.sql](../../supabase/reference/FULL_SCHEMA.sql#L157-L229,L292-L295,L320-L335), [supabase/migrations/20260619000000_audit_hardening.sql](../../supabase/migrations/20260619000000_audit_hardening.sql#L4-L31)
 - **Relevant Component / Function:** RLS policies on `test_results`, `replays`, `streaks`, `user_achievements`, `challenge_links`, `leaderboard_view`, and schema `GRANT ALL`
 - **Evidence:**
   1. Line 293 executes `GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;` (granting `DELETE`/`TRUNCATE`/`REFERENCES`/`TRIGGER` privileges at the PostgreSQL role level, leaving security solely on RLS omission rather than least privilege).
@@ -42,7 +42,7 @@
 
 ### SEC-03 — Open Redirect Vulnerability in OAuth Callback Route
 - **Priority:** `High` (`Verified`)
-- **File Path:** [app/auth/callback/route.ts](file:///c:/Users/rudra/TyProX/app/auth/callback/route.ts#L7-L14)
+- **File Path:** [app/auth/callback/route.ts](../../app/auth/callback/route.ts#L7-L14)
 - **Relevant Component / Function:** `GET` handler
 - **Evidence:**
   ```ts
@@ -56,7 +56,7 @@
 
 ### SEC-04 — Unauthenticated Public Debug/Test API Routes Leak Metadata & Pollute Database
 - **Priority:** `High` (`Verified`)
-- **File Path:** [app/api/debug/supabase/route.ts](file:///c:/Users/rudra/TyProX/app/api/debug/supabase/route.ts#L4-L131), [app/api/test-supabase/route.ts](file:///c:/Users/rudra/TyProX/app/api/test-supabase/route.ts#L4-L55)
+- **File Path:** `app/api/debug/supabase/route.ts`, `app/api/test-supabase/route.ts`
 - **Relevant Component / Function:** `GET /api/debug/supabase`, `GET /api/test-supabase`
 - **Evidence:**
   1. Both endpoints are publicly reachable in production (`npm run build` lists both as active dynamic routes with zero `NODE_ENV` or admin auth guard).
@@ -68,7 +68,7 @@
 
 ### SEC-05 — Middleware & API Auth Bypass via `?demo=true` Query/Cookie Parameters
 - **Priority:** `High` (`Verified`)
-- **File Path:** [lib/supabase/middleware.ts](file:///c:/Users/rudra/TyProX/lib/supabase/middleware.ts#L48-L54), [app/api/leaderboard/route.ts](file:///c:/Users/rudra/TyProX/app/api/leaderboard/route.ts#L13-L54)
+- **File Path:** [lib/supabase/middleware.ts](../../lib/supabase/middleware.ts#L48-L54), [app/api/leaderboard/route.ts](../../app/api/leaderboard/route.ts#L13-L54)
 - **Relevant Component / Function:** `updateSession`, `GET /api/leaderboard`
 - **Evidence:**
   - `updateSession` (`line 48`) evaluates `const isDemo = request.cookies.get('typrox_demo_logged_in')?.value === 'true' || request.nextUrl.searchParams.get('demo') === 'true';` and skips redirecting unauthenticated requests to `/login` for `/dashboard` and `/profile`.
@@ -78,7 +78,7 @@
 
 ### SEC-06 — Broad Public `SELECT USING (true)` Exposes User History & Full Keystroke Telemetry
 - **Priority:** `Medium` (`Verified`)
-- **File Path:** [supabase/migrations/FULL_SCHEMA.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/FULL_SCHEMA.sql#L140-L224)
+- **File Path:** [supabase/migrations/FULL_SCHEMA.sql](../../supabase/reference/FULL_SCHEMA.sql#L140-L224)
 - **Relevant Component / Function:** RLS `SELECT` policies across `profiles`, `test_results`, `replays`, `streaks`, `user_achievements`
 - **Evidence:** Every table carries `FOR SELECT USING (true);` (including raw `replays` containing full keystroke timing telemetry and `test_results` rows with `is_invalidated = true`, as well as `profiles.theme` / `font_family`). Anyone with the public anon key can dump all historical test runs, invalidated anti-cheat flags, and raw keystroke logs for every user via the Supabase REST API.
 - **Impact:** Unnecessary behavioral/privacy exposure (keystroke biometric timing patterns in `replays`, full test history even for low-scoring practice runs, invalidated flags) beyond what public profiles or leaderboards require.
@@ -86,7 +86,7 @@
 
 ### SEC-07 — Missing Rate Limiting, Unbounded Payload Sizes & Error Detail Leakage
 - **Priority:** `Medium` (`Verified`)
-- **File Path:** [app/api/results/route.ts](file:///c:/Users/rudra/TyProX/app/api/results/route.ts#L5-L22, L197-L198), [app/api/profile/route.ts](file:///c:/Users/rudra/TyProX/app/api/profile/route.ts#L13-L43), [app/api/leaderboard/route.ts](file:///c:/Users/rudra/TyProX/app/api/leaderboard/route.ts#L8, L139-L140)
+- **File Path:** [app/api/results/route.ts](../../app/api/results/route.ts#L5-L22,L197-L198), [app/api/profile/route.ts](../../app/api/profile/route.ts#L13-L43), [app/api/leaderboard/route.ts](../../app/api/leaderboard/route.ts#L8,L139-L140)
 - **Relevant Component / Function:** API route handlers
 - **Evidence:**
   1. Zero rate limiting exists on `POST /api/results` or `PATCH /api/profile` (authenticated or unauthenticated callers can spam submissions continuously).
@@ -98,7 +98,7 @@
 
 ### SEC-08 — Weak Client Session Verification (`getSession`), OAuth Signup Trigger Collision & Unenforced Challenge Expiry
 - **Priority:** `Medium` (`Verified`)
-- **File Path:** [components/navbar.tsx](file:///c:/Users/rudra/TyProX/components/navbar.tsx#L142), [lib/supabase/auth.ts](file:///c:/Users/rudra/TyProX/lib/supabase/auth.ts#L44-L48), [supabase/migrations/FULL_SCHEMA.sql](file:///c:/Users/rudra/TyProX/supabase/migrations/FULL_SCHEMA.sql#L247-L263), [app/challenge/[id]/page.tsx](file:///c:/Users/rudra/TyProX/app/challenge/%5Bid%5D/page.tsx#L42-L54)
+- **File Path:** [components/navbar.tsx](../../components/navbar.tsx#L142), [lib/supabase/auth.ts](../../lib/supabase/auth.ts#L44-L48), [supabase/migrations/FULL_SCHEMA.sql](../../supabase/reference/FULL_SCHEMA.sql#L247-L263), [app/challenge/[id]/page.tsx](../../app/challenge/%5Bid%5D/page.tsx#L42-L54)
 - **Relevant Component / Function:** `Navbar` auth check, `handle_new_user()` trigger, `ChallengePage`
 - **Evidence:**
   1. `Navbar` (`line 142`) calls `supabase.auth.getSession()` instead of `getUser()` (reading unvalidated cookie/storage claims on client hydration before server verification; note `middleware.ts:43` and `results/route.ts:78` properly use `getUser()`).

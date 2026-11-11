@@ -1,6 +1,6 @@
 # Supabase OAuth Setup Guide
 
-This guide details the step-by-step instructions required to enable and configure **Google OAuth** and **GitHub OAuth** authentication for the TyProX application using your Supabase project (`gbovkejymfeiqgverzfr`). Never commit provider client secrets, `.env.local`, or `SUPABASE_SERVICE_ROLE_KEY` to Git.
+This guide details the step-by-step instructions required to enable and configure **Google OAuth** and **GitHub OAuth** authentication for the TyProX application using your Supabase project (`<your-supabase-project-ref>`). Never commit provider client secrets, `.env.local`, or `SUPABASE_SERVICE_ROLE_KEY` to Git.
 
 ---
 
@@ -9,7 +9,7 @@ This guide details the step-by-step instructions required to enable and configur
 When setting up OAuth with Google and GitHub, you will need to provide them with the redirect callback URL from Supabase:
 
 ```text
-https://gbovkejymfeiqgverzfr.supabase.co/auth/v1/callback
+https://<your-supabase-project-ref>.supabase.co/auth/v1/callback
 ```
 
 ---
@@ -20,8 +20,8 @@ https://gbovkejymfeiqgverzfr.supabase.co/auth/v1/callback
 2. Click **New OAuth App**.
 3. Fill in the application details:
    - **Application name**: `TyProX`
-   - **Homepage URL**: `http://localhost:3000` (or your production Vercel URL)
-   - **Authorization callback URL**: `https://gbovkejymfeiqgverzfr.supabase.co/auth/v1/callback`
+   - **Homepage URL**: `http://localhost:3000` (or your production deployment URL)
+   - **Authorization callback URL**: `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
 4. Click **Register application**.
 5. Copy the **Client ID**.
 6. Click **Generate a new client secret** and copy the **Client Secret**.
@@ -41,7 +41,7 @@ https://gbovkejymfeiqgverzfr.supabase.co/auth/v1/callback
    - Select **Web application** as the application type.
    - Add a name (e.g., `TyProX Client`).
    - Under **Authorized redirect URIs**, add:
-     `https://gbovkejymfeiqgverzfr.supabase.co/auth/v1/callback`
+     `https://<your-supabase-project-ref>.supabase.co/auth/v1/callback`
    - Click **Create**.
 5. Copy your **Client ID** and **Client Secret**.
 
@@ -50,7 +50,7 @@ https://gbovkejymfeiqgverzfr.supabase.co/auth/v1/callback
 ## 4. Enable Providers in Supabase
 
 1. Open the [Supabase Dashboard](https://supabase.com/dashboard).
-2. Select your project **`gbovkejymfeiqgverzfr`**.
+2. Select your Supabase project **`<your-supabase-project-ref>`** (the project reference subdomain from `NEXT_PUBLIC_SUPABASE_URL`).
 3. In the left navigation bar, go to **Authentication** -> **Providers**.
 4. Configure **GitHub**:
    - Expand the **GitHub** section.

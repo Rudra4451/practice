@@ -1,6 +1,6 @@
 # TyProX 2.0 — Phase 1F: GitHub Actions PostgreSQL 16 CI Preparation Report
 
-> **Phase 1H Sync Notice (Supersession Summary):** This document records the initial `12`-file preparation state committed as PR #2 (`ci/postgres-16-verification` @ `19e8873`). In Phase 1H ([`PHASE_1H_REMEDIATION_REPORT.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/PHASE_1H_REMEDIATION_REPORT.md)), unapplied migrations `20260623`/`20260624` were consolidated into [`20260621000000_typrox_2_hardening.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260621000000_typrox_2_hardening.sql) (now `20260618`–`20260622`), `FULL_SCHEMA.sql` was moved from `supabase/migrations/` to [`supabase/reference/FULL_SCHEMA.sql`](file:///c:/Users/rudra/TyProX/supabase/reference/FULL_SCHEMA.sql), and the CI workflow/harness were upgraded. Do **NOT** use the stale 12-file `git add` list below directly; follow the post-1H branch diff and review checklist in `PHASE_1H_REMEDIATION_REPORT.md`.
+> **Phase 1H Sync Notice (Supersession Summary):** This document records the initial `12`-file preparation state committed as PR #2 (`ci/postgres-16-verification` @ `19e8873`). In Phase 1H ([`PHASE_1H_REMEDIATION_REPORT.md`](../../docs/roadmap/PHASE_1H_REMEDIATION_REPORT.md)), unapplied migrations `20260623`/`20260624` were consolidated into [`20260621000000_typrox_2_hardening.sql`](../../supabase/migrations/20260621000000_typrox_2_hardening.sql) (now `20260618`–`20260622`), `FULL_SCHEMA.sql` was moved from `supabase/migrations/` to [`supabase/reference/FULL_SCHEMA.sql`](../../supabase/reference/FULL_SCHEMA.sql), and the CI workflow/harness were upgraded. Do **NOT** use the stale 12-file `git add` list below directly; follow the post-1H branch diff and review checklist in `PHASE_1H_REMEDIATION_REPORT.md`.
 
 **Date:** 2026-11-11  
 **Target GitHub Repository:** `Rudra4451/practice` (`https://github.com/Rudra4451/practice.git`, `PUBLIC`, Actions enabled)  
@@ -13,9 +13,9 @@
 
 Inspected directly via `git branch -vv`, `git status -uall --porcelain`, `git status --ignored --porcelain`, `git diff --stat`, `git config --show-origin`, and `gh` read-only queries:
 
-- **Active Local Branch:** `main` at [`fba1d80`](file:///c:/Users/rudra/TyProX/.git) (*Merge pull request #1 from Rudra4451/feature/cat-reaction-system*), tracking `origin/main` with `0` ahead / `0` behind.
+- **Active Local Branch:** `main` at `fba1d80` (*Merge pull request #1 from Rudra4451/feature/cat-reaction-system*), tracking `origin/main` with `0` ahead / `0` behind.
 - **Git Index (Staged Changes):** Empty (`0` files staged).
-- **Remote Baseline (`origin/main`):** Contains only legacy database files [`20260618000000_init_schema.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260618000000_init_schema.sql), [`20260619000000_audit_hardening.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260619000000_audit_hardening.sql), [`20260620100000_leaderboard_view.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260620100000_leaderboard_view.sql), and [`FULL_SCHEMA.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/FULL_SCHEMA.sql). Zero `.github/workflows/*` CI files exist on `origin/main` (`pages-build-deployment` is dynamic Pages only).
+- **Remote Baseline (`origin/main`):** Contains only legacy database files [`20260618000000_init_schema.sql`](../../supabase/migrations/20260618000000_init_schema.sql), [`20260619000000_audit_hardening.sql`](../../supabase/migrations/20260619000000_audit_hardening.sql), [`20260620100000_leaderboard_view.sql`](../../supabase/migrations/20260620100000_leaderboard_view.sql), and [`FULL_SCHEMA.sql`](../../supabase/reference/FULL_SCHEMA.sql). Zero `.github/workflows/*` CI files exist on `origin/main` (`pages-build-deployment` is dynamic Pages only).
 - **Total Working-Tree Inventory (Including This Report):** `170` dirty/untracked paths (`47` modified tracked `M`, `11` deleted tracked `D`, `112` untracked `??`) plus `6` `.gitignore`-ignored items (`!!`):
   - **Intended for DB Verification Branch:** `12` untracked files (`9` mandatory CI/harness/migration files + `3` Phase 1D–1F verification reports).
   - **Explicitly Excluded Uncommitted Work:** `158` paths (`47` modified + `11` deleted + `100` untracked app/test/audit/earlier-roadmap files).
@@ -33,23 +33,23 @@ All required Phase 1C, Phase 1D, Phase 1E, and Phase 1F PostgreSQL 16 verificati
 
 | # | Path | Origin Phase | Role on Branch | Bytes / LF Lines (`CR=0`) |
 |---|---|---|---|---|
-| 1 | [`.github/workflows/ci-postgres-verification.yml`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-postgres-verification.yml) | 1C -> 1E -> **1F** (`pull_request.branches: [main]`) | Runs PG 16 service container CI | `3,322` B / `93` LF (`CR=0`) |
-| 2 | [`docker-compose.db.yml`](file:///c:/Users/rudra/TyProX/docker-compose.db.yml) | 1C -> 1E | Ephemeral `postgres:16-alpine` local harness | `720` B / `30` LF (`CR=0`) |
-| 3 | [`tests/db/supabase_shim.sql`](file:///c:/Users/rudra/TyProX/tests/db/supabase_shim.sql) | 1C -> 1E | Supabase role/JWT/auth/realtime compatibility shim | `3,447` B / `88` LF (`CR=0`) |
-| 4 | [`tests/db/verify_migrations.sql`](file:///c:/Users/rudra/TyProX/tests/db/verify_migrations.sql) | 1C -> 1E | `TX 1`–`TX 13` catalog, RLS, privilege, view & RPC proofs | `54,025` B / `1,182` LF (`CR=0`) |
-| 5 | [`tests/db/run-pg-verification.sh`](file:///c:/Users/rudra/TyProX/tests/db/run-pg-verification.sh) | 1C -> 1E | Sequential runner + deterministic 2-worker contention barrier | `11,531` B / `305` LF (`CR=0`) |
-| 6 | [`supabase/migrations/20260621000000_typrox_2_hardening.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260621000000_typrox_2_hardening.sql) | Phase 1 / 1B (Untouched) | Security hardening, RLS lockdown, `leaderboard_view`, 11 achievements | `8,894` B / `214` LF (`CR=0`) |
-| 7 | [`supabase/migrations/20260622000000_learning_and_competitive_ecosystem.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260622000000_learning_and_competitive_ecosystem.sql) | Phase 4 / 5 (Untouched) | Curriculum, progression, challenge attempt tables & RLS | `3,265` B / `71` LF (`CR=0`) |
-| 8 | [`supabase/migrations/20260623000000_atomic_result_persistence_and_idempotency.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260623000000_atomic_result_persistence_and_idempotency.sql) | Phase 1B (Untouched) | Scoped `(user_id, client_run_id)` index + `submit_verified_result` v1 | `12,729` B / `360` LF (`CR=0`) |
-| 9 | [`supabase/migrations/20260624000000_phase1c_security_and_streak_fixes.sql`](file:///c:/Users/rudra/TyProX/supabase/migrations/20260624000000_phase1c_security_and_streak_fixes.sql) | Phase 1C (Untouched) | `profiles.username` REST guard, collision-safe `handle_new_user()`, RPC v2 | `22,978` B / `622` LF (`CR=0`) |
+| 1 | [`.github/workflows/ci-postgres-verification.yml`](../../.github/workflows/ci-postgres-verification.yml) | 1C -> 1E -> **1F** (`pull_request.branches: [main]`) | Runs PG 16 service container CI | `3,322` B / `93` LF (`CR=0`) |
+| 2 | [`docker-compose.db.yml`](../../docker-compose.db.yml) | 1C -> 1E | Ephemeral `postgres:16-alpine` local harness | `720` B / `30` LF (`CR=0`) |
+| 3 | [`tests/db/supabase_shim.sql`](../../tests/db/supabase_shim.sql) | 1C -> 1E | Supabase role/JWT/auth/realtime compatibility shim | `3,447` B / `88` LF (`CR=0`) |
+| 4 | [`tests/db/verify_migrations.sql`](../../tests/db/verify_migrations.sql) | 1C -> 1E | `TX 1`–`TX 13` catalog, RLS, privilege, view & RPC proofs | `54,025` B / `1,182` LF (`CR=0`) |
+| 5 | [`tests/db/run-pg-verification.sh`](../../tests/db/run-pg-verification.sh) | 1C -> 1E | Sequential runner + deterministic 2-worker contention barrier | `11,531` B / `305` LF (`CR=0`) |
+| 6 | [`supabase/migrations/20260621000000_typrox_2_hardening.sql`](../../supabase/migrations/20260621000000_typrox_2_hardening.sql) | Phase 1 / 1B (Untouched) | Security hardening, RLS lockdown, `leaderboard_view`, 11 achievements | `8,894` B / `214` LF (`CR=0`) |
+| 7 | [`supabase/migrations/20260622000000_learning_and_competitive_ecosystem.sql`](../../supabase/migrations/20260622000000_learning_and_competitive_ecosystem.sql) | Phase 4 / 5 (Untouched) | Curriculum, progression, challenge attempt tables & RLS | `3,265` B / `71` LF (`CR=0`) |
+| 8 | `supabase/migrations/20260623000000_atomic_result_persistence_and_idempotency.sql` | Phase 1B (Untouched) | Scoped `(user_id, client_run_id)` index + `submit_verified_result` v1 | `12,729` B / `360` LF (`CR=0`) |
+| 9 | `supabase/migrations/20260624000000_phase1c_security_and_streak_fixes.sql` | Phase 1C (Untouched) | `profiles.username` REST guard, collision-safe `handle_new_user()`, RPC v2 | `22,978` B / `622` LF (`CR=0`) |
 
 ### 2.2 Companion Phase 1D–1F Database Verification Reports (`3` Files, Included for PR Audit Trail)
 
 | # | Path | Origin Phase | Purpose |
 |---|---|---|---|
-| 10 | [`docs/roadmap/PHASE_1D_DATABASE_READINESS_REPORT.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/PHASE_1D_DATABASE_READINESS_REPORT.md) | 1D | Migration readiness audit & identified harness blind spots |
-| 11 | [`docs/roadmap/PHASE_1E_VERIFICATION_HARNESS_REPORT.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/PHASE_1E_VERIFICATION_HARNESS_REPORT.md) | 1E | Harness remediation & deterministic lock-contention proof report |
-| 12 | [`docs/roadmap/PHASE_1F_GITHUB_CI_PREPARATION.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/PHASE_1F_GITHUB_CI_PREPARATION.md) | 1F | This CI branch scope, inventory, risk & command plan |
+| 10 | [`docs/roadmap/PHASE_1D_DATABASE_READINESS_REPORT.md`](../../docs/roadmap/PHASE_1D_DATABASE_READINESS_REPORT.md) | 1D | Migration readiness audit & identified harness blind spots |
+| 11 | [`docs/roadmap/PHASE_1E_VERIFICATION_HARNESS_REPORT.md`](../../docs/roadmap/PHASE_1E_VERIFICATION_HARNESS_REPORT.md) | 1E | Harness remediation & deterministic lock-contention proof report |
+| 12 | [`docs/roadmap/PHASE_1F_GITHUB_CI_PREPARATION.md`](../../docs/roadmap/PHASE_1F_GITHUB_CI_PREPARATION.md) | 1F | This CI branch scope, inventory, risk & command plan |
 
 *(Already on `origin/main` @ `fba1d80` with zero modifications and automatically checked out in CI: `supabase/migrations/20260618000000_init_schema.sql`, `20260619000000_audit_hardening.sql`, `20260620100000_leaderboard_view.sql`, and `FULL_SCHEMA.sql`.)*
 
@@ -70,7 +70,7 @@ All required Phase 1C, Phase 1D, Phase 1E, and Phase 1F PostgreSQL 16 verificati
 
 ### 3.2 Uncommitted Application, UI, Test & Dependency Work (`158` Paths — Excluded to Keep DB Verification PR Isolated)
 
-Including these in the PG 16 CI branch would mix ~14,000 diff lines of application UI/API refactoring and npm dependencies into a database-only verification PR. Because `ci-postgres-verification.yml` calls `sh tests/db/run-pg-verification.sh` directly, **even [`package.json`](file:///c:/Users/rudra/TyProX/package.json) (`"test:db"`) and `package-lock.json` are excluded cleanly**:
+Including these in the PG 16 CI branch would mix ~14,000 diff lines of application UI/API refactoring and npm dependencies into a database-only verification PR. Because `ci-postgres-verification.yml` calls `sh tests/db/run-pg-verification.sh` directly, **even [`package.json`](../../package.json) (`"test:db"`) and `package-lock.json` are excluded cleanly**:
 
 1. **Modified Tracked Files (`47` Paths — All Excluded):**
    - Config, Lockfile & Root Docs (`5`): `.gitignore`, `README.md`, `next.config.ts`, `package.json`, `package-lock.json`.
@@ -94,12 +94,12 @@ Including these in the PG 16 CI branch would mix ~14,000 diff lines of applicati
 
 ## 4. Workflow Trigger & Migration Sequence Verification
 
-Verified directly in [`.github/workflows/ci-postgres-verification.yml`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-postgres-verification.yml) (`93` lines):
+Verified directly in [`.github/workflows/ci-postgres-verification.yml`](../../.github/workflows/ci-postgres-verification.yml) (`93` lines):
 
-1. **Pull Requests Targeting `main` Confirmed ([`L13-L20`](file:///c:/Users/rudra/TyProX/.github/workflows/ci-postgres-verification.yml#L13-L20)):**
+1. **Pull Requests Targeting `main` Confirmed ([`L13-L20`](../../.github/workflows/ci-postgres-verification.yml#L13-L20)):**
    - Added explicit `branches: [main]` under `on.pull_request` (alongside existing `paths:` covering `supabase/migrations/**`, `tests/db/**`, `docker-compose.db.yml`, and `.github/workflows/ci-postgres-verification.yml`).
    - Also retains `on.push` (with matching `paths:`, no branch restriction so pushing `ci/postgres-16-verification` immediately runs CI) and `on.workflow_dispatch` (usable once merged to `main`).
-2. **Exact Candidate Migration Sequence Confirmed ([`run-pg-verification.sh:72-84`](file:///c:/Users/rudra/TyProX/tests/db/run-pg-verification.sh#L72-L84)):**
+2. **Exact Candidate Migration Sequence Confirmed ([`run-pg-verification.sh:72-84`](../../tests/db/run-pg-verification.sh#L72-L84)):**
    1. `tests/db/supabase_shim.sql`
    2. `supabase/migrations/20260618000000_init_schema.sql`
    3. `supabase/migrations/20260619000000_audit_hardening.sql`
@@ -121,7 +121,7 @@ Verified directly in [`.github/workflows/ci-postgres-verification.yml`](file:///
 | 3 | **`workflow_dispatch` Unavailable Until Merged to `main`** | GitHub Actions does not allow manual `gh workflow run` / UI dispatch until `.github/workflows/ci-postgres-verification.yml` lands on default branch `main`. Pushing `ci/postgres-16-verification` (`on.push.paths`) and opening a PR (`on.pull_request.branches: [main]`) will trigger CI immediately without needing `workflow_dispatch`. |
 | 4 | **POSIX File Mode `100644` vs `100755` on `run-pg-verification.sh`** | With `core.filemode = false` on Windows, `tests/db/run-pg-verification.sh` commits as `100644` unless `--chmod=+x` is set. Both CI (`sh tests/db/run-pg-verification.sh`) and `package.json` invoke `sh`, so CI still passes; optionally run `git update-index --chmod=+x tests/db/run-pg-verification.sh` after staging. |
 | 5 | **Switching Back to `main` While App Changes Remain Uncommitted** | After committing the `12` DB files on `ci/postgres-16-verification`, those `12` paths do not exist on `fba1d80`. Switching back (`git switch main`) removes those `12` committed files from the working tree cleanly while preserving the `158` uncommitted app files — **never run `git reset --hard`, `git checkout -- .`, or `git clean -fd`** while uncommitted app work sits locally. |
-| 6 | **CI Container / Apt Transient Surface & Clean-DB vs Production Drift** | Workflow uses mutable tags (`postgres:16-alpine`, `actions/checkout@v4`) and live `apt-get install postgresql-client` (transient mirror risk), and runs from an empty schema rather than production's `FULL_SCHEMA.sql` state (e.g., unfiltered `idx_test_results_leaderboard` hazard already flagged in [`PHASE_1D_DATABASE_READINESS_REPORT.md`](file:///c:/Users/rudra/TyProX/docs/roadmap/PHASE_1D_DATABASE_READINESS_REPORT.md#L151)). |
+| 6 | **CI Container / Apt Transient Surface & Clean-DB vs Production Drift** | Workflow uses mutable tags (`postgres:16-alpine`, `actions/checkout@v4`) and live `apt-get install postgresql-client` (transient mirror risk), and runs from an empty schema rather than production's `FULL_SCHEMA.sql` state (e.g., unfiltered `idx_test_results_leaderboard` hazard already flagged in [`PHASE_1D_DATABASE_READINESS_REPORT.md`](../../docs/roadmap/PHASE_1D_DATABASE_READINESS_REPORT.md#L151)). |
 
 ---
 
